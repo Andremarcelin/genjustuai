@@ -220,6 +220,63 @@
     border-radius: 4px;
   }
 
+  .input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+  .input-label {
+    font-size: 11.5px;
+    font-family: var(--mono);
+    color: var(--muted);
+  }
+  input[type="text"], input[type="password"] {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    outline: none;
+    box-sizing: border-box;
+    transition: border-color 0.15s;
+  }
+  input[type="text"]:focus, input[type="password"]:focus {
+    border-color: var(--accent);
+  }
+  .badge-success {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--accent);
+    background: rgba(111, 216, 208, 0.08);
+    border: 1px solid rgba(111, 216, 208, 0.25);
+    border-radius: 6px;
+    padding: 6px 12px;
+  }
+  .guide-box {
+    background: rgba(226, 73, 61, 0.08);
+    border: 1px solid rgba(226, 73, 61, 0.25);
+    border-radius: 6px;
+    padding: 12px 14px;
+    margin-bottom: 16px;
+    font-size: 12.5px;
+    line-height: 1.6;
+  }
+  .guide-box ol {
+    margin: 8px 0 0;
+    padding-left: 20px;
+    color: var(--text);
+  }
+  .guide-box li {
+    margin-bottom: 4px;
+  }
+
   .hidden { display: none; }
 </style>
 </head>
@@ -237,14 +294,46 @@
   <!-- Passo 0: config -->
   <div class="step" id="step-config">
     <div class="step-marker">
-      <div class="step-num">·</div>
+      <div class="step-num" id="step-config-num">·</div>
       <div class="step-line"></div>
     </div>
     <div class="step-body">
-      <div class="step-title">Configuração do ambiente</div>
-      <div class="config-note">
-        Preencha <code>SUPABASE_URL</code> e <code>SUPABASE_ANON_KEY</code> no <code>&lt;script&gt;</code>
-        deste arquivo antes de publicar.
+      <div class="step-title" id="step-config-title">Configuração do ambiente</div>
+
+      <div id="config-ready" class="hidden">
+        <div class="badge-success">
+          <span>✓</span>
+          <span id="config-ready-text">Supabase configurado e pronto</span>
+        </div>
+      </div>
+
+      <div id="config-pending" class="card hidden">
+        <div class="guide-box">
+          <strong style="color: var(--rec);">Atenção:</strong> As variáveis de ambiente <code>SUPABASE_URL</code> ou <code>SUPABASE_ANON_KEY</code> não foram detectadas no Netlify.
+          <ol>
+            <li>No painel do Netlify, vá em <strong>Site configuration &gt; Environment variables</strong>.</li>
+            <li>Adicione <code>SUPABASE_URL</code> (ex: <code>https://xxx.supabase.co</code>) e <code>SUPABASE_ANON_KEY</code>.</li>
+            <li>Certifique-se de marcar os escopos <strong>All scopes</strong> ou <strong>Runtime / Functions</strong>.</li>
+          </ol>
+        </div>
+
+        <div style="font-size: 12.5px; color: var(--muted); margin-bottom: 12px;">
+          Alternativamente, informe as credenciais abaixo para testar nesta sessão do navegador:
+        </div>
+
+        <div class="input-group">
+          <label class="input-label" for="input-url">SUPABASE_URL</label>
+          <input type="text" id="input-url" placeholder="https://seu-projeto.supabase.co" spellcheck="false" autocomplete="off">
+        </div>
+        <div class="input-group">
+          <label class="input-label" for="input-key">SUPABASE_ANON_KEY</label>
+          <input type="password" id="input-key" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." spellcheck="false" autocomplete="off">
+        </div>
+        <div class="btn-row">
+          <button class="primary" id="btn-save-config">Salvar e Conectar</button>
+          <button id="btn-clear-config">Limpar</button>
+        </div>
+        <div class="status" id="status-config"></div>
       </div>
     </div>
   </div>
@@ -316,17 +405,60 @@
 
 <script>
   const $ = (id) => document.getElementById(id);
-  let sb; // inicializado depois que a config vier da função Netlify
+  let sb = null; // inicializado depois que a config vier da função Netlify ou da sessão
 
-  async function initSupabase() {
-    const res = await fetch("/api/config");
-    if (!res.ok) throw new Error("Não foi possível carregar a configuração (/api/config)");
-    const { supabaseUrl, supabaseAnonKey } = await res.json();
-    if (!supabaseUrl || !supabaseAnonKey) {
-      throw new Error("SUPABASE_URL ou SUPABASE_ANON_KEY não configuradas no Netlify");
+  async function loadConfig() {
+    // 1. Tenta carregar da Netlify Function
+    try {
+      const res = await fetch("/api/config");
+      if (res.ok) {
+        const { supabaseUrl, supabaseAnonKey } = await res.json();
+        if (supabaseUrl && supabaseAnonKey) {
+          return { supabaseUrl, supabaseAnonKey, source: "netlify" };
+        }
+      }
+    } catch (e) {
+      console.warn("Não foi possível carregar de /api/config:", e);
     }
+
+    // 2. Tenta carregar do fallback da sessão
+    try {
+      const storedUrl = sessionStorage.getItem("genjutsu_supabase_url");
+      const storedKey = sessionStorage.getItem("genjutsu_supabase_key");
+      if (storedUrl && storedKey) {
+        return { supabaseUrl: storedUrl, supabaseAnonKey: storedKey, source: "session" };
+      }
+    } catch (e) {
+      console.warn("Storage inacessível:", e);
+    }
+
+    return null;
+  }
+
+  function setupSupabaseClient(supabaseUrl, supabaseAnonKey, source = "netlify") {
     const { createClient } = supabase;
     sb = createClient(supabaseUrl, supabaseAnonKey);
+
+    $("config-pending").classList.add("hidden");
+    $("config-ready").classList.remove("hidden");
+    $("config-ready-text").textContent = source === "netlify"
+      ? "Supabase configurado via Netlify Functions"
+      : "Supabase configurado para esta sessão";
+    markStep("step-config", "done");
+    $("step-config-num").textContent = "✓";
+    $("btn-login").disabled = false;
+    setStatus("status-auth", "");
+
+    sb.auth.onAuthStateChange((event, session) => {
+      if (session) showLoggedIn(session.user);
+      else showLoggedOut();
+    });
+
+    sb.auth.getSession().then(({ data: { session } }) => {
+      if (session) showLoggedIn(session.user);
+    }).catch(err => {
+      console.error(err);
+    });
   }
 
   const dossie = {}; // acumula os dados coletados por fonte
@@ -369,7 +501,44 @@
     Object.keys(dossie).forEach(k => delete dossie[k]);
   }
 
+  $("btn-save-config").addEventListener("click", () => {
+    const url = $("input-url").value.trim();
+    const key = $("input-key").value.trim();
+    if (!url || !key) {
+      setStatus("status-config", "Por favor, preencha a URL e a Anon Key.", true);
+      return;
+    }
+    try {
+      new URL(url);
+    } catch {
+      setStatus("status-config", "URL inválida. Deve iniciar com https://", true);
+      return;
+    }
+    try {
+      sessionStorage.setItem("genjutsu_supabase_url", url);
+      sessionStorage.setItem("genjutsu_supabase_key", key);
+    } catch (e) {
+      console.warn("Erro ao salvar no storage:", e);
+    }
+    setStatus("status-config", "Conectando ao Supabase...");
+    setupSupabaseClient(url, key, "session");
+  });
+
+  $("btn-clear-config").addEventListener("click", () => {
+    try {
+      sessionStorage.removeItem("genjutsu_supabase_url");
+      sessionStorage.removeItem("genjutsu_supabase_key");
+    } catch (e) {}
+    $("input-url").value = "";
+    $("input-key").value = "";
+    setStatus("status-config", "Configurações limpas.");
+  });
+
   $("btn-login").addEventListener("click", async () => {
+    if (!sb) {
+      setStatus("status-auth", "Supabase ainda não configurado.", true);
+      return;
+    }
     setStatus("status-auth", "Redirecionando para o Google...");
     const { error } = await sb.auth.signInWithOAuth({
       provider: "google",
@@ -387,11 +556,12 @@
   });
 
   $("btn-logout").addEventListener("click", async () => {
-    await sb.auth.signOut();
+    if (sb) await sb.auth.signOut();
     showLoggedOut();
   });
 
   async function getToken() {
+    if (!sb) throw new Error("Supabase não configurado.");
     const { data: { session } } = await sb.auth.getSession();
     if (!session) throw new Error("Sessão não encontrada, faça login novamente.");
     if (!session.provider_token) {
@@ -531,15 +701,15 @@
 
   async function main() {
     try {
-      await initSupabase();
-      $("btn-login").disabled = false;
-
-      sb.auth.onAuthStateChange((event, session) => {
-        if (session) showLoggedIn(session.user);
-        else showLoggedOut();
-      });
-      const { data: { session } } = await sb.auth.getSession();
-      if (session) showLoggedIn(session.user);
+      const config = await loadConfig();
+      if (config) {
+        setupSupabaseClient(config.supabaseUrl, config.supabaseAnonKey, config.source);
+      } else {
+        markStep("step-config", "active");
+        $("config-pending").classList.remove("hidden");
+        $("config-ready").classList.add("hidden");
+        setStatus("status-auth", "Aguardando configuração do Supabase no Passo 0.");
+      }
     } catch (err) {
       setStatus("status-auth", err.message, true);
     }
