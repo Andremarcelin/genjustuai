@@ -208,18 +208,6 @@
     margin: 0;
   }
 
-  .config-note {
-    font-size: 12.5px;
-    color: var(--muted);
-    line-height: 1.6;
-    font-family: var(--mono);
-  }
-  .config-note code {
-    background: var(--panel-raised);
-    padding: 1px 6px;
-    border-radius: 4px;
-  }
-
   .input-group {
     display: flex;
     flex-direction: column;
@@ -291,7 +279,6 @@
     <p>Cada e-mail, compromisso e canal que você segue é um traço seu. Autorize o acesso e veja, em tempo real, o dossiê que uma IA construiria sobre você.</p>
   </header>
 
-  <!-- Passo 0: config -->
   <div class="step" id="step-config">
     <div class="step-marker">
       <div class="step-num" id="step-config-num">·</div>
@@ -312,8 +299,7 @@
           <strong style="color: var(--rec);">Atenção:</strong> As variáveis de ambiente <code>SUPABASE_URL</code> ou <code>SUPABASE_ANON_KEY</code> não foram detectadas no Netlify.
           <ol>
             <li>No painel do Netlify, vá em <strong>Site configuration &gt; Environment variables</strong>.</li>
-            <li>Adicione <code>SUPABASE_URL</code> (ex: <code>https://xxx.supabase.co</code>) e <code>SUPABASE_ANON_KEY</code>.</li>
-            <li>Certifique-se de marcar os escopos <strong>All scopes</strong> ou <strong>Runtime / Functions</strong>.</li>
+            <li>Adicione <code>SUPABASE_URL</code> e <code>SUPABASE_ANON_KEY</code>.</li>
           </ol>
         </div>
 
@@ -338,7 +324,6 @@
     </div>
   </div>
 
-  <!-- Passo 1: login -->
   <div class="step active" id="step-login">
     <div class="step-marker">
       <div class="step-num">1</div>
@@ -367,7 +352,6 @@
     </div>
   </div>
 
-  <!-- Passo 2: coleta -->
   <div class="step" id="step-collect">
     <div class="step-marker">
       <div class="step-num">2</div>
@@ -388,7 +372,6 @@
     </div>
   </div>
 
-  <!-- Passo 3: dossiê -->
   <div class="step" id="step-dossie">
     <div class="step-marker">
       <div class="step-num">3</div>
@@ -398,6 +381,11 @@
       <div class="card">
         <div id="dossie-empty" class="status">Colete ao menos uma fonte de dados para montar o dossiê.</div>
         <pre id="payload" class="hidden"></pre>
+        
+        <div style="margin-top: 16px;">
+          <button class="primary" id="btn-save-db" disabled>Salvar Dossiê no Supabase</button>
+          <div class="status" id="status-db"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -405,10 +393,9 @@
 
 <script>
   const $ = (id) => document.getElementById(id);
-  let sb = null; // inicializado depois que a config vier da função Netlify ou da sessão
+  let sb = null;
 
   async function loadConfig() {
-    // 1. Tenta carregar da Netlify Function
     try {
       const res = await fetch("/api/config");
       if (res.ok) {
@@ -421,7 +408,6 @@
       console.warn("Não foi possível carregar de /api/config:", e);
     }
 
-    // 2. Tenta carregar do fallback da sessão
     try {
       const storedUrl = sessionStorage.getItem("genjutsu_supabase_url");
       const storedKey = sessionStorage.getItem("genjutsu_supabase_key");
@@ -461,7 +447,7 @@
     });
   }
 
-  const dossie = {}; // acumula os dados coletados por fonte
+  const dossie = {};
 
   function setStatus(id, msg, isError = false) {
     const el = $(id);
@@ -470,10 +456,9 @@
   }
 
   function markStep(stepId, state) {
-    // state: 'active' | 'done'
     const el = $(stepId);
     el.classList.remove("active", "done");
-    el.classList.add(state);
+    if (state) el.classList.add(state);
   }
 
   function showLoggedIn(user) {
@@ -490,7 +475,7 @@
   function showLoggedOut() {
     $("logged-out").classList.remove("hidden");
     $("logged-in").classList.add("hidden");
-    ["btn-gmail", "btn-calendar", "btn-youtube"].forEach(id => $(id).disabled = true);
+    ["btn-gmail", "btn-calendar", "btn-youtube", "btn-save-db"].forEach(id => $(id).disabled = true);
     $("results").innerHTML = "";
     $("dossie-empty").classList.remove("hidden");
     $("payload").classList.add("hidden");
@@ -498,6 +483,7 @@
     markStep("step-collect", "");
     setStatus("status-auth", "");
     setStatus("status-collect", "");
+    setStatus("status-db", "");
     Object.keys(dossie).forEach(k => delete dossie[k]);
   }
 
@@ -592,6 +578,7 @@
     if (keys.length === 0) {
       $("dossie-empty").classList.remove("hidden");
       $("payload").classList.add("hidden");
+      $("btn-save-db").disabled = true;
       return;
     }
     $("dossie-empty").classList.add("hidden");
@@ -599,7 +586,33 @@
     pre.classList.remove("hidden");
     pre.textContent = JSON.stringify(dossie, null, 2);
     markStep("step-dossie", "active");
+    $("btn-save-db").disabled = false; // Habilita o botão quando há dados
   }
+
+  // ==== NOVO: SALVAR NO SUPABASE ====
+  $("btn-save-db").addEventListener("click", async () => {
+    setStatus("status-db", "Enviando dossiê para o banco de dados...");
+    try {
+      const { data: { user } } = await sb.auth.getUser();
+      if (!user) throw new Error("Usuário não autenticado.");
+
+      const { data, error } = await sb
+        .from("dossiers")
+        .upsert(
+          {
+            user_id: user.id,
+            dossier_data: dossie,
+            updated_at: new Date().toISOString()
+          },
+          { onConflict: "user_id" }
+        );
+
+      if (error) throw error;
+      setStatus("status-db", "✓ Dossiê salvo com sucesso no banco de dados!");
+    } catch (err) {
+      setStatus("status-db", "Erro ao salvar no banco: " + err.message, true);
+    }
+  });
 
   // ---- Gmail ----
   $("btn-gmail").addEventListener("click", async () => {
