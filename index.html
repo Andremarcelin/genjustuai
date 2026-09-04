@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GenJutsu AI</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --bg: #08090b;
+    --panel: #0e1012;
+    --panel-raised: #131619;
+    --border: #1d2126;
+    --text: #e7e9eb;
+    --muted: #6b7480;
+    --accent: #6fd8d0;
+    --rec: #e2493d;
+    --mono: 'SF Mono', 'JetBrains Mono', Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    background-image: radial-gradient(circle at 50% 0%, #101418 0%, #08090b 55%);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+  }
+  .wrap {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 56px 22px 90px;
+  }
+
+  /* header */
+  .rec-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .rec-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--rec);
+    animation: pulse 1.8s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(226,73,61,0.4); }
+    50% { opacity: 0.5; box-shadow: 0 0 0 4px rgba(226,73,61,0); }
+  }
+  .rec-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    color: var(--rec);
+  }
+  header h1 {
+    font-family: var(--mono);
+    font-size: 26px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin: 0 0 10px;
+  }
+  header p {
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.6;
+    margin: 0 0 40px;
+    max-width: 50ch;
+  }
+
+  /* step structure */
+  .step {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 4px;
+  }
+  .step-marker {
+    flex-shrink: 0;
+    width: 26px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .step-num {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    width: 22px; height: 22px;
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .step.active .step-num { border-color: var(--accent); color: var(--accent); }
+  .step.done .step-num { background: var(--accent); border-color: var(--accent); color: #06110c; }
+  .step-line {
+    flex: 1;
+    width: 1px;
+    background: var(--border);
+    margin: 4px 0;
+  }
+  .step-body {
+    flex: 1;
+    padding-bottom: 28px;
+  }
+  .step-title {
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+  .step.active .step-title, .step.done .step-title { color: var(--text); }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+  }
+
+  button {
+    font-family: var(--sans);
+    font-size: 13.5px;
+    font-weight: 500;
+    padding: 9px 16px;
+    border-radius: 7px;
+    border: 1px solid var(--border);
+    background: var(--panel-raised);
+    color: var(--text);
+    cursor: pointer;
+    transition: border-color 0.15s, opacity 0.15s;
+  }
+  button:hover:not(:disabled) { border-color: var(--accent); }
+  button.primary {
+    background: var(--accent);
+    color: #06110c;
+    border-color: var(--accent);
+    font-weight: 600;
+  }
+  button.primary:hover:not(:disabled) { opacity: 0.9; }
+  button:disabled { opacity: 0.35; cursor: not-allowed; }
+  .btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
+
+  .profile-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .profile-row img {
+    width: 42px; height: 42px; border-radius: 50%;
+    border: 1px solid var(--border);
+  }
+  .profile-row .name { font-weight: 600; font-size: 14.5px; }
+  .profile-row .email { color: var(--muted); font-size: 12.5px; font-family: var(--mono); }
+
+  .status {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 12px;
+    line-height: 1.6;
+  }
+  .status.error { color: var(--rec); }
+
+  .source-block { margin-bottom: 16px; }
+  .source-block:last-child { margin-bottom: 0; }
+  .source-head {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .source-head .label { font-size: 13px; font-weight: 600; }
+  .source-head .tag {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 6px;
+  }
+  .result-list { display: flex; flex-direction: column; gap: 6px; }
+  .result-item {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 9px 11px;
+    font-size: 12.5px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .result-item img.thumb {
+    width: 32px; height: 32px; border-radius: 4px; flex-shrink: 0;
+  }
+  .result-item .r-title { font-weight: 600; }
+  .result-item .r-sub { color: var(--muted); font-size: 11.5px; }
+
+  pre {
+    background: #050607;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 16px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    line-height: 1.6;
+    overflow-x: auto;
+    color: var(--accent);
+    max-height: 380px;
+    overflow-y: auto;
+    margin: 0;
+  }
+
+  .config-note {
+    font-size: 12.5px;
+    color: var(--muted);
+    line-height: 1.6;
+    font-family: var(--mono);
+  }
+  .config-note code {
+    background: var(--panel-raised);
+    padding: 1px 6px;
+    border-radius: 4px;
+  }
+
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="rec-row">
+    <div class="rec-dot"></div>
+    <div class="rec-label">COLETANDO SINAIS</div>
+  </div>
+  <header>
+    <h1>GenJutsu AI</h1>
+    <p>Cada e-mail, compromisso e canal que você segue é um traço seu. Autorize o acesso e veja, em tempo real, o dossiê que uma IA construiria sobre você.</p>
+  </header>
+
+  <!-- Passo 0: config -->
+  <div class="step" id="step-config">
+    <div class="step-marker">
+      <div class="step-num">·</div>
+      <div class="step-line"></div>
+    </div>
+    <div class="step-body">
+      <div class="step-title">Configuração do ambiente</div>
+      <div class="config-note">
+        Preencha <code>SUPABASE_URL</code> e <code>SUPABASE_ANON_KEY</code> no <code>&lt;script&gt;</code>
+        deste arquivo antes de publicar.
+      </div>
+    </div>
+  </div>
+
+  <!-- Passo 1: login -->
+  <div class="step active" id="step-login">
+    <div class="step-marker">
+      <div class="step-num">1</div>
+      <div class="step-line"></div>
+    </div>
+    <div class="step-body">
+      <div class="step-title">Autenticação</div>
+      <div class="card">
+        <div id="logged-out">
+          <button class="primary" id="btn-login" disabled>Entrar com Google</button>
+        </div>
+        <div id="logged-in" class="hidden">
+          <div class="profile-row">
+            <img id="avatar" src="" alt="">
+            <div>
+              <div class="name" id="user-name"></div>
+              <div class="email" id="user-email"></div>
+            </div>
+          </div>
+          <div style="margin-top:14px;">
+            <button id="btn-logout">Sair</button>
+          </div>
+        </div>
+        <div class="status" id="status-auth"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Passo 2: coleta -->
+  <div class="step" id="step-collect">
+    <div class="step-marker">
+      <div class="step-num">2</div>
+      <div class="step-line"></div>
+    </div>
+    <div class="step-body">
+      <div class="step-title">Fontes de dados</div>
+      <div class="card">
+        <div class="btn-row">
+          <button id="btn-gmail" disabled>Ler Gmail</button>
+          <button id="btn-calendar" disabled>Ler Agenda</button>
+          <button id="btn-youtube" disabled>Ler YouTube</button>
+        </div>
+        <div class="status" id="status-collect"></div>
+
+        <div id="results" style="margin-top:18px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Passo 3: dossiê -->
+  <div class="step" id="step-dossie">
+    <div class="step-marker">
+      <div class="step-num">3</div>
+    </div>
+    <div class="step-body">
+      <div class="step-title">Dossiê compilado — payload para a IA</div>
+      <div class="card">
+        <div id="dossie-empty" class="status">Colete ao menos uma fonte de dados para montar o dossiê.</div>
+        <pre id="payload" class="hidden"></pre>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  let sb; // inicializado depois que a config vier da função Netlify
+
+  async function initSupabase() {
+    const res = await fetch("/api/config");
+    if (!res.ok) throw new Error("Não foi possível carregar a configuração (/api/config)");
+    const { supabaseUrl, supabaseAnonKey } = await res.json();
+    if (!supabaseUrl || !supabaseAnonKey) {
+      throw new Error("SUPABASE_URL ou SUPABASE_ANON_KEY não configuradas no Netlify");
+    }
+    const { createClient } = supabase;
+    sb = createClient(supabaseUrl, supabaseAnonKey);
+  }
+
+  const dossie = {}; // acumula os dados coletados por fonte
+
+  function setStatus(id, msg, isError = false) {
+    const el = $(id);
+    el.textContent = msg;
+    el.className = "status" + (isError ? " error" : "");
+  }
+
+  function markStep(stepId, state) {
+    // state: 'active' | 'done'
+    const el = $(stepId);
+    el.classList.remove("active", "done");
+    el.classList.add(state);
+  }
+
+  function showLoggedIn(user) {
+    $("logged-out").classList.add("hidden");
+    $("logged-in").classList.remove("hidden");
+    $("avatar").src = user.user_metadata?.avatar_url || "";
+    $("user-name").textContent = user.user_metadata?.full_name || user.email;
+    $("user-email").textContent = user.email;
+    ["btn-gmail", "btn-calendar", "btn-youtube"].forEach(id => $(id).disabled = false);
+    markStep("step-login", "done");
+    markStep("step-collect", "active");
+  }
+
+  function showLoggedOut() {
+    $("logged-out").classList.remove("hidden");
+    $("logged-in").classList.add("hidden");
+    ["btn-gmail", "btn-calendar", "btn-youtube"].forEach(id => $(id).disabled = true);
+    $("results").innerHTML = "";
+    $("dossie-empty").classList.remove("hidden");
+    $("payload").classList.add("hidden");
+    markStep("step-login", "active");
+    markStep("step-collect", "");
+    setStatus("status-auth", "");
+    setStatus("status-collect", "");
+    Object.keys(dossie).forEach(k => delete dossie[k]);
+  }
+
+  $("btn-login").addEventListener("click", async () => {
+    setStatus("status-auth", "Redirecionando para o Google...");
+    const { error } = await sb.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: window.location.href,
+        scopes: [
+          "https://www.googleapis.com/auth/gmail.readonly",
+          "https://www.googleapis.com/auth/calendar.readonly",
+          "https://www.googleapis.com/auth/youtube.readonly"
+        ].join(" "),
+        queryParams: { access_type: "offline", prompt: "consent" }
+      }
+    });
+    if (error) setStatus("status-auth", "Erro ao iniciar login: " + error.message, true);
+  });
+
+  $("btn-logout").addEventListener("click", async () => {
+    await sb.auth.signOut();
+    showLoggedOut();
+  });
+
+  async function getToken() {
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) throw new Error("Sessão não encontrada, faça login novamente.");
+    if (!session.provider_token) {
+      throw new Error("Sem provider_token — se a página recarregou, saia e entre de novo.");
+    }
+    return session.provider_token;
+  }
+
+  function renderSourceBlock(id, label, tag, itemsHtml) {
+    let block = document.getElementById(`block-${id}`);
+    if (!block) {
+      block = document.createElement("div");
+      block.id = `block-${id}`;
+      block.className = "source-block";
+      $("results").appendChild(block);
+    }
+    block.innerHTML = `
+      <div class="source-head">
+        <div class="label">${label}</div>
+        <div class="tag">${tag}</div>
+      </div>
+      <div class="result-list">${itemsHtml}</div>
+    `;
+  }
+
+  function updateDossiePreview() {
+    const keys = Object.keys(dossie);
+    if (keys.length === 0) {
+      $("dossie-empty").classList.remove("hidden");
+      $("payload").classList.add("hidden");
+      return;
+    }
+    $("dossie-empty").classList.add("hidden");
+    const pre = $("payload");
+    pre.classList.remove("hidden");
+    pre.textContent = JSON.stringify(dossie, null, 2);
+    markStep("step-dossie", "active");
+  }
+
+  // ---- Gmail ----
+  $("btn-gmail").addEventListener("click", async () => {
+    setStatus("status-collect", "Lendo Gmail...");
+    try {
+      const token = await getToken();
+      const listRes = await fetch(
+        "https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=5",
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const listData = await listRes.json();
+      if (!listData.messages) throw new Error(listData.error?.message || "sem mensagens");
+
+      const items = [];
+      for (const m of listData.messages) {
+        const r = await fetch(
+          `https://gmail.googleapis.com/gmail/v1/users/me/messages/${m.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        const d = await r.json();
+        const subject = d.payload?.headers?.find(h => h.name === "Subject")?.value || "(sem assunto)";
+        const from = d.payload?.headers?.find(h => h.name === "From")?.value || "";
+        items.push({ subject, from, snippet: d.snippet });
+      }
+
+      dossie.gmail = items;
+      renderSourceBlock("gmail", "Gmail", `${items.length} e-mails`,
+        items.map(i => `<div class="result-item"><div><div class="r-title">${escapeHtml(i.subject)}</div><div class="r-sub">${escapeHtml(i.from)}</div></div></div>`).join("")
+      );
+      updateDossiePreview();
+      setStatus("status-collect", "Gmail carregado.");
+    } catch (err) {
+      setStatus("status-collect", "Erro no Gmail: " + err.message, true);
+    }
+  });
+
+  // ---- Calendar ----
+  $("btn-calendar").addEventListener("click", async () => {
+    setStatus("status-collect", "Lendo agenda...");
+    try {
+      const token = await getToken();
+      const timeMin = new Date().toISOString();
+      const res = await fetch(
+        `https://www.googleapis.com/calendar/v3/calendars/primary/events?maxResults=5&orderBy=startTime&singleEvents=true&timeMin=${timeMin}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const data = await res.json();
+      if (!data.items) throw new Error(data.error?.message || "sem eventos");
+
+      const items = data.items.map(e => ({
+        titulo: e.summary || "(sem título)",
+        inicio: e.start?.dateTime || e.start?.date
+      }));
+
+      dossie.calendar = items;
+      renderSourceBlock("calendar", "Agenda", `${items.length} eventos`,
+        items.map(i => `<div class="result-item"><div><div class="r-title">${escapeHtml(i.titulo)}</div><div class="r-sub">${escapeHtml(i.inicio)}</div></div></div>`).join("")
+      );
+      updateDossiePreview();
+      setStatus("status-collect", "Agenda carregada.");
+    } catch (err) {
+      setStatus("status-collect", "Erro na Agenda: " + err.message, true);
+    }
+  });
+
+  // ---- YouTube ----
+  $("btn-youtube").addEventListener("click", async () => {
+    setStatus("status-collect", "Lendo YouTube...");
+    try {
+      const token = await getToken();
+      const res = await fetch(
+        "https://www.googleapis.com/youtube/v3/subscriptions?part=snippet&mine=true&maxResults=6",
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const data = await res.json();
+      if (!data.items) throw new Error(data.error?.message || "sem inscrições");
+
+      const items = data.items.map(s => ({
+        canal: s.snippet.title,
+        thumb: s.snippet.thumbnails?.default?.url
+      }));
+
+      dossie.youtube = items.map(({ canal }) => ({ canal }));
+      renderSourceBlock("youtube", "YouTube", `${items.length} canais`,
+        items.map(i => `<div class="result-item">${i.thumb ? `<img class="thumb" src="${i.thumb}">` : ""}<div class="r-title">${escapeHtml(i.canal)}</div></div>`).join("")
+      );
+      updateDossiePreview();
+      setStatus("status-collect", "YouTube carregado.");
+    } catch (err) {
+      setStatus("status-collect", "Erro no YouTube: " + err.message, true);
+    }
+  });
+
+  function escapeHtml(str) {
+    const div = document.createElement("div");
+    div.textContent = str || "";
+    return div.innerHTML;
+  }
+
+  async function main() {
+    try {
+      await initSupabase();
+      $("btn-login").disabled = false;
+
+      sb.auth.onAuthStateChange((event, session) => {
+        if (session) showLoggedIn(session.user);
+        else showLoggedOut();
+      });
+      const { data: { session } } = await sb.auth.getSession();
+      if (session) showLoggedIn(session.user);
+    } catch (err) {
+      setStatus("status-auth", err.message, true);
+    }
+  }
+  main();
+</script>
+</body>
+</html>
