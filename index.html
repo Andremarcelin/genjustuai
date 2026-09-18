@@ -45,6 +45,117 @@
     background-size: 48px 48px;
     mask-image: radial-gradient(circle at 50% 20%, black, transparent 75%);
   }
+  .landing {
+    position: relative;
+    z-index: 1;
+    min-height: 100vh;
+  }
+  .landing-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 18px 22px;
+  }
+  .nav-mark {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: var(--display);
+    font-size: 15px;
+    color: #ff2a2a;
+    letter-spacing: 0.04em;
+  }
+  .hero {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 12px 22px 64px;
+    display: grid;
+    grid-template-columns: 1.05fr 0.95fr;
+    gap: 36px;
+    align-items: center;
+    min-height: calc(100vh - 72px);
+  }
+  .hero-copy h1 {
+    font-family: var(--display);
+    font-size: clamp(34px, 5vw, 56px);
+    line-height: 1.08;
+    margin: 0 0 16px;
+    color: #ff2a2a;
+    text-shadow: 0 0 28px rgba(226,36,36,0.45);
+  }
+  .hero-copy p {
+    color: var(--muted);
+    font-size: 17px;
+    line-height: 1.65;
+    max-width: 46ch;
+    margin: 0 0 28px;
+  }
+  .hero-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+  .hero-visual {
+    position: relative;
+    display: grid;
+    place-items: center;
+  }
+  .hero-visual::before {
+    content: "";
+    position: absolute;
+    width: 280px; height: 180px;
+    top: 8%;
+    background: radial-gradient(ellipse at center, rgba(226,36,36,0.35), transparent 70%);
+  }
+  .landing-section {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 8px 22px 72px;
+  }
+  .landing-section h2 {
+    font-family: var(--display);
+    color: #ff3030;
+    font-size: 28px;
+    margin: 0 0 22px;
+  }
+  .pillars {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+  }
+  .pillar {
+    background: rgba(18,18,20,0.85);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 20px;
+    box-shadow: var(--glow);
+  }
+  .pillar h3 { margin: 0 0 8px; font-size: 16px; }
+  .pillar p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.55; }
+  .steps-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+  }
+  .step-card {
+    border-radius: 18px;
+    padding: 16px;
+    background: #141416;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .step-card span {
+    display: block;
+    color: #ff3b3b;
+    font-family: var(--display);
+    margin-bottom: 8px;
+  }
+  .cta-band {
+    text-align: center;
+    padding: 48px 22px 80px;
+  }
+  .cta-band p { color: var(--muted); margin: 0 0 18px; }
+  @media (max-width: 860px) {
+    .hero, .pillars, .steps-row { grid-template-columns: 1fr; }
+    .hero { min-height: auto; padding-top: 24px; }
+  }
   .phone {
     width: min(420px, 100%);
     margin: 0 auto;
@@ -262,18 +373,73 @@
 </style>
 </head>
 <body>
-<div class="phone">
-  <div class="torii"></div>
+<div class="landing" id="landing">
+  <nav class="landing-nav">
+    <div class="nav-mark">
+      <svg width="28" height="22" viewBox="0 0 28 22" fill="none" aria-hidden="true">
+        <path d="M2 8h24M6 8V4h16v4M4 8l2 12h4l-1-12M20 8l-1 12h4l2-12M11 4l3-3 3 3" stroke="#ff2a2a" stroke-width="1.6"/>
+      </svg>
+      GenJutsu AI
+    </div>
+    <button class="cta" id="btn-nav-login" style="width:auto;padding:10px 18px;font-size:13px">Entrar</button>
+  </nav>
 
-  <section class="screen on" id="screen-splash">
-    <div class="brand">
-      <h1>GenJutsu AI</h1>
-      <div class="mascot-wrap">
-        <img src="assets/crow.webp" alt="Mascote GenJutsu">
+  <section class="hero">
+    <div class="hero-copy">
+      <h1>Bem-vindo ao<br>GenJutsu AI</h1>
+      <p>
+        Um portal entre o seu rastro digital e um dojo em realidade virtual.
+        A GenJutsu lê sinais da sua vida online — e-mails, agenda e interesses —
+        para montar um perfil e te receber no Meta Quest 3S.
+      </p>
+      <div class="hero-actions">
+        <button class="cta" id="btn-start" style="width:auto;padding:14px 28px">Iniciar Jornada</button>
+        <button class="cta ghost" id="btn-scroll-more" style="width:auto;padding:14px 22px">Como funciona</button>
       </div>
     </div>
-    <button class="cta" id="btn-start">Iniciar Jornada</button>
+    <div class="hero-visual">
+      <div class="mascot-wrap">
+        <img src="assets/crow.webp" alt="Mascote GenJutsu, um corvo com olhos vermelhos">
+      </div>
+    </div>
   </section>
+
+  <section class="landing-section" id="como-funciona">
+    <h2>O que o projeto faz</h2>
+    <div class="pillars">
+      <article class="pillar">
+        <h3>Rastro digital</h3>
+        <p>Conecta sua conta e coleta os últimos 10 e-mails, eventos da agenda e canais que você segue — só para construir o seu dossiê.</p>
+      </article>
+      <article class="pillar">
+        <h3>Perfil no dojo</h3>
+        <p>Você escolhe clima e ritmo. Esses dados entram no mesmo perfil que a experiência VR usa para te reconhecer.</p>
+      </article>
+      <article class="pillar">
+        <h3>Passagem ao Quest</h3>
+        <p>Depois da sincronização, o convite é claro: coloque o Meta Quest 3S e continue a jornada no espaço imersivo.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="landing-section">
+    <h2>A jornada</h2>
+    <div class="steps-row">
+      <div class="step-card"><span>01</span>Entre com Google ou Microsoft</div>
+      <div class="step-card"><span>02</span>Sincronize o rastro digital</div>
+      <div class="step-card"><span>03</span>Defina seu objetivo e clima</div>
+      <div class="step-card"><span>04</span>Vista o Quest e entre no genjutsu</div>
+    </div>
+  </section>
+
+  <div class="cta-band">
+    <p>Seus dados ficam criptografados. A GenJutsu AI não compartilha suas informações.</p>
+    <button class="cta" id="btn-start-bottom" style="width:auto;padding:14px 32px">Iniciar Jornada</button>
+  </div>
+</div>
+
+<div class="phone hidden" id="app">
+  <div class="torii"></div>
 
   <section class="screen" id="screen-config">
     <h2 class="screen-title">Configuração</h2>
@@ -345,7 +511,16 @@
   let sb = null;
   let globalDossie = {};
 
+  function goToApp() {
+    $("landing").classList.add("hidden");
+    $("app").classList.remove("hidden");
+    if (sb) showScreen("screen-login");
+    else showScreen("screen-config");
+  }
+
   function showScreen(id) {
+    $("landing").classList.add("hidden");
+    $("app").classList.remove("hidden");
     document.querySelectorAll(".screen").forEach((el) => el.classList.remove("on"));
     $(id).classList.add("on");
   }
@@ -408,7 +583,10 @@
     $("q-tempo").value = "";
     document.querySelectorAll(".option").forEach((b) => b.classList.remove("selected"));
     globalDossie = {};
-    if (sb) showScreen("screen-login");
+    if (sb) {
+      $("landing").classList.remove("hidden");
+      $("app").classList.add("hidden");
+    }
   }
 
   async function getToken() {
@@ -503,9 +681,11 @@
     });
   });
 
-  $("btn-start").addEventListener("click", () => {
-    if (sb) showScreen("screen-login");
-    else showScreen("screen-config");
+  $("btn-start").addEventListener("click", goToApp);
+  $("btn-start-bottom").addEventListener("click", goToApp);
+  $("btn-nav-login").addEventListener("click", goToApp);
+  $("btn-scroll-more").addEventListener("click", () => {
+    $("como-funciona").scrollIntoView({ behavior: "smooth" });
   });
 
   $("btn-save-questionnaire").addEventListener("click", async () => {
