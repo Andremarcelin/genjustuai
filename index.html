@@ -151,7 +151,7 @@
     text-align: center;
     padding: 48px 22px 80px;
   }
-  .cta-band p { color: var(--muted); margin: 0 0 18px; }
+  .cta-band a, .privacy a { color: #ff6b6b; }
   @media (max-width: 860px) {
     .hero, .pillars, .steps-row { grid-template-columns: 1fr; }
     .hero { min-height: auto; padding-top: 24px; }
@@ -435,6 +435,7 @@
   <div class="cta-band">
     <p>Seus dados ficam criptografados. A GenJutsu AI não compartilha suas informações.</p>
     <button class="cta" id="btn-start-bottom" style="width:auto;padding:14px 32px">Iniciar Jornada</button>
+    <p style="margin-top:22px;font-size:13px"><a href="/privacy">Política de Privacidade</a> · <a href="/terms">Termos de Serviço</a></p>
   </div>
 </div>
 
@@ -466,7 +467,7 @@
         <button class="ms" id="btn-login-ms" disabled>Microsoft</button>
       </div>
       <div class="status" id="status-auth"></div>
-      <p class="privacy">Seus dados estão protegidos por criptografia de ponta a ponta e a GenJutsu AI não compartilha suas informações.</p>
+      <p class="privacy">Seus dados estão protegidos por criptografia de ponta a ponta e a GenJutsu AI não compartilha suas informações.<br><a href="/privacy">Privacidade</a> · <a href="/terms">Termos</a></p>
     </div>
     <div id="logged-in" class="hidden">
       <div class="card">
