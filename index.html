@@ -4,348 +4,351 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>GenJutsu AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root {
-    --bg: #08090b;
-    --panel: #0e1012;
-    --panel-raised: #131619;
-    --border: #1d2126;
-    --text: #e7e9eb;
-    --muted: #6b7480;
-    --accent: #6fd8d0;
-    --rec: #e2493d;
-    --mono: 'SF Mono', 'JetBrains Mono', Consolas, monospace;
-    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --bg: #0a0a0c;
+    --bg-elev: #121214;
+    --panel: #161618;
+    --border: rgba(226, 36, 36, 0.28);
+    --text: #f4f4f5;
+    --muted: #9a9aa3;
+    --accent: #e22424;
+    --accent-deep: #8b1010;
+    --rec: #e22424;
+    --glow: 0 0 40px rgba(226, 36, 36, 0.25);
+    --sans: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --display: Cinzel, "Times New Roman", serif;
   }
   * { box-sizing: border-box; }
   body {
     margin: 0;
-    background: var(--bg);
-    background-image: radial-gradient(circle at 50% 0%, #101418 0%, #08090b 55%);
+    min-height: 100vh;
     color: var(--text);
     font-family: var(--sans);
-    min-height: 100vh;
+    background:
+      radial-gradient(ellipse at 50% -10%, #3a0a0a 0%, transparent 42%),
+      radial-gradient(circle at 80% 20%, rgba(226,36,36,0.12), transparent 35%),
+      var(--bg);
   }
-  .wrap {
-    max-width: 640px;
+  body::before {
+    content: "";
+    pointer-events: none;
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(226,36,36,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(226,36,36,0.04) 1px, transparent 1px);
+    background-size: 48px 48px;
+    mask-image: radial-gradient(circle at 50% 20%, black, transparent 75%);
+  }
+  .phone {
+    width: min(420px, 100%);
     margin: 0 auto;
-    padding: 56px 22px 90px;
-  }
-
-  /* header */
-  .rec-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 10px;
-  }
-  .rec-dot {
-    width: 7px; height: 7px; border-radius: 50%;
-    background: var(--rec);
-    animation: pulse 1.8s ease-in-out infinite;
-  }
-  @keyframes pulse {
-    0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(226,73,61,0.4); }
-    50% { opacity: 0.5; box-shadow: 0 0 0 4px rgba(226,73,61,0); }
-  }
-  .rec-label {
-    font-family: var(--mono);
-    font-size: 11px;
-    letter-spacing: 0.08em;
-    color: var(--rec);
-  }
-  header h1 {
-    font-family: var(--mono);
-    font-size: 26px;
-    font-weight: 600;
-    letter-spacing: -0.01em;
-    margin: 0 0 10px;
-  }
-  header p {
-    color: var(--muted);
-    font-size: 14px;
-    line-height: 1.6;
-    margin: 0 0 40px;
-    max-width: 50ch;
-  }
-
-  /* step structure */
-  .step {
-    display: flex;
-    gap: 16px;
-    margin-bottom: 4px;
-  }
-  .step-marker {
-    flex-shrink: 0;
-    width: 26px;
+    min-height: 100vh;
+    padding: 28px 22px 48px;
+    position: relative;
     display: flex;
     flex-direction: column;
-    align-items: center;
   }
-  .step-num {
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--muted);
-    width: 22px; height: 22px;
-    border: 1px solid var(--border);
+  .torii {
+    position: absolute;
+    inset: 8% 6% auto;
+    height: 220px;
+    pointer-events: none;
+    opacity: 0.35;
+    background:
+      radial-gradient(circle at 50% 20%, rgba(226,36,36,0.35), transparent 55%);
+    filter: blur(0.2px);
+  }
+  .brand {
+    text-align: center;
+    position: relative;
+    z-index: 1;
+  }
+  .brand h1 {
+    font-family: var(--display);
+    font-size: 34px;
+    margin: 12px 0 0;
+    letter-spacing: 0.02em;
+    color: #ff2a2a;
+    text-shadow: 0 0 18px rgba(226,36,36,0.55);
+  }
+  .mascot-wrap {
+    width: 230px;
+    height: 230px;
+    margin: 18px auto 8px;
     border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
+    background: radial-gradient(circle at 50% 40%, #5a1010, #140404 70%);
+    box-shadow: var(--glow), inset 0 0 0 2px rgba(226,36,36,0.45);
+    overflow: hidden;
   }
-  .step.active .step-num { border-color: var(--accent); color: var(--accent); }
-  .step.done .step-num { background: var(--accent); border-color: var(--accent); color: #06110c; }
-  .step-line {
-    flex: 1;
-    width: 1px;
-    background: var(--border);
-    margin: 4px 0;
+  .mascot-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
   }
-  .step-body {
-    flex: 1;
-    padding-bottom: 28px;
-  }
-  .step-title {
-    font-size: 13px;
-    color: var(--muted);
-    margin-bottom: 12px;
-  }
-  .step.active .step-title, .step.done .step-title { color: var(--text); }
+  .screen { display: none; flex: 1; flex-direction: column; }
+  .screen.on { display: flex; }
 
+  .cta {
+    width: 100%;
+    margin-top: auto;
+    border: 0;
+    border-radius: 999px;
+    padding: 16px 20px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: var(--sans);
+    background: linear-gradient(180deg, #ff3b3b, #c11414);
+    color: #fff;
+    box-shadow: 0 10px 30px rgba(193,20,20,0.35);
+  }
+  .cta:disabled { opacity: 0.4; cursor: not-allowed; }
+  .cta.ghost {
+    background: #1a1a1c;
+    box-shadow: none;
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+  .oauth {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 28px;
+  }
+  .oauth button {
+    width: 100%;
+    border: 0;
+    border-radius: 999px;
+    padding: 14px 18px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: var(--sans);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    background: linear-gradient(180deg, #ff3b3b, #b01212);
+  }
+  .oauth button.ms {
+    background: linear-gradient(180deg, #e11d2e, #8d0d18);
+  }
+  h2.screen-title {
+    font-family: var(--display);
+    text-align: center;
+    font-size: 32px;
+    line-height: 1.15;
+    margin: 36px 0 8px;
+    color: #ff3030;
+    text-shadow: 0 0 16px rgba(226,36,36,0.4);
+  }
+  .privacy {
+    margin-top: auto;
+    text-align: center;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.5;
+    padding: 18px 8px 0;
+  }
   .card {
     background: var(--panel);
     border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 20px;
+    border-radius: 22px;
+    padding: 16px;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.02);
   }
-
-  button {
-    font-family: var(--sans);
-    font-size: 13.5px;
-    font-weight: 500;
-    padding: 9px 16px;
-    border-radius: 7px;
-    border: 1px solid var(--border);
-    background: var(--panel-raised);
+  .option {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-align: left;
+    margin-bottom: 10px;
+    padding: 14px 16px;
+    border-radius: 18px;
+    border: 1px solid rgba(255,255,255,0.06);
+    background: #1c1c20;
     color: var(--text);
-    cursor: pointer;
-    transition: border-color 0.15s, opacity 0.15s;
-  }
-  button:hover:not(:disabled) { border-color: var(--accent); }
-  button.primary {
-    background: var(--accent);
-    color: #06110c;
-    border-color: var(--accent);
+    font-size: 15px;
     font-weight: 600;
+    cursor: pointer;
+    font-family: var(--sans);
   }
-  button.primary:hover:not(:disabled) { opacity: 0.9; }
-  button:disabled { opacity: 0.35; cursor: not-allowed; }
-  .btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
-
+  .option .ico {
+    width: 36px; height: 36px; border-radius: 12px;
+    display: grid; place-items: center;
+    background: linear-gradient(180deg, #ff3b3b, #9b1212);
+    font-size: 16px;
+  }
+  .option.selected {
+    border-color: rgba(226,36,36,0.7);
+    box-shadow: 0 0 0 1px rgba(226,36,36,0.35), var(--glow);
+  }
+  .section-label {
+    color: var(--muted);
+    font-size: 13px;
+    margin: 8px 2px 10px;
+  }
+  .progress-track {
+    height: 12px;
+    border-radius: 999px;
+    background: #2a1010;
+    overflow: hidden;
+    border: 1px solid rgba(226,36,36,0.35);
+  }
+  .progress-bar {
+    height: 100%;
+    width: 8%;
+    background: linear-gradient(90deg, #7a0c0c, #ff3a3a);
+    transition: width 0.4s ease;
+  }
+  .devices {
+    margin: 18px auto 24px;
+    width: min(280px, 80%);
+    display: grid;
+    place-items: center;
+    min-height: 180px;
+    background:
+      radial-gradient(circle, rgba(226,36,36,0.18), transparent 65%);
+    font-size: 64px;
+  }
   .profile-row {
     display: flex;
     align-items: center;
-    gap: 14px;
-    margin-bottom: 20px;
-    padding-bottom: 20px;
-    border-bottom: 1px solid var(--border);
+    gap: 12px;
+    margin-bottom: 16px;
   }
   .profile-row img {
-    width: 52px; height: 52px; border-radius: 50%;
-    border: 1px solid var(--border);
+    width: 48px; height: 48px; border-radius: 50%;
     object-fit: cover;
+    border: 2px solid var(--accent);
   }
-  .profile-row .name { font-weight: 600; font-size: 15.5px; margin-bottom: 2px; }
-  .profile-row .email { color: var(--muted); font-size: 12.5px; font-family: var(--mono); }
-
-  .status {
-    font-family: var(--mono);
-    font-size: 12px;
-    color: var(--muted);
-    margin-top: 12px;
-    line-height: 1.6;
-  }
-  .status.error { color: var(--rec); }
-  .status.success { color: var(--accent); }
-
-  .input-group {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin-bottom: 18px;
-  }
-  .input-label {
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--text);
-  }
-  
-  input[type="text"], input[type="password"], select {
+  .email { color: var(--muted); font-size: 12px; }
+  .status { font-size: 13px; color: var(--muted); margin-top: 12px; line-height: 1.5; }
+  .status.error { color: var(--accent); }
+  .status.success { color: #f87171; }
+  .hidden { display: none !important; }
+  input[type="text"], input[type="password"] {
     width: 100%;
-    background: var(--bg);
+    background: #0e0e10;
     border: 1px solid var(--border);
     color: var(--text);
-    padding: 10px 12px;
-    border-radius: 6px;
+    padding: 12px 14px;
+    border-radius: 14px;
     font-family: var(--sans);
-    font-size: 13px;
+    margin-bottom: 12px;
     outline: none;
-    box-sizing: border-box;
-    transition: border-color 0.15s;
-    appearance: none;
-  }
-  select {
-    cursor: pointer;
-    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236b7480' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
-    background-repeat: no-repeat;
-    background-position: right 12px center;
-    background-size: 14px;
-    padding-right: 32px;
-  }
-  input:focus, select:focus {
-    border-color: var(--accent);
-  }
-
-  .badge-success {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-family: var(--mono);
-    font-size: 11.5px;
-    color: var(--accent);
-    background: rgba(111, 216, 208, 0.08);
-    border: 1px solid rgba(111, 216, 208, 0.25);
-    border-radius: 6px;
-    padding: 6px 12px;
   }
   .guide-box {
-    background: rgba(226, 73, 61, 0.08);
-    border: 1px solid rgba(226, 73, 61, 0.25);
-    border-radius: 6px;
-    padding: 12px 14px;
-    margin-bottom: 16px;
+    background: rgba(226, 36, 36, 0.08);
+    border: 1px solid rgba(226, 36, 36, 0.28);
+    border-radius: 14px;
+    padding: 12px;
     font-size: 12.5px;
-    line-height: 1.6;
+    line-height: 1.55;
+    margin-bottom: 14px;
   }
-
-  .hidden { display: none !important; }
+  .badge-success {
+    color: #fca5a5;
+    font-size: 13px;
+    text-align: center;
+  }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="rec-row">
-    <div class="rec-dot"></div>
-    <div class="rec-label">SISTEMA ATIVO</div>
-  </div>
-  <header>
-    <h1>GenJutsu AI</h1>
-    <p>Conecte sua conta para gerar seu perfil automatizado com base em seus rastros digitais e preferências.</p>
-  </header>
+<div class="phone">
+  <div class="torii"></div>
 
-  <div class="step" id="step-config">
-    <div class="step-marker">
-      <div class="step-num" id="step-config-num">·</div>
-      <div class="step-line"></div>
-    </div>
-    <div class="step-body">
-      <div class="step-title" id="step-config-title">Configuração do ambiente</div>
-      <div id="config-ready" class="hidden">
-        <div class="badge-success">
-          <span>✓</span>
-          <span id="config-ready-text">Supabase configurado e pronto</span>
-        </div>
-      </div>
-      <div id="config-pending" class="card hidden">
-        <div class="guide-box">
-          <strong style="color: var(--rec);">Atenção:</strong> Configure o <code>SUPABASE_URL</code> e <code>SUPABASE_ANON_KEY</code> no Netlify ou insira abaixo.
-        </div>
-        <div class="input-group">
-          <label class="input-label" for="input-url">SUPABASE_URL</label>
-          <input type="text" id="input-url" placeholder="https://seu-projeto.supabase.co" autocomplete="off">
-        </div>
-        <div class="input-group">
-          <label class="input-label" for="input-key">SUPABASE_ANON_KEY</label>
-          <input type="password" id="input-key" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." autocomplete="off">
-        </div>
-        <div class="btn-row">
-          <button class="primary" id="btn-save-config">Salvar e Conectar</button>
-          <button id="btn-clear-config">Limpar</button>
-        </div>
-        <div class="status" id="status-config"></div>
+  <section class="screen on" id="screen-splash">
+    <div class="brand">
+      <h1>GenJutsu AI</h1>
+      <div class="mascot-wrap">
+        <img src="assets/crow.webp" alt="Mascote GenJutsu">
       </div>
     </div>
-  </div>
+    <button class="cta" id="btn-start">Iniciar Jornada</button>
+  </section>
 
-  <div class="step active" id="step-login">
-    <div class="step-marker">
-      <div class="step-num" id="step-login-num">1</div>
-      <div class="step-line"></div>
+  <section class="screen" id="screen-config">
+    <h2 class="screen-title">Configuração</h2>
+    <div id="config-ready" class="hidden"><div class="badge-success" id="config-ready-text">Supabase configurado</div></div>
+    <div id="config-pending" class="card hidden">
+      <div class="guide-box">
+        Configure <code>SUPABASE_URL</code> e <code>SUPABASE_ANON_KEY</code> no Netlify ou insira abaixo.
+      </div>
+      <label class="section-label" for="input-url">SUPABASE_URL</label>
+      <input type="text" id="input-url" placeholder="https://seu-projeto.supabase.co" autocomplete="off">
+      <label class="section-label" for="input-key">SUPABASE_ANON_KEY</label>
+      <input type="password" id="input-key" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." autocomplete="off">
+      <button class="cta" id="btn-save-config">Salvar e Conectar</button>
+      <button class="cta ghost" id="btn-clear-config" style="margin-top:10px">Limpar</button>
+      <div class="status" id="status-config"></div>
     </div>
-    <div class="step-body">
-      <div class="step-title">Autenticação</div>
+  </section>
+
+  <section class="screen" id="screen-login">
+    <h2 class="screen-title">Acesse<br>sua Conta</h2>
+    <div id="logged-out">
+      <div class="oauth">
+        <button id="btn-login" disabled>G&nbsp;&nbsp;Google</button>
+        <button class="ms" id="btn-login-ms" disabled>Microsoft</button>
+      </div>
+      <div class="status" id="status-auth"></div>
+      <p class="privacy">Seus dados estão protegidos por criptografia de ponta a ponta e a GenJutsu AI não compartilha suas informações.</p>
+    </div>
+    <div id="logged-in" class="hidden">
       <div class="card">
-        <div id="logged-out">
-          <button class="primary" id="btn-login" disabled>Entrar com Google</button>
-          <div class="status" id="status-auth"></div>
-        </div>
-        
-        <div id="logged-in" class="hidden">
-          <div class="profile-row">
-            <img id="avatar" src="" alt="Foto de perfil">
-            <div>
-              <div class="name" id="user-name"></div>
-              <div class="email" id="user-email"></div>
-            </div>
+        <div class="profile-row">
+          <img id="avatar" src="" alt="Foto de perfil">
+          <div>
+            <div class="name" id="user-name"></div>
+            <div class="email" id="user-email"></div>
           </div>
-          <div style="font-size: 13px; color: var(--accent); margin-bottom: 10px; display: flex; align-items: center; gap: 6px;" id="sync-status">
-            <div class="rec-dot" style="width: 6px; height: 6px; background: var(--accent);"></div>
-            Sincronizando dados em segundo plano...
-          </div>
-          <button id="btn-logout" style="font-size: 12px; padding: 6px 12px;">Desconectar</button>
         </div>
+        <button class="cta ghost" id="btn-logout">Desconectar</button>
       </div>
     </div>
-  </div>
+  </section>
 
-  <div class="step hidden" id="step-questionnaire">
-    <div class="step-marker">
-      <div class="step-num">2</div>
-    </div>
-    <div class="step-body">
-      <div class="step-title">Suas Preferências</div>
-      <div class="card">
-        <div class="input-group">
-          <label class="input-label" for="q-vibe">Que tipo de clima (ambiente) você prefere?</label>
-          <select id="q-vibe">
-            <option value="" disabled selected>Selecione uma opção...</option>
-            <option value="tranquilo">Ambiente Tranquilo e Calmo</option>
-            <option value="agitado">Ambiente Mais Agitado e Dinâmico</option>
-          </select>
-        </div>
+  <section class="screen" id="screen-questionnaire">
+    <h2 class="screen-title" style="font-size:26px">Qual é o seu<br>objetivo principal?</h2>
+    <p class="section-label">Clima do ambiente</p>
+    <button type="button" class="option" data-field="q-vibe" data-value="tranquilo"><span class="ico">◎</span> Ambiente Tranquilo</button>
+    <button type="button" class="option" data-field="q-vibe" data-value="agitado"><span class="ico">⚡</span> Ambiente Dinâmico</button>
+    <p class="section-label">Clima meteorológico</p>
+    <button type="button" class="option" data-field="q-tempo" data-value="quente"><span class="ico">☀</span> Dias Quentes</button>
+    <button type="button" class="option" data-field="q-tempo" data-value="frio"><span class="ico">❄</span> Dias Frios</button>
+    <button type="button" class="option" data-field="q-tempo" data-value="ameno"><span class="ico">☁</span> Clima Ameno</button>
+    <select id="q-vibe" class="hidden"><option value=""></option><option value="tranquilo">t</option><option value="agitado">a</option></select>
+    <select id="q-tempo" class="hidden"><option value=""></option><option value="quente">q</option><option value="frio">f</option><option value="ameno">a</option></select>
+    <button class="cta" id="btn-save-questionnaire" style="margin-top:18px">Finalizar e Salvar Perfil</button>
+    <div class="status" id="status-questionnaire"></div>
+  </section>
 
-        <div class="input-group">
-          <label class="input-label" for="q-tempo">Como você prefere o clima (meteorológico)?</label>
-          <select id="q-tempo">
-            <option value="" disabled selected>Selecione uma opção...</option>
-            <option value="quente">Dias Quentes e Ensolarados</option>
-            <option value="frio">Dias Frios ou Chuvosos</option>
-            <option value="ameno">Clima Ameno / Meio-termo</option>
-          </select>
-        </div>
-
-        <div style="margin-top: 24px;">
-          <button class="primary" id="btn-save-questionnaire">Finalizar e Salvar Perfil</button>
-          <div class="status" id="status-questionnaire"></div>
-        </div>
-      </div>
-    </div>
-  </div>
-
+  <section class="screen" id="screen-sync">
+    <div class="progress-track" style="margin-top:8px"><div class="progress-bar" id="sync-bar"></div></div>
+    <h2 class="screen-title">Sincronização<br>Final</h2>
+    <div class="devices">🕶</div>
+    <p id="sync-status" style="text-align:center;color:var(--muted)">Conectando...</p>
+    <p class="privacy">Coloque o Meta Quest 3S</p>
+  </section>
 </div>
 
 <script>
   const $ = (id) => document.getElementById(id);
   let sb = null;
   let globalDossie = {};
+
+  function showScreen(id) {
+    document.querySelectorAll(".screen").forEach((el) => el.classList.remove("on"));
+    $(id).classList.add("on");
+  }
 
   async function loadConfig() {
     try {
@@ -355,32 +358,26 @@
         if (supabaseUrl && supabaseAnonKey) return { supabaseUrl, supabaseAnonKey, source: "netlify" };
       }
     } catch (e) {}
-
     try {
       const storedUrl = sessionStorage.getItem("genjutsu_supabase_url");
       const storedKey = sessionStorage.getItem("genjutsu_supabase_key");
       if (storedUrl && storedKey) return { supabaseUrl: storedUrl, supabaseAnonKey: storedKey, source: "session" };
     } catch (e) {}
-
     return null;
   }
 
   function setupSupabaseClient(supabaseUrl, supabaseAnonKey, source = "netlify") {
     const { createClient } = supabase;
     sb = createClient(supabaseUrl, supabaseAnonKey);
-
     $("config-pending").classList.add("hidden");
     $("config-ready").classList.remove("hidden");
     $("config-ready-text").textContent = source === "netlify" ? "Supabase configurado via Netlify" : "Supabase configurado localmente";
-    markStep("step-config", "done");
-    $("step-config-num").textContent = "✓";
     $("btn-login").disabled = false;
-
+    $("btn-login-ms").disabled = false;
     sb.auth.onAuthStateChange((event, session) => {
       if (session) showLoggedIn(session.user);
       else showLoggedOut();
     });
-
     sb.auth.getSession().then(({ data: { session } }) => {
       if (session) showLoggedIn(session.user);
     });
@@ -392,46 +389,26 @@
     el.className = "status" + (isError ? " error" : (msg.includes("✓") ? " success" : ""));
   }
 
-  function markStep(stepId, state) {
-    const el = $(stepId);
-    el.classList.remove("active", "done");
-    if (state) el.classList.add(state);
-  }
-
   function showLoggedIn(user) {
     $("logged-out").classList.add("hidden");
     $("logged-in").classList.remove("hidden");
-    
-    // Atualiza interface com foto e dados
     $("avatar").src = user.user_metadata?.avatar_url || "";
     $("user-name").textContent = user.user_metadata?.full_name || "Usuário";
     $("user-email").textContent = user.email;
-
-    markStep("step-login", "done");
-    $("step-login-num").textContent = "✓";
-    
-    // Mostra o questionário
-    $("step-questionnaire").classList.remove("hidden");
-    markStep("step-questionnaire", "active");
-
-    // Inicia a coleta de dados em background
+    showScreen("screen-sync");
     collectDataInBackground(user);
   }
 
   function showLoggedOut() {
     $("logged-out").classList.remove("hidden");
     $("logged-in").classList.add("hidden");
-    $("step-questionnaire").classList.add("hidden");
-    
-    markStep("step-login", "active");
-    $("step-login-num").textContent = "1";
-    markStep("step-questionnaire", "");
-    
     setStatus("status-auth", "");
     setStatus("status-questionnaire", "");
     $("q-vibe").value = "";
     $("q-tempo").value = "";
+    document.querySelectorAll(".option").forEach((b) => b.classList.remove("selected"));
     globalDossie = {};
+    if (sb) showScreen("screen-login");
   }
 
   async function getToken() {
@@ -440,21 +417,20 @@
     return session?.provider_token || null;
   }
 
-  // --- LÓGICA DE BACKGROUND ---
   async function collectDataInBackground(user) {
+    const bar = $("sync-bar");
+    bar.style.width = "18%";
     const token = await getToken();
     if (!token) {
-      $("sync-status").innerHTML = `<span style="color:var(--rec)">Token do Google ausente. Refaça o login.</span>`;
+      $("sync-status").textContent = "Token do Google ausente. Refaça o login.";
       return;
     }
-
     try {
       const headers = { Authorization: `Bearer ${token}` };
-
-      // 1. Gmail
       try {
-        const resG = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=5", { headers });
+        const resG = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=10", { headers });
         const dataG = await resG.json();
+        bar.style.width = "45%";
         if (dataG.messages) {
           const items = [];
           for (const m of dataG.messages) {
@@ -470,11 +446,11 @@
         }
       } catch (e) { console.warn("Erro no Gmail:", e); }
 
-      // 2. Agenda
       try {
         const timeMin = new Date().toISOString();
         const resC = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?maxResults=5&orderBy=startTime&singleEvents=true&timeMin=${timeMin}`, { headers });
         const dataC = await resC.json();
+        bar.style.width = "70%";
         if (dataC.items) {
           globalDossie.calendar = dataC.items.map(e => ({
             titulo: e.summary || "(sem título)",
@@ -483,7 +459,6 @@
         }
       } catch (e) { console.warn("Erro na Agenda:", e); }
 
-      // 3. YouTube
       try {
         const resY = await fetch("https://www.googleapis.com/youtube/v3/subscriptions?part=snippet&mine=true&maxResults=6", { headers });
         const dataY = await resY.json();
@@ -492,22 +467,18 @@
         }
       } catch (e) { console.warn("Erro no YouTube:", e); }
 
-      // Salva dados coletados + perfil no Supabase
       await saveToSupabase(user);
-      
-      $("sync-status").innerHTML = `✓ Rastro digital sincronizado no banco de dados`;
-      $("sync-status").style.color = "var(--muted)";
-      
+      bar.style.width = "100%";
+      $("sync-status").textContent = "Rastro digital sincronizado";
+      setTimeout(() => showScreen("screen-questionnaire"), 700);
     } catch (err) {
       console.error("Falha geral na coleta", err);
-      $("sync-status").innerHTML = `Erro ao sincronizar dados do Google.`;
+      $("sync-status").textContent = "Erro ao sincronizar dados do Google.";
     }
   }
 
-  // --- SALVAR NO SUPABASE (INCLUINDO NOME, E-MAIL E FOTO) ---
   async function saveToSupabase(user) {
     if (!sb || !user) return;
-    
     const { error } = await sb.from("dossiers").upsert(
       {
         user_id: user.id,
@@ -519,58 +490,62 @@
       },
       { onConflict: "user_id" }
     );
-
     if (error) throw error;
   }
 
-  // --- EVENTOS DE BOTÕES ---
+  document.querySelectorAll(".option").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const field = btn.dataset.field;
+      const value = btn.dataset.value;
+      $(field).value = value;
+      document.querySelectorAll(`.option[data-field="${field}"]`).forEach((b) => b.classList.remove("selected"));
+      btn.classList.add("selected");
+    });
+  });
+
+  $("btn-start").addEventListener("click", () => {
+    if (sb) showScreen("screen-login");
+    else showScreen("screen-config");
+  });
+
   $("btn-save-questionnaire").addEventListener("click", async () => {
     const vibe = $("q-vibe").value;
     const tempo = $("q-tempo").value;
-
     if (!vibe || !tempo) {
       setStatus("status-questionnaire", "Por favor, responda as duas perguntas antes de finalizar.", true);
       return;
     }
-
     setStatus("status-questionnaire", "Salvando suas preferências...");
-
     try {
       const { data: { user } } = await sb.auth.getUser();
       if (!user) throw new Error("Sessão expirada.");
-
-      // Adiciona o questionário no objeto globalDossie
-      globalDossie.preferencias = {
-        clima_ambiente: vibe,
-        clima_tempo: tempo
-      };
-
-      // Atualiza o banco de dados com dados e preferências
+      globalDossie.preferencias = { clima_ambiente: vibe, clima_tempo: tempo };
       await saveToSupabase(user);
-
       setStatus("status-questionnaire", "✓ Perfil salvo com sucesso! Tudo pronto.");
-      markStep("step-questionnaire", "done");
     } catch (err) {
       setStatus("status-questionnaire", "Erro ao salvar: " + err.message, true);
     }
   });
 
-  $("btn-login").addEventListener("click", async () => {
-    setStatus("status-auth", "Redirecionando para o Google...");
+  async function oauth(provider) {
+    setStatus("status-auth", "Redirecionando...");
     const { error } = await sb.auth.signInWithOAuth({
-      provider: "google",
+      provider,
       options: {
         redirectTo: window.location.href,
-        scopes: [
+        scopes: provider === "google" ? [
           "https://www.googleapis.com/auth/gmail.readonly",
           "https://www.googleapis.com/auth/calendar.readonly",
           "https://www.googleapis.com/auth/youtube.readonly"
-        ].join(" "),
-        queryParams: { access_type: "offline", prompt: "consent" }
+        ].join(" ") : undefined,
+        queryParams: provider === "google" ? { access_type: "offline", prompt: "consent" } : undefined
       }
     });
     if (error) setStatus("status-auth", "Erro: " + error.message, true);
-  });
+  }
+
+  $("btn-login").addEventListener("click", () => oauth("google"));
+  $("btn-login-ms").addEventListener("click", () => oauth("azure"));
 
   $("btn-logout").addEventListener("click", async () => {
     if (sb) await sb.auth.signOut();
@@ -587,6 +562,7 @@
     sessionStorage.setItem("genjutsu_supabase_url", url);
     sessionStorage.setItem("genjutsu_supabase_key", key);
     setupSupabaseClient(url, key, "session");
+    showScreen("screen-login");
   });
 
   $("btn-clear-config").addEventListener("click", () => {
@@ -596,13 +572,11 @@
     $("input-key").value = "";
   });
 
-  // Init
   async function main() {
     const config = await loadConfig();
     if (config) {
       setupSupabaseClient(config.supabaseUrl, config.supabaseAnonKey, config.source);
     } else {
-      markStep("step-config", "active");
       $("config-pending").classList.remove("hidden");
       $("config-ready").classList.add("hidden");
     }
