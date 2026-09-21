@@ -409,7 +409,7 @@
     <div class="pillars">
       <article class="pillar">
         <h3>Rastro digital</h3>
-        <p>Conecta sua conta e coleta os últimos 10 e-mails, eventos da agenda e canais que você segue — só para construir o seu dossiê.</p>
+        <p>Conecta sua conta e coleta agenda, canais do YouTube, contatos e tarefas — só para construir o seu dossiê. Sem leitura de e-mail.</p>
       </article>
       <article class="pillar">
         <h3>Perfil no dojo</h3>
@@ -447,7 +447,7 @@
     <div id="config-ready" class="hidden"><div class="badge-success" id="config-ready-text">Supabase configurado</div></div>
     <div id="config-pending" class="card hidden">
       <div class="guide-box">
-        Configure <code>SUPABASE_URL</code> e <code>SUPABASE_ANON_KEY</code> no Netlify ou insira abaixo.
+        Configure <code>SUPABASE_URL</code> e <code>SUPABASE_ANON_KEY</code> na Vercel ou insira abaixo.
       </div>
       <label class="section-label" for="input-url">SUPABASE_URL</label>
       <input type="text" id="input-url" placeholder="https://seu-projeto.supabase.co" autocomplete="off">
@@ -531,7 +531,7 @@
       const res = await fetch("/api/config");
       if (res.ok) {
         const { supabaseUrl, supabaseAnonKey } = await res.json();
-        if (supabaseUrl && supabaseAnonKey) return { supabaseUrl, supabaseAnonKey, source: "netlify" };
+        if (supabaseUrl && supabaseAnonKey) return { supabaseUrl, supabaseAnonKey, source: "vercel" };
       }
     } catch (e) {}
     try {
@@ -542,12 +542,12 @@
     return null;
   }
 
-  function setupSupabaseClient(supabaseUrl, supabaseAnonKey, source = "netlify") {
+  function setupSupabaseClient(supabaseUrl, supabaseAnonKey, source = "vercel") {
     const { createClient } = supabase;
     sb = createClient(supabaseUrl, supabaseAnonKey);
     $("config-pending").classList.add("hidden");
     $("config-ready").classList.remove("hidden");
-    $("config-ready-text").textContent = source === "netlify" ? "Supabase configurado via Netlify" : "Supabase configurado localmente";
+    $("config-ready-text").textContent = source === "vercel" ? "Supabase configurado via Vercel" : "Supabase configurado localmente";
     $("btn-login").disabled = false;
     $("btn-login-ms").disabled = false;
     sb.auth.onAuthStateChange((event, session) => {
@@ -606,30 +606,12 @@
     }
     try {
       const headers = { Authorization: `Bearer ${token}` };
-      try {
-        const resG = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=10", { headers });
-        const dataG = await resG.json();
-        bar.style.width = "45%";
-        if (dataG.messages) {
-          const items = [];
-          for (const m of dataG.messages) {
-            const r = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${m.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From`, { headers });
-            const d = await r.json();
-            items.push({
-              subject: d.payload?.headers?.find(h => h.name === "Subject")?.value || "(sem assunto)",
-              from: d.payload?.headers?.find(h => h.name === "From")?.value || "",
-              snippet: d.snippet
-            });
-          }
-          globalDossie.gmail = items;
-        }
-      } catch (e) { console.warn("Erro no Gmail:", e); }
 
       try {
         const timeMin = new Date().toISOString();
-        const resC = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?maxResults=5&orderBy=startTime&singleEvents=true&timeMin=${timeMin}`, { headers });
+        const resC = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?maxResults=8&orderBy=startTime&singleEvents=true&timeMin=${timeMin}`, { headers });
         const dataC = await resC.json();
-        bar.style.width = "70%";
+        bar.style.width = "35%";
         if (dataC.items) {
           globalDossie.calendar = dataC.items.map(e => ({
             titulo: e.summary || "(sem título)",
@@ -639,12 +621,38 @@
       } catch (e) { console.warn("Erro na Agenda:", e); }
 
       try {
-        const resY = await fetch("https://www.googleapis.com/youtube/v3/subscriptions?part=snippet&mine=true&maxResults=6", { headers });
+        const resY = await fetch("https://www.googleapis.com/youtube/v3/subscriptions?part=snippet&mine=true&maxResults=8", { headers });
         const dataY = await resY.json();
+        bar.style.width = "55%";
         if (dataY.items) {
           globalDossie.youtube = dataY.items.map(s => ({ canal: s.snippet.title }));
         }
       } catch (e) { console.warn("Erro no YouTube:", e); }
+
+      try {
+        const resP = await fetch("https://people.googleapis.com/v1/people/me/connections?personFields=names,emailAddresses&pageSize=10", { headers });
+        const dataP = await resP.json();
+        bar.style.width = "75%";
+        if (dataP.connections) {
+          globalDossie.contacts = dataP.connections.map((c) => ({
+            nome: c.names?.[0]?.displayName || "(sem nome)",
+            email: c.emailAddresses?.[0]?.value || ""
+          }));
+        }
+      } catch (e) { console.warn("Erro nos Contatos:", e); }
+
+      try {
+        const resT = await fetch("https://tasks.googleapis.com/tasks/v1/lists/@default/tasks?maxResults=10", { headers });
+        const dataT = await resT.json();
+        bar.style.width = "90%";
+        if (dataT.items) {
+          globalDossie.tasks = dataT.items.map((t) => ({
+            titulo: t.title || "(sem título)",
+            status: t.status || "",
+            prazo: t.due || ""
+          }));
+        }
+      } catch (e) { console.warn("Erro nas Tarefas:", e); }
 
       await saveToSupabase(user);
       bar.style.width = "100%";
@@ -715,9 +723,10 @@
       options: {
         redirectTo: window.location.href,
         scopes: provider === "google" ? [
-          "https://www.googleapis.com/auth/gmail.readonly",
           "https://www.googleapis.com/auth/calendar.readonly",
-          "https://www.googleapis.com/auth/youtube.readonly"
+          "https://www.googleapis.com/auth/youtube.readonly",
+          "https://www.googleapis.com/auth/contacts.readonly",
+          "https://www.googleapis.com/auth/tasks.readonly"
         ].join(" ") : undefined,
         queryParams: provider === "google" ? { access_type: "offline", prompt: "consent" } : undefined
       }

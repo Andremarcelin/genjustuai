@@ -1,37 +1,49 @@
 # GenJutsu AI
 
-Aplicação para demonstração e análise de rastros digitais (Gmail, Google Agenda e YouTube) usando Supabase Auth e Netlify Functions.
+Portal de perfil digital para a experiência VR. Hospedagem: **Vercel**. Auth e banco: **Supabase**. Login Google (Agenda, YouTube, Contatos, Tarefas) — sem Gmail.
 
-## Configuração do Ambiente no Netlify
+## 1. Novo projeto Supabase
 
-Para que o GenJutsu AI funcione corretamente no Netlify, é necessário configurar as variáveis de ambiente do Supabase:
+1. Crie um projeto em [supabase.com](https://supabase.com).
+2. SQL Editor: rode [`sql/dossiers.sql`](sql/dossiers.sql).
+3. **Authentication → URL configuration**
+   - Site URL: `https://SEU-PROJETO.vercel.app`
+   - Redirect URLs: `https://SEU-PROJETO.vercel.app/**` e `https://SEU-REF.supabase.co/auth/v1/callback`
+4. **Authentication → Providers → Google**: ative e cole Client ID / Secret do Google Cloud (passo 2).
+5. Em **Settings → API**, copie **Project URL** e a chave **anon**.
 
-### 1. Obter as credenciais no Supabase
-1. Acesse o painel do seu projeto no [Supabase](https://supabase.com).
-2. Vá em **Project Settings** > **API**.
-3. Copie:
-   - **Project URL** (`SUPABASE_URL`)
-   - **Project API Keys** > `anon` / `public` (`SUPABASE_ANON_KEY`)
+## 2. Novo projeto Google Cloud
 
-### 2. Configurar variáveis no Netlify
-1. No painel do seu site no Netlify, vá em **Site configuration** > **Environment variables**.
-2. Adicione as duas variáveis:
-   - `SUPABASE_URL`: URL do seu projeto Supabase (ex: `https://xxx.supabase.co`)
-   - `SUPABASE_ANON_KEY`: chave anônima pública do Supabase
-3. Garanta que o escopo inclua **All scopes** ou **Runtime / Functions**.
-4. Faça o deploy do site. A função `netlify/functions/config.mjs` disponibilizará essas variáveis no endpoint `/api/config`.
+1. [console.cloud.google.com](https://console.cloud.google.com) → projeto novo (ex. `genjutsuai-vercel`).
+2. Ative as APIs: **Google Calendar**, **YouTube Data API v3**, **People API**, **Google Tasks API**.
+3. Tela de consentimento OAuth (External), em **Testing**, com usuários de teste.
+4. Escopos:
+   - `openid`, `email`, `profile`
+   - `https://www.googleapis.com/auth/calendar.readonly`
+   - `https://www.googleapis.com/auth/youtube.readonly`
+   - `https://www.googleapis.com/auth/contacts.readonly`
+   - `https://www.googleapis.com/auth/tasks.readonly`
+5. Home / privacidade / termos: `https://SEU-PROJETO.vercel.app/`, `/privacy`, `/terms`.
+6. Credencial **OAuth client ID → Web application**
+   - Origins: `https://SEU-PROJETO.vercel.app` e `https://SEU-REF.supabase.co`
+   - Redirect: `https://SEU-REF.supabase.co/auth/v1/callback`
+7. Cole ID e secret no provider Google do Supabase.
 
-### 3. Configuração do Google OAuth no Supabase
-1. No painel do Supabase, acesse **Authentication** > **Providers** > **Google**.
-2. Ative o provedor Google e insira o `Client ID` e `Client Secret` do Google Cloud Console.
-3. Certifique-se de adicionar a URL de redirecionamento fornecida pelo Supabase nas credenciais do Google Cloud.
-4. No Google Cloud Console, habilite as seguintes APIs:
-   - Gmail API (`https://www.googleapis.com/auth/gmail.readonly`)
-   - Google Calendar API (`https://www.googleapis.com/auth/calendar.readonly`)
-   - YouTube Data API v3 (`https://www.googleapis.com/auth/youtube.readonly`)
+`*.vercel.app` é domínio compartilhado (mesmo limite que o Netlify para verificação de marca). Use o app em **Testing**.
 
-## Estrutura do Projeto
+## 3. Deploy na Vercel
 
-- `index.html`: Interface visual do GenJutsu AI com suporte a fallback de configuração e visualização do dossiê.
-- `netlify/functions/config.mjs`: Função serverless do Netlify que entrega a URL e a Anon Key do Supabase de forma segura.
-- `netlify.toml`: Configuração de build, diretório de funções e redirecionamentos.
+1. [vercel.com](https://vercel.com) → importar o GitHub `Andremarcelin/genjustuai`.
+2. Framework: **Other**. Root: `.`
+3. Environment variables:
+   - `SUPABASE_URL`
+   - `SUPABASE_ANON_KEY`
+4. Deploy. A rota `/api/config` entrega essas variáveis ao site.
+5. Depois do primeiro URL, atualize Site URL no Supabase, origins no Google e, se quiser, os links em `privacy.html` / `terms.html`.
+
+## Estrutura
+
+- `index.html` — UI, OAuth e coleta do dossiê
+- `api/config.js` — Vercel Function (`SUPABASE_URL`, `SUPABASE_ANON_KEY`)
+- `vercel.json` — rewrites `/privacy` e `/terms`
+- `sql/dossiers.sql` — tabela + RLS
