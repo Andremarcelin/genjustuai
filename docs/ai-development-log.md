@@ -14,4 +14,4 @@ Modelo CDD: problema, contexto, ferramenta, sugestão, alteração, teste, resul
 - **Teste:** arquivos no repo; nenhum runtime.
 - **Resultado:** memória técnica versionada; implementação ML/API ainda pendente.
 - **Decisão:** alinhamento documental apenas; Fase 1 continua sem VR e sem Gmail.
-- **Commit:** (preenchido após o commit)
+- **Commit:** `8cc1f53`
