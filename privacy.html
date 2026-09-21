@@ -16,52 +16,48 @@
     <span><a href="/privacy">Privacidade</a> · <a href="/terms">Termos</a></span>
   </nav>
   <h1>Política de Privacidade</h1>
-  <p class="updated">Última atualização: 18 de setembro de 2026</p>
-  <p>Esta política descreve como o aplicativo <strong>GenJutsu AI</strong> (disponível em <a href="https://genjutsuai.netlify.app/">https://genjutsuai.netlify.app/</a>) coleta, usa e armazena dados quando você entra com Google ou Microsoft.</p>
+  <p class="updated">Última atualização: 21 de setembro de 2026</p>
+  <p>Esta política descreve como o aplicativo <strong>GenJutsu AI</strong> (hospedado na Vercel; após o deploy o endereço será <code>https://&lt;projeto&gt;.vercel.app/</code>) coleta, usa e armazena dados quando você entra com Google ou Microsoft.</p>
 
   <h2>1. Quem somos</h2>
-  <p>GenJutsu AI é um projeto que monta um perfil a partir do seu rastro digital para uma experiência em realidade virtual no Meta Quest 3S. Operador: projeto GenJutsu AI, hospedado na Netlify, com banco de dados no Supabase.</p>
+  <p>GenJutsu AI monta um perfil a partir do seu rastro digital para uma experiência em realidade virtual no Meta Quest 3S. Hospedagem: Vercel. Autenticação e banco: Supabase.</p>
 
   <h2>2. Dados que coletamos</h2>
-  <p>Com o seu consentimento explícito no fluxo OAuth, podemos acessar:</p>
+  <p>Com o seu consentimento no OAuth, podemos acessar:</p>
   <ul>
     <li><strong>Conta Google:</strong> nome, e-mail e foto de perfil.</li>
-    <li><strong>Gmail (somente leitura):</strong> metadados dos últimos 10 e-mails (assunto, remetente e trecho), para caracterizar o dossiê. Não enviamos e-mails em seu nome.</li>
     <li><strong>Google Agenda (somente leitura):</strong> próximos eventos (título e horário).</li>
     <li><strong>YouTube (somente leitura):</strong> canais que você segue.</li>
-    <li><strong>Preferências que você informa no app:</strong> clima de ambiente e clima meteorológico.</li>
-    <li><strong>Conta Microsoft (se usada):</strong> dados básicos de identidade fornecidos pelo provedor.</li>
+    <li><strong>Contatos (somente leitura):</strong> nome e e-mail de conexões da sua conta Google.</li>
+    <li><strong>Tarefas (somente leitura):</strong> itens da lista padrão do Google Tasks.</li>
+    <li><strong>Preferências no app:</strong> clima de ambiente e clima meteorológico.</li>
+    <li><strong>Conta Microsoft (se usada):</strong> identidade básica do provedor.</li>
   </ul>
+  <p>Não acessamos Gmail nem o Google Drive completo.</p>
 
   <h2>3. Como usamos os dados</h2>
-  <p>Usamos esses dados apenas para autenticar você, gerar o dossiê pessoal e alimentar a experiência GenJutsu AI / VR. Não usamos dados do Google para anúncios, crédito, venda de leads ou treinar modelos de IA de uso geral.</p>
+  <p>Usamos esses dados só para autenticar você, gerar o dossiê e alimentar a experiência VR. Não usamos dados do Google para anúncios, crédito, venda de leads ou treinar modelos de IA de uso geral.</p>
 
   <h2>4. Dados obtidos das APIs do Google (Limited Use)</h2>
-  <p>O uso e a transferência de informações recebidas das APIs do Google para qualquer outro aplicativo seguirão a <a href="https://developers.google.com/terms/api-services-user-data-policy">Política de Dados do Usuário dos Serviços de API do Google</a>, inclusive os requisitos de Uso Limitado. Em especial:</p>
-  <ul>
-    <li>não vendemos dados do usuário;</li>
-    <li>não usamos dados do Gmail/Agenda/YouTube para veicular anúncios;</li>
-    <li>não transferimos dados do Google a terceiros, salvo para operar o próprio serviço (hospedagem Netlify e banco Supabase) ou se a lei exigir;</li>
-    <li>humanos não leem o conteúdo da sua conta Google, salvo com o seu consentimento, para segurança, ou se a lei exigir.</li>
-  </ul>
+  <p>O uso e a transferência de informações recebidas das APIs do Google seguirão a <a href="https://developers.google.com/terms/api-services-user-data-policy">Política de Dados do Usuário dos Serviços de API do Google</a>, inclusive Uso Limitado. Em especial: não vendemos dados; não usamos Agenda/YouTube/Contatos/Tarefas para anúncios; não transferimos dados do Google a terceiros, salvo Vercel/Supabase para operar o serviço ou se a lei exigir; humanos não leem o conteúdo da sua conta Google, salvo consentimento, segurança ou obrigação legal.</p>
 
   <h2>5. Armazenamento</h2>
-  <p>O dossiê (incluindo trechos de e-mail, eventos e preferências) é gravado no Supabase associado ao seu identificador de usuário. A sessão de login é gerenciada pelo Supabase Auth. O site é servido pela Netlify.</p>
+  <p>O dossiê é gravado no Supabase associado ao seu usuário. A sessão é do Supabase Auth. O site é servido pela Vercel.</p>
 
   <h2>6. Compartilhamento</h2>
-  <p>Não vendemos nem alugamos seus dados. Processadores técnicos: Google (login e APIs), Microsoft (se você escolher esse login), Netlify (hospedagem) e Supabase (autenticação e banco).</p>
+  <p>Não vendemos seus dados. Processadores: Google, Microsoft (se você escolher), Vercel e Supabase.</p>
 
   <h2>7. Retenção e exclusão</h2>
-  <p>Mantemos o dossiê enquanto sua conta estiver ativa. Para solicitar exclusão dos dados armazenados no GenJutsu AI, escreva para o contato abaixo. Você também pode revogar o acesso do app em <a href="https://myaccount.google.com/permissions">myaccount.google.com/permissions</a>.</p>
+  <p>Mantemos o dossiê enquanto a conta estiver ativa. Para exclusão, use o contato abaixo. Você pode revogar o app em <a href="https://myaccount.google.com/permissions">myaccount.google.com/permissions</a>.</p>
 
   <h2>8. Segurança</h2>
-  <p>O tráfego do site usa HTTPS. Tokens OAuth ficam na sessão do provedor de autenticação. Ainda assim, nenhum sistema é 100% seguro.</p>
+  <p>O site usa HTTPS. Tokens OAuth ficam na sessão de autenticação. Nenhum sistema é 100% seguro.</p>
 
   <h2>9. Crianças</h2>
   <p>O serviço não se destina a menores de 13 anos (nem a menores de 18 sem responsável, quando a lei local exigir).</p>
 
   <h2>10. Contato</h2>
-  <p>Dúvidas sobre privacidade: abra um issue em <a href="https://github.com/Andremarcelin/genjustuai">github.com/Andremarcelin/genjustuai</a> ou fale com o operador da conta Google Cloud deste aplicativo.</p>
+  <p><a href="https://github.com/Andremarcelin/genjustuai">github.com/Andremarcelin/genjustuai</a></p>
 </div>
 </body>
 </html>
