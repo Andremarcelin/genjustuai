@@ -2,6 +2,8 @@
 
 Portal de perfil digital para a experiência VR. Hospedagem: **Vercel**. Auth e banco: **Supabase**. Login Google (Agenda, YouTube, Contatos, Tarefas) — sem Gmail.
 
+Documento mestre acadêmico (CDD): [docs/GenJutsu_AI_CDD_Completo.md](docs/GenJutsu_AI_CDD_Completo.md). Gap vs este repo: [docs/architecture/gap-cdd-vs-repo.md](docs/architecture/gap-cdd-vs-repo.md).
+
 ## 1. Novo projeto Supabase
 
 1. Crie um projeto em [supabase.com](https://supabase.com).
