@@ -1,5 +1,6 @@
 {
   "buildCommand": "node scripts/inject-gsc.js",
+  "outputDirectory": ".",
   "trailingSlash": false,
   "rewrites": [
     { "source": "/privacy", "destination": "/privacy.html" },
