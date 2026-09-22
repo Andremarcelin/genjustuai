@@ -40,7 +40,7 @@ Documento mestre acadêmico (CDD): [docs/GenJutsu_AI_CDD_Completo.md](docs/GenJu
 3. Environment variables:
    - `SUPABASE_URL`
    - `SUPABASE_ANON_KEY`
-   - `GOOGLE_SITE_VERIFICATION` (opcional; token da tag HTML da Search Console para `https://genjustuai.vercel.app/` — ver [docs/search-console-vercel.md](docs/search-console-vercel.md))
+   - `GOOGLE_SITE_VERIFICATION` (opcional; token da tag HTML da Search Console para `https://genjutsuai.vercel.app/` — ver [docs/search-console-vercel.md](docs/search-console-vercel.md))
 4. Deploy. A rota `/api/config` entrega essas variáveis ao site.
 5. Depois do primeiro URL, atualize Site URL no Supabase, origins no Google e, se quiser, os links em `privacy.html` / `terms.html`.
 
