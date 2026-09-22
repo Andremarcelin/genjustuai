@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GenJutsu AI</title>
+<title>GenJutsu AI — perfil digital para Smart Home e VR</title>
+<meta name="description" content="GenJutsu AI personaliza uma casa inteligente e uma experiência no Meta Quest 3S. Com o seu consentimento, usa login Google para ler agenda, YouTube, contatos e tarefas — nunca o Gmail — e montar um perfil. Projeto acadêmico ExpoTech / UniFECAF.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -85,14 +86,16 @@
     color: #ff2a2a;
     text-shadow: 0 0 28px rgba(226,36,36,0.45);
   }
+  .hero-copy a, .landing-section a { color: #ff6b6b; }
   .hero-copy p {
     color: var(--muted);
     font-size: 17px;
     line-height: 1.65;
     max-width: 46ch;
-    margin: 0 0 28px;
+    margin: 0 0 16px;
   }
-  .hero-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+  .hero-copy a, .landing-section a { color: #ff6b6b; }
+  .hero-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 12px; }
   .hero-visual {
     position: relative;
     display: grid;
@@ -388,9 +391,16 @@
     <div class="hero-copy">
       <h1>Bem-vindo ao<br>GenJutsu AI</h1>
       <p>
-        Um portal entre o seu rastro digital e um dojo em realidade virtual.
-        A GenJutsu lê sinais da sua vida online — e-mails, agenda e interesses —
-        para montar um perfil e te receber no Meta Quest 3S.
+        <strong>Finalidade:</strong> o GenJutsu AI é um aplicativo acadêmico de Smart Home
+        que transforma preferências e rastros digitais autorizados em um perfil
+        e numa casa personalizada em realidade virtual (Meta Quest 3S).
+        Não somos uma rede social nem um leitor de e-mail.
+      </p>
+      <p>
+        O login Google existe só para autenticar você e, com permissão explícita,
+        ler <strong>agenda, inscrições do YouTube, contatos e tarefas</strong>.
+        Não pedimos acesso ao Gmail nem ao Drive. Detalhes em
+        <a href="/privacy">Privacidade</a>.
       </p>
       <div class="hero-actions">
         <button class="cta" id="btn-start" style="width:auto;padding:14px 28px">Iniciar Jornada</button>
@@ -401,6 +411,24 @@
       <div class="mascot-wrap">
         <img src="assets/crow.webp" alt="Mascote GenJutsu, um corvo com olhos vermelhos">
       </div>
+    </div>
+  </section>
+
+  <section class="landing-section" id="finalidade">
+    <h2>Finalidade do aplicativo</h2>
+    <div class="pillars">
+      <article class="pillar">
+        <h3>O que é</h3>
+        <p>Protótipo ExpoTech (UniFECAF): personalização de Smart Home e VR a partir de um perfil. Público: visitantes e equipe do projeto, em ambiente de teste.</p>
+      </article>
+      <article class="pillar">
+        <h3>Por que o Google</h3>
+        <p>Identidade (nome, e-mail, foto) e sinais de rotina: Calendar, YouTube, Contacts e Tasks, somente leitura. Sem Gmail. Você pode recusar e usar só o questionário local quando disponível.</p>
+      </article>
+      <article class="pillar">
+        <h3>O que fazemos com isso</h3>
+        <p>Montamos um dossiê no Supabase para gerar o arquétipo da casa e a experiência no Quest. Não vendemos dados e não usamos APIs do Google para anúncios.</p>
+      </article>
     </div>
   </section>
 
