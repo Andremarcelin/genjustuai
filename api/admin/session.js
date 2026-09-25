@@ -1,20 +1,34 @@
 const CODE_RE = /^[A-HJ-NP-Z2-9]{6}$/i;
 
+const DEFAULT_PIN = "genjutsu";
+
 function envSecret() {
-  return String(process.env.ADMIN_SECRET || "").trim().replace(/^["']|["']$/g, "");
+  return String(process.env.ADMIN_SECRET || "").trim().replace(/^["']|["']$/g, "") || DEFAULT_PIN;
+}
+
+function cookieSecret(req) {
+  const raw = req.headers.cookie || "";
+  const m = raw.match(/(?:^|;\s*)gj_admin=([^;]+)/);
+  return m ? decodeURIComponent(m[1]) : "";
 }
 
 function requestSecret(req) {
   const header = req.headers.authorization || "";
   const bearer = header.startsWith("Bearer ") ? header.slice(7) : "";
   const custom = req.headers["x-admin-secret"];
-  return String(bearer || custom || "").trim();
+  return String(bearer || custom || cookieSecret(req) || "").trim();
 }
 
 function authError(req) {
-  if (!envSecret()) return "admin_secret_not_set";
   if (requestSecret(req) !== envSecret()) return "bad_password";
   return null;
+}
+
+function grantCookie(res, secret) {
+  res.setHeader(
+    "Set-Cookie",
+    `gj_admin=${encodeURIComponent(secret)}; Path=/; Max-Age=2592000; SameSite=Lax; Secure; HttpOnly`
+  );
 }
 
 function restHeaders() {
@@ -28,12 +42,11 @@ export default async function handler(req, res) {
   if (denied) {
     res.status(401).json({
       error: denied,
-      hint: denied === "admin_secret_not_set"
-        ? "Crie ADMIN_SECRET em Vercel → Settings → Environment Variables e faça Redeploy."
-        : "A senha digitada não é a mesma de ADMIN_SECRET na Vercel (sem aspas, depois de um Redeploy).",
+      hint: "PIN padrão: genjutsu. Se você criou ADMIN_SECRET na Vercel, use esse valor.",
     });
     return;
   }
+  grantCookie(res, envSecret());
   const supabaseUrl = (process.env.SUPABASE_URL || "").replace(/\/$/, "");
   const key = process.env.SUPABASE_SERVICE_ROLE;
   if (!supabaseUrl || !key) {

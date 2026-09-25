@@ -34,9 +34,9 @@
 <div class="wrap">
   <h1>Sessão do Quest</h1>
   <p class="muted">Selecione um cadastro recente. O Quest em <code>GET /api/session</code> carrega essa pessoa, sem digitar código.</p>
-  <label class="muted">Senha admin (ADMIN_SECRET)</label>
-  <input type="password" id="secret" autocomplete="current-password">
-  <button id="load" style="background:#222">Carregar últimos cadastros</button>
+  <label class="muted" id="pin-label">PIN (padrão: genjutsu)</label>
+  <input type="text" id="secret" autocomplete="off" spellcheck="false" placeholder="genjutsu">
+  <button id="load" style="background:#222">Atualizar lista</button>
   <div class="pick" id="pick">
     <div class="muted">Selecionado para o Quest</div>
     <p id="pick-name" style="margin:8px 0 0;font-weight:600">Nenhum</p>
@@ -49,10 +49,11 @@
 </div>
 <script>
   const $ = (id) => document.getElementById(id);
+  const PIN = "genjutsu";
   let selected = { name: "", code: "" };
   function headers() {
-    const secret = $("secret").value.trim();
-    try { sessionStorage.setItem("genjutsu_admin", secret); } catch (e) {}
+    const secret = ($("secret").value.trim() || PIN);
+    try { localStorage.setItem("genjutsu_admin", secret); } catch (e) {}
     return {
       "Content-Type": "application/json",
       Authorization: "Bearer " + secret,
@@ -61,9 +62,8 @@
   }
   function explain(data) {
     const map = {
-      admin_secret_not_set: "ADMIN_SECRET não existe na Vercel. Crie a variável e faça Redeploy.",
-      bad_password: "Senha errada. Use exatamente o valor de ADMIN_SECRET (sem aspas).",
-      unauthorized: "Não autorizado. Confira ADMIN_SECRET e o Redeploy.",
+      bad_password: "PIN errado. Tente genjutsu, ou o valor de ADMIN_SECRET se você criou um.",
+      unauthorized: "PIN errado. Tente genjutsu.",
       missing_service_role: "Falta SUPABASE_SERVICE_ROLE na Vercel.",
     };
     return map[data.error] || data.hint || data.error || "Erro";
@@ -78,8 +78,14 @@
   }
   async function load() {
     $("status").textContent = "Carregando…";
-    const res = await fetch("/api/admin/session", { headers: headers() });
-    const data = await res.json();
+    let res, data;
+    try {
+      res = await fetch("/api/admin/session", { headers: headers(), credentials: "same-origin" });
+      data = await res.json();
+    } catch (e) {
+      $("status").textContent = "Sem rede. Recarregue a página.";
+      return;
+    }
     if (!res.ok) {
       $("status").textContent = explain(data);
       return;
@@ -102,23 +108,31 @@
     if (cur) showPick(cur.display_name, cur.session_code);
     else if (data.current_session_code) showPick("Sessão atual", data.current_session_code);
   }
-  try { $("secret").value = sessionStorage.getItem("genjutsu_admin") || ""; } catch (e) {}
-  $("load").onclick = load;
   $("save").onclick = async () => {
     if (!selected.code) {
       $("status").textContent = "Selecione um cadastro na lista.";
       return;
     }
-    const res = await fetch("/api/admin/session", {
-      method: "POST",
-      headers: headers(),
-      body: JSON.stringify({ code: selected.code }),
-    });
-    const data = await res.json();
+    let res, data;
+    try {
+      res = await fetch("/api/admin/session", {
+        method: "POST",
+        headers: headers(),
+        credentials: "same-origin",
+        body: JSON.stringify({ code: selected.code }),
+      });
+      data = await res.json();
+    } catch (e) {
+      $("status").textContent = "Sem rede. Tente de novo.";
+      return;
+    }
     $("status").textContent = res.ok
       ? "Quest iniciado com " + selected.name + " · " + data.current_session_code
       : explain(data);
   };
+  try { $("secret").value = localStorage.getItem("genjutsu_admin") || PIN; } catch (e) { $("secret").value = PIN; }
+  $("load").onclick = () => { load().catch(() => {}); };
+  load().catch(() => {});
 </script>
 </body>
 </html>
