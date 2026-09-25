@@ -567,12 +567,34 @@
     <div class="status" id="status-questionnaire"></div>
   </section>
 
+  <section class="screen" id="screen-ready">
+    <h2 class="screen-title">Sessão pronta</h2>
+    <div class="card">
+      <div class="profile-row">
+        <img id="ready-avatar" src="" alt="">
+        <div>
+          <div class="name" id="ready-name"></div>
+          <div class="email" id="ready-email"></div>
+        </div>
+      </div>
+      <div class="session-box">
+        <div class="lbl">Código único — mostre ao staff para o Quest</div>
+        <div class="code" data-session-code>—</div>
+        <img class="session-qr" alt="QR da sessão">
+        <a class="session-link" href="#" target="_blank" rel="noopener">Abrir resumo NFC</a>
+      </div>
+      <p class="privacy">O headset inicia esta sessão quando o admin selecionar este código em /admin.</p>
+    </div>
+  </section>
+
   <section class="screen" id="screen-sync">
     <div class="progress-track" style="margin-top:8px"><div class="progress-bar" id="sync-bar"></div></div>
     <h2 class="screen-title">Sincronização<br>Final</h2>
     <div class="devices">🕶</div>
+    <p id="sync-user" style="text-align:center;font-weight:600;margin:0 0 8px"></p>
+    <p id="sync-mail" class="privacy" style="margin-top:0"></p>
     <div class="session-box">
-      <div class="lbl">Seu código</div>
+      <div class="lbl">Código único desta sessão</div>
       <div class="code" data-session-code>—</div>
       <img class="session-qr" alt="QR da sessão para o Quest">
     </div>
@@ -752,6 +774,11 @@
     $("avatar").src = user.user_metadata?.avatar_url || "";
     $("user-name").textContent = user.user_metadata?.full_name || "Usuário";
     $("user-email").textContent = user.email;
+    $("ready-name").textContent = user.user_metadata?.full_name || "Usuário";
+    $("ready-email").textContent = user.email;
+    $("ready-avatar").src = user.user_metadata?.avatar_url || "";
+    $("sync-user").textContent = user.user_metadata?.full_name || "Usuário";
+    $("sync-mail").textContent = user.email || "";
     showScreen("screen-sync");
     await ensureSessionCode(user);
     collectDataInBackground(user);
@@ -902,6 +929,7 @@
       await logInteraction(user, "quiz", globalDossie.preferencias);
       await upsertPublicSummary(user);
       setStatus("status-questionnaire", "✓ Perfil salvo. Use o código no NFC: " + sessionCode);
+      showScreen("screen-ready");
     } catch (err) {
       setStatus("status-questionnaire", "Erro ao salvar: " + err.message, true);
     }
