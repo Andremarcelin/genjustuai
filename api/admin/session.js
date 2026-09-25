@@ -1,11 +1,20 @@
 const CODE_RE = /^[A-HJ-NP-Z2-9]{6}$/i;
 
-function authorized(req) {
-  const secret = process.env.ADMIN_SECRET;
-  if (!secret) return false;
+function envSecret() {
+  return String(process.env.ADMIN_SECRET || "").trim().replace(/^["']|["']$/g, "");
+}
+
+function requestSecret(req) {
   const header = req.headers.authorization || "";
-  const token = header.startsWith("Bearer ") ? header.slice(7) : req.headers["x-admin-secret"];
-  return token === secret;
+  const bearer = header.startsWith("Bearer ") ? header.slice(7) : "";
+  const custom = req.headers["x-admin-secret"];
+  return String(bearer || custom || "").trim();
+}
+
+function authError(req) {
+  if (!envSecret()) return "admin_secret_not_set";
+  if (requestSecret(req) !== envSecret()) return "bad_password";
+  return null;
 }
 
 function restHeaders() {
@@ -15,8 +24,14 @@ function restHeaders() {
 
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
-  if (!authorized(req)) {
-    res.status(401).json({ error: "unauthorized" });
+  const denied = authError(req);
+  if (denied) {
+    res.status(401).json({
+      error: denied,
+      hint: denied === "admin_secret_not_set"
+        ? "Crie ADMIN_SECRET em Vercel → Settings → Environment Variables e faça Redeploy."
+        : "A senha digitada não é a mesma de ADMIN_SECRET na Vercel (sem aspas, depois de um Redeploy).",
+    });
     return;
   }
   const supabaseUrl = (process.env.SUPABASE_URL || "").replace(/\/$/, "");

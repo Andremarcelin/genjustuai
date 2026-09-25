@@ -51,7 +51,22 @@
   const $ = (id) => document.getElementById(id);
   let selected = { name: "", code: "" };
   function headers() {
-    return { "Content-Type": "application/json", Authorization: "Bearer " + $("secret").value.trim() };
+    const secret = $("secret").value.trim();
+    try { sessionStorage.setItem("genjutsu_admin", secret); } catch (e) {}
+    return {
+      "Content-Type": "application/json",
+      Authorization: "Bearer " + secret,
+      "x-admin-secret": secret,
+    };
+  }
+  function explain(data) {
+    const map = {
+      admin_secret_not_set: "ADMIN_SECRET não existe na Vercel. Crie a variável e faça Redeploy.",
+      bad_password: "Senha errada. Use exatamente o valor de ADMIN_SECRET (sem aspas).",
+      unauthorized: "Não autorizado. Confira ADMIN_SECRET e o Redeploy.",
+      missing_service_role: "Falta SUPABASE_SERVICE_ROLE na Vercel.",
+    };
+    return map[data.error] || data.hint || data.error || "Erro";
   }
   function showPick(name, code) {
     selected = { name, code };
@@ -66,7 +81,7 @@
     const res = await fetch("/api/admin/session", { headers: headers() });
     const data = await res.json();
     if (!res.ok) {
-      $("status").textContent = data.error || "Erro";
+      $("status").textContent = explain(data);
       return;
     }
     const recent = data.recent || [];
@@ -87,6 +102,7 @@
     if (cur) showPick(cur.display_name, cur.session_code);
     else if (data.current_session_code) showPick("Sessão atual", data.current_session_code);
   }
+  try { $("secret").value = sessionStorage.getItem("genjutsu_admin") || ""; } catch (e) {}
   $("load").onclick = load;
   $("save").onclick = async () => {
     if (!selected.code) {
@@ -101,7 +117,7 @@
     const data = await res.json();
     $("status").textContent = res.ok
       ? "Quest iniciado com " + selected.name + " · " + data.current_session_code
-      : (data.error || "Falha");
+      : explain(data);
   };
 </script>
 </body>
