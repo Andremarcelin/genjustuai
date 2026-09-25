@@ -58,21 +58,38 @@ async function rest(path, options) {
   return { ok: upstream.ok, status: upstream.status, json };
 }
 
+function isMissing(result) {
+  const code = result?.json?.code;
+  return !result.ok && (code === "PGRST202" || code === "PGRST205");
+}
+
 async function listRecent() {
   const rpc = await rest("rpc/genjutsu_recent_signups", { method: "POST", body: "{}" });
-  if (rpc.ok && Array.isArray(rpc.json)) return rpc.json;
+  if (rpc.ok && Array.isArray(rpc.json)) {
+    return { rows: rpc.json, source: "rpc", missing: false };
+  }
   const pub = await rest(
     "session_summaries?select=session_code,display_name,updated_at&order=updated_at.desc&limit=30"
   );
   if (pub.ok && Array.isArray(pub.json)) {
-    return pub.json.map((d) => ({
-      session_code: d.session_code,
-      display_name: d.display_name || "Sem nome",
-      email: "",
-      updated_at: d.updated_at,
-    }));
+    return {
+      rows: pub.json.map((d) => ({
+        session_code: d.session_code,
+        display_name: d.display_name || "Sem nome",
+        email: "",
+        updated_at: d.updated_at,
+      })),
+      source: "summaries",
+      missing: false,
+    };
   }
-  return [];
+  const dossiers = await rest("dossiers?select=session_code&limit=1");
+  return {
+    rows: [],
+    source: "none",
+    missing: isMissing(rpc) || isMissing(pub),
+    detail: rpc.json?.message || pub.json?.message || dossiers.json?.message || null,
+  };
 }
 
 export default async function handler(req, res) {
@@ -95,17 +112,23 @@ export default async function handler(req, res) {
   }
 
   if (req.method === "GET") {
-    const recent = await listRecent();
+    const listed = await listRecent();
     const current = await rest("app_state?id=eq.1&select=current_session_code");
     const stateRows = current.ok && Array.isArray(current.json) ? current.json : [];
+    const recent = listed.rows.map((d) => ({
+      session_code: d.session_code,
+      display_name: d.display_name || d.email || "Sem nome",
+      email: d.email || "",
+      updated_at: d.updated_at,
+    }));
     res.status(200).json({
       current_session_code: stateRows[0]?.current_session_code || null,
-      recent: recent.map((d) => ({
-        session_code: d.session_code,
-        display_name: d.display_name || d.email || "Sem nome",
-        email: d.email || "",
-        updated_at: d.updated_at,
-      })),
+      recent,
+      hint: listed.missing || (!recent.length && isMissing(current))
+        ? "SQL ainda não rodou neste Supabase. No SQL Editor, cole o arquivo sql/admin_read.sql e clique Run."
+        : (!recent.length
+          ? "Banco ok, mas nenhum dossier com código. Entre em genjutsuai.vercel.app com Google uma vez."
+          : null),
     });
     return;
   }
