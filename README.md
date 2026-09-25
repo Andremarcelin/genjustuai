@@ -7,7 +7,7 @@ Documento mestre acadêmico (CDD): [docs/GenJutsu_AI_CDD_Completo.md](docs/GenJu
 ## 1. Novo projeto Supabase
 
 1. Crie um projeto em [supabase.com](https://supabase.com).
-2. SQL Editor: rode [`sql/dossiers.sql`](sql/dossiers.sql) e em seguida [`sql/sessions.sql`](sql/sessions.sql) (código de sessão + resumo NFC).
+2. SQL Editor: rode [`sql/dossiers.sql`](sql/dossiers.sql), [`sql/sessions.sql`](sql/sessions.sql) e [`sql/app_state.sql`](sql/app_state.sql).
 3. **Authentication → URL configuration**
    - Site URL: `https://SEU-PROJETO.vercel.app`
    - Redirect URLs: `https://SEU-PROJETO.vercel.app/**` e `https://SEU-REF.supabase.co/auth/v1/callback`
@@ -40,7 +40,8 @@ Documento mestre acadêmico (CDD): [docs/GenJutsu_AI_CDD_Completo.md](docs/GenJu
 3. Environment variables:
    - `SUPABASE_URL`
    - `SUPABASE_ANON_KEY`
-   - `GOOGLE_SITE_VERIFICATION` (opcional; token da tag HTML da Search Console para `https://genjutsuai.vercel.app/` — ver [docs/search-console-vercel.md](docs/search-console-vercel.md))
+   - `SUPABASE_SERVICE_ROLE` (só servidor; painel admin)
+   - `ADMIN_SECRET` (senha de https://genjutsuai.vercel.app/admin )
 4. Deploy. A rota `/api/config` entrega essas variáveis ao site.
 5. Depois do primeiro URL, atualize Site URL no Supabase, origins no Google e, se quiser, os links em `privacy.html` / `terms.html`.
 

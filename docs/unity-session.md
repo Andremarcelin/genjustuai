@@ -1,29 +1,31 @@
-# Quest 3S — entrar na sessão
+# Quest 3S — sessão definida pelo admin
 
-O headset **não** faz login Google. A pessoa já gerou o código no site. O Unity só pede o JSON público.
+O headset **não digita código**. Um admin escolhe a sessão atual em `/admin`. O Unity só pede o JSON.
 
-## Contrato
+## Expo
 
-`GET https://genjutsuai.vercel.app/api/session?code=AB3K7Q`
+1. Visitante entra no celular e gera o código (SQL `sessions.sql` + `app_state.sql`).
+2. Staff abre `https://genjutsuai.vercel.app/admin`, cola `ADMIN_SECRET`, escolhe o código, **Definir sessão do Quest**.
+3. O Quest chama `GET https://genjutsuai.vercel.app/api/session` (sem query) e carrega essa pessoa.
 
-Código: 6 caracteres `A–H J–N P–Z 2–9` (sem 0, O, 1, I).
+## Vercel env
 
-**200**
+- `SUPABASE_URL`
+- `SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE` (Settings → API → `service_role` — só no servidor)
+- `ADMIN_SECRET` (senha longa, só para `/admin`)
 
-```json
-{
-  "session_code": "AB3K7Q",
-  "display_name": "Nome",
-  "personality_text": "...",
-  "archetype": "Ritmo recolhido"
-}
-```
+## Contrato Unity
 
-**400** `invalid_code` · **404** `not_found` (ainda não salvou o perfil / SQL não rodou)
+`GET https://genjutsuai.vercel.app/api/session`
 
-O QR no site aponta para `https://genjutsuai.vercel.app/s/CODIGO` (browser do Quest). Digitar o código no Unity usa a API acima.
+**200** — mesmo JSON de antes (`session_code`, `display_name`, `personality_text`, `archetype`).
 
-## SessionGate.cs (colar no projeto Unity)
+**404** `no_current_session` — admin ainda não definiu · **404** `not_found` — código sem resumo.
+
+`GET /api/session?code=AB3K7Q` continua para NFC/debug.
+
+## SessionGate.cs
 
 ```csharp
 using System.Collections;
@@ -41,23 +43,19 @@ public class SessionSummary {
 public class SessionGate : MonoBehaviour {
     public string apiBase = "https://genjutsuai.vercel.app";
 
-    public IEnumerator LoadSession(string code) {
-        code = (code ?? "").Trim().ToUpperInvariant();
-        var url = apiBase + "/api/session?code=" + UnityWebRequest.EscapeURL(code);
+    public IEnumerator LoadCurrentSession() {
+        var url = apiBase + "/api/session";
         using (var req = UnityWebRequest.Get(url)) {
             yield return req.SendWebRequest();
             if (req.result != UnityWebRequest.Result.Success || req.responseCode != 200) {
-                Debug.LogWarning("Sessão inválida ou ainda sem resumo.");
+                Debug.LogWarning("Nenhuma sessão atual no admin.");
                 yield break;
             }
             var data = JsonUtility.FromJson<SessionSummary>(req.downloadHandler.text);
-            Debug.Log(data.archetype + " / " + data.personality_text);
-            // aplicar luz / texto do Corvo aqui
+            Debug.Log(data.session_code + " " + data.archetype);
         }
     }
 }
 ```
 
-Teclado no Quest: 6 caracteres. Sem `service_role` e sem token Google no APK.
-
-Plano B: browser do Quest em `/s/CODIGO`.
+Sem `service_role` e sem senha admin no APK. Chame `LoadCurrentSession` na tela inicial do dojo (Start / botão “Conectar”).
