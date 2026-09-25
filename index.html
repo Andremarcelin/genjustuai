@@ -541,6 +541,7 @@
           <img class="session-qr" alt="QR da sessão para o Quest">
           <a class="session-link" href="#" target="_blank" rel="noopener">Abrir resumo</a>
         </div>
+        <button class="cta" id="btn-relogin-account" type="button">Refazer login com Google</button>
         <button class="cta ghost" id="btn-logout">Desconectar</button>
       </div>
     </div>
@@ -584,6 +585,7 @@
         <a class="session-link" href="#" target="_blank" rel="noopener">Abrir resumo NFC</a>
       </div>
       <p class="privacy">O headset inicia esta sessão quando o admin selecionar este código em /admin.</p>
+      <button class="cta ghost" id="btn-relogin-ready" type="button" style="margin-top:12px">Refazer login</button>
     </div>
   </section>
 
@@ -599,6 +601,8 @@
       <img class="session-qr" alt="QR da sessão para o Quest">
     </div>
     <p id="sync-status" style="text-align:center;color:var(--muted)">Conectando...</p>
+    <button class="cta" id="btn-relogin" type="button">Refazer login com Google</button>
+    <button class="cta ghost" id="btn-relogin-ms" type="button" style="margin-top:10px">Refazer login com Microsoft</button>
     <p class="privacy">Coloque o Meta Quest 3S</p>
   </section>
 </div>
@@ -821,7 +825,7 @@
     bar.style.width = "18%";
     const token = await getToken();
     if (!token) {
-      $("sync-status").textContent = "Token do Google ausente. Refaça o login.";
+      $("sync-status").textContent = "Token do Google ausente. Use o botão abaixo para entrar de novo.";
       return;
     }
     try {
@@ -944,6 +948,17 @@
     }
   });
 
+  async function relogin(provider) {
+    $("sync-status").textContent = "Saindo para pedir o Google de novo…";
+    try {
+      if (sb) await sb.auth.signOut();
+    } catch (e) {}
+    showLoggedOut();
+    goToApp();
+    showScreen("screen-login");
+    await oauth(provider);
+  }
+
   async function oauth(provider) {
     setStatus("status-auth", "Redirecionando...");
     const { error } = await sb.auth.signInWithOAuth({
@@ -964,6 +979,10 @@
 
   $("btn-login").addEventListener("click", () => oauth("google"));
   $("btn-login-ms").addEventListener("click", () => oauth("azure"));
+  $("btn-relogin").addEventListener("click", () => relogin("google"));
+  $("btn-relogin-ms").addEventListener("click", () => relogin("azure"));
+  $("btn-relogin-account").addEventListener("click", () => relogin("google"));
+  $("btn-relogin-ready").addEventListener("click", () => relogin("google"));
 
   $("btn-logout").addEventListener("click", async () => {
     if (sb) await sb.auth.signOut();
