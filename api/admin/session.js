@@ -27,17 +27,23 @@ export default async function handler(req, res) {
   }
 
   if (req.method === "GET") {
-    const list = await fetch(`${supabaseUrl}/rest/v1/session_summaries?select=session_code,display_name,archetype,updated_at&order=updated_at.desc&limit=20`, {
-      headers: restHeaders(),
-    });
+    const list = await fetch(
+      `${supabaseUrl}/rest/v1/dossiers?select=session_code,full_name,email,updated_at&session_code=not.is.null&order=updated_at.desc&limit=30`,
+      { headers: restHeaders() }
+    );
     const current = await fetch(`${supabaseUrl}/rest/v1/app_state?id=eq.1&select=current_session_code,updated_at`, {
       headers: restHeaders(),
     });
-    const summaries = list.ok ? await list.json() : [];
+    const dossiers = list.ok ? await list.json() : [];
     const stateRows = current.ok ? await current.json() : [];
     res.status(200).json({
       current_session_code: stateRows[0]?.current_session_code || null,
-      recent: summaries,
+      recent: (Array.isArray(dossiers) ? dossiers : []).map((d) => ({
+        session_code: d.session_code,
+        display_name: d.full_name || d.email || "Sem nome",
+        email: d.email || "",
+        updated_at: d.updated_at,
+      })),
     });
     return;
   }

@@ -9,31 +9,57 @@
 <style>
   body { margin: 0; font-family: Inter, sans-serif; background: #0a0a0c; color: #f4f4f5; padding: 28px 18px; }
   h1 { font-family: Cinzel, serif; color: #ff2a2a; }
+  h2 { font-size: 16px; margin: 22px 0 10px; }
   input, button { font: inherit; padding: 10px 12px; border-radius: 10px; border: 1px solid #333; width: 100%; box-sizing: border-box; margin: 6px 0 14px; }
   input { background: #141416; color: #fff; }
   button { background: #c11414; color: #fff; border: 0; cursor: pointer; font-weight: 600; }
   .muted { color: #9a9aa3; font-size: 14px; }
-  .row { padding: 10px 0; border-bottom: 1px solid #222; cursor: pointer; }
+  .row {
+    padding: 12px;
+    margin-bottom: 8px;
+    border: 1px solid #2a2a2e;
+    border-radius: 12px;
+    cursor: pointer;
+    background: #141416;
+    text-align: left;
+  }
+  .row.on { border-color: #e22424; }
+  .row .nm { font-weight: 600; }
+  .row .cd { letter-spacing: 0.12em; color: #ff6b6b; font-size: 15px; margin-top: 4px; }
   .wrap { max-width: 420px; margin: 0 auto; }
+  .pick { padding: 14px; border: 1px solid rgba(226,36,36,0.4); border-radius: 14px; margin-bottom: 16px; }
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1>Sessão do Quest</h1>
-  <p class="muted">O headset chama <code>GET /api/session</code> sem código e usa o que você definir aqui.</p>
+  <p class="muted">Selecione um cadastro recente. O Quest em <code>GET /api/session</code> carrega essa pessoa, sem digitar código.</p>
   <label class="muted">Senha admin (ADMIN_SECRET)</label>
   <input type="password" id="secret" autocomplete="current-password">
-  <label class="muted">Código atual (6 caracteres)</label>
-  <input type="text" id="code" maxlength="6" placeholder="AB3K7Q" style="letter-spacing:0.2em;text-transform:uppercase">
-  <button id="save">Definir sessão do Quest</button>
-  <button id="load" style="background:#222">Atualizar lista</button>
+  <button id="load" style="background:#222">Carregar últimos cadastros</button>
+  <div class="pick" id="pick">
+    <div class="muted">Selecionado para o Quest</div>
+    <p id="pick-name" style="margin:8px 0 0;font-weight:600">Nenhum</p>
+    <p id="pick-code" class="cd" style="margin:6px 0 0">—</p>
+  </div>
+  <button id="save">Iniciar sessão no Quest com este código</button>
   <p class="muted" id="status"></p>
+  <h2>Últimos cadastros</h2>
   <div id="list"></div>
 </div>
 <script>
   const $ = (id) => document.getElementById(id);
+  let selected = { name: "", code: "" };
   function headers() {
     return { "Content-Type": "application/json", Authorization: "Bearer " + $("secret").value.trim() };
+  }
+  function showPick(name, code) {
+    selected = { name, code };
+    $("pick-name").textContent = name || "Sem nome";
+    $("pick-code").textContent = code || "—";
+    $("list").querySelectorAll(".row").forEach((el) => {
+      el.classList.toggle("on", el.dataset.c === code);
+    });
   }
   async function load() {
     $("status").textContent = "Carregando…";
@@ -43,26 +69,39 @@
       $("status").textContent = data.error || "Erro";
       return;
     }
-    $("code").value = data.current_session_code || "";
+    const recent = data.recent || [];
     $("status").textContent = data.current_session_code
-      ? "Quest está na sessão " + data.current_session_code
-      : "Nenhuma sessão definida";
-    $("list").innerHTML = (data.recent || []).map((r) =>
-      `<div class="row" data-c="${r.session_code}"><strong>${r.session_code}</strong> — ${r.display_name || "?"} · ${r.archetype || ""}</div>`
-    ).join("") || "<p class='muted'>Nenhum resumo ainda.</p>";
+      ? "Quest está em " + data.current_session_code
+      : "Nenhuma sessão no Quest ainda";
+    $("list").innerHTML = recent.map((r) =>
+      `<div class="row" data-c="${r.session_code}" data-n="${(r.display_name || "").replace(/"/g, "")}">
+        <div class="nm">${r.display_name || "Sem nome"}</div>
+        <div class="muted">${r.email || ""}</div>
+        <div class="cd">${r.session_code}</div>
+      </div>`
+    ).join("") || "<p class='muted'>Nenhum cadastro com código ainda.</p>";
     $("list").querySelectorAll(".row").forEach((el) => {
-      el.onclick = () => { $("code").value = el.dataset.c; };
+      el.onclick = () => showPick(el.dataset.n, el.dataset.c);
     });
+    const cur = recent.find((r) => r.session_code === data.current_session_code);
+    if (cur) showPick(cur.display_name, cur.session_code);
+    else if (data.current_session_code) showPick("Sessão atual", data.current_session_code);
   }
   $("load").onclick = load;
   $("save").onclick = async () => {
+    if (!selected.code) {
+      $("status").textContent = "Selecione um cadastro na lista.";
+      return;
+    }
     const res = await fetch("/api/admin/session", {
       method: "POST",
       headers: headers(),
-      body: JSON.stringify({ code: $("code").value }),
+      body: JSON.stringify({ code: selected.code }),
     });
     const data = await res.json();
-    $("status").textContent = res.ok ? "Quest agora usa " + data.current_session_code : (data.error || "Falha");
+    $("status").textContent = res.ok
+      ? "Quest iniciado com " + selected.name + " · " + data.current_session_code
+      : (data.error || "Falha");
   };
 </script>
 </body>
