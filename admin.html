@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin sessão — GenJutsu AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  body { margin: 0; font-family: Inter, sans-serif; background: #0a0a0c; color: #f4f4f5; padding: 28px 18px; }
+  h1 { font-family: Cinzel, serif; color: #ff2a2a; }
+  input, button { font: inherit; padding: 10px 12px; border-radius: 10px; border: 1px solid #333; width: 100%; box-sizing: border-box; margin: 6px 0 14px; }
+  input { background: #141416; color: #fff; }
+  button { background: #c11414; color: #fff; border: 0; cursor: pointer; font-weight: 600; }
+  .muted { color: #9a9aa3; font-size: 14px; }
+  .row { padding: 10px 0; border-bottom: 1px solid #222; cursor: pointer; }
+  .wrap { max-width: 420px; margin: 0 auto; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Sessão do Quest</h1>
+  <p class="muted">O headset chama <code>GET /api/session</code> sem código e usa o que você definir aqui.</p>
+  <label class="muted">Senha admin (ADMIN_SECRET)</label>
+  <input type="password" id="secret" autocomplete="current-password">
+  <label class="muted">Código atual (6 caracteres)</label>
+  <input type="text" id="code" maxlength="6" placeholder="AB3K7Q" style="letter-spacing:0.2em;text-transform:uppercase">
+  <button id="save">Definir sessão do Quest</button>
+  <button id="load" style="background:#222">Atualizar lista</button>
+  <p class="muted" id="status"></p>
+  <div id="list"></div>
+</div>
+<script>
+  const $ = (id) => document.getElementById(id);
+  function headers() {
+    return { "Content-Type": "application/json", Authorization: "Bearer " + $("secret").value.trim() };
+  }
+  async function load() {
+    $("status").textContent = "Carregando…";
+    const res = await fetch("/api/admin/session", { headers: headers() });
+    const data = await res.json();
+    if (!res.ok) {
+      $("status").textContent = data.error || "Erro";
+      return;
+    }
+    $("code").value = data.current_session_code || "";
+    $("status").textContent = data.current_session_code
+      ? "Quest está na sessão " + data.current_session_code
+      : "Nenhuma sessão definida";
+    $("list").innerHTML = (data.recent || []).map((r) =>
+      `<div class="row" data-c="${r.session_code}"><strong>${r.session_code}</strong> — ${r.display_name || "?"} · ${r.archetype || ""}</div>`
+    ).join("") || "<p class='muted'>Nenhum resumo ainda.</p>";
+    $("list").querySelectorAll(".row").forEach((el) => {
+      el.onclick = () => { $("code").value = el.dataset.c; };
+    });
+  }
+  $("load").onclick = load;
+  $("save").onclick = async () => {
+    const res = await fetch("/api/admin/session", {
+      method: "POST",
+      headers: headers(),
+      body: JSON.stringify({ code: $("code").value }),
+    });
+    const data = await res.json();
+    $("status").textContent = res.ok ? "Quest agora usa " + data.current_session_code : (data.error || "Falha");
+  };
+</script>
+</body>
+</html>
