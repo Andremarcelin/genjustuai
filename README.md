@@ -7,7 +7,7 @@ Documento mestre acadêmico (CDD): [docs/GenJutsu_AI_CDD_Completo.md](docs/GenJu
 ## 1. Novo projeto Supabase
 
 1. Crie um projeto em [supabase.com](https://supabase.com).
-2. SQL Editor: rode [`sql/dossiers.sql`](sql/dossiers.sql), [`sql/sessions.sql`](sql/sessions.sql) e [`sql/app_state.sql`](sql/app_state.sql).
+2. SQL Editor: rode [`sql/dossiers.sql`](sql/dossiers.sql), [`sql/sessions.sql`](sql/sessions.sql) e [`sql/app_state.sql`](sql/app_state.sql). Se o código de sessão já existia, rode também [`sql/freeze_session_code.sql`](sql/freeze_session_code.sql).
 3. **Authentication → URL configuration**
    - Site URL: `https://SEU-PROJETO.vercel.app`
    - Redirect URLs: `https://SEU-PROJETO.vercel.app/**` e `https://SEU-REF.supabase.co/auth/v1/callback`
