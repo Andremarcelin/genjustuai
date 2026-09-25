@@ -7,7 +7,7 @@ Documento mestre acadêmico (CDD): [docs/GenJutsu_AI_CDD_Completo.md](docs/GenJu
 ## 1. Novo projeto Supabase
 
 1. Crie um projeto em [supabase.com](https://supabase.com).
-2. SQL Editor: rode [`sql/dossiers.sql`](sql/dossiers.sql).
+2. SQL Editor: rode [`sql/dossiers.sql`](sql/dossiers.sql) e em seguida [`sql/sessions.sql`](sql/sessions.sql) (código de sessão + resumo NFC).
 3. **Authentication → URL configuration**
    - Site URL: `https://SEU-PROJETO.vercel.app`
    - Redirect URLs: `https://SEU-PROJETO.vercel.app/**` e `https://SEU-REF.supabase.co/auth/v1/callback`
@@ -50,3 +50,5 @@ Documento mestre acadêmico (CDD): [docs/GenJutsu_AI_CDD_Completo.md](docs/GenJu
 - `api/config.js` — Vercel Function (`SUPABASE_URL`, `SUPABASE_ANON_KEY`)
 - `vercel.json` — rewrites `/privacy` e `/terms`
 - `sql/dossiers.sql` — tabela + RLS
+- `sql/sessions.sql` — session_code, interações, conversas, resumo NFC
+- `summary.html` — página pública `/s/CODIGO`

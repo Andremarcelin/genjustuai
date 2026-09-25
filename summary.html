@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Resumo da sessão — GenJutsu AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0c;
+    --muted: #9a9aa3;
+    --accent: #e22424;
+    --sans: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --display: Cinzel, "Times New Roman", serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: var(--sans);
+    color: #f4f4f5;
+    background: radial-gradient(ellipse at 50% -10%, #3a0a0a 0%, transparent 42%), var(--bg);
+    padding: 36px 20px 64px;
+  }
+  .card {
+    max-width: 420px;
+    margin: 0 auto;
+    text-align: center;
+  }
+  h1 {
+    font-family: var(--display);
+    color: #ff2a2a;
+    font-size: 32px;
+    margin: 8px 0 6px;
+  }
+  .code {
+    font-family: var(--display);
+    letter-spacing: 0.2em;
+    font-size: 26px;
+    color: #ff3030;
+    margin: 18px 0;
+  }
+  .arch {
+    display: inline-block;
+    border: 1px solid rgba(226,36,36,0.35);
+    border-radius: 999px;
+    padding: 6px 14px;
+    font-size: 13px;
+    margin-bottom: 16px;
+  }
+  p { color: var(--muted); line-height: 1.6; }
+  a { color: #ff6b6b; }
+  .crow {
+    width: 120px; height: 120px; border-radius: 50%;
+    object-fit: cover; margin: 0 auto 8px;
+    border: 2px solid var(--accent);
+  }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+<div class="card">
+  <img class="crow" src="/assets/crow.webp" alt="GenJutsu AI">
+  <h1>GenJutsu AI</h1>
+  <p>Resumo da sessão (NFC)</p>
+  <div class="code" id="code">—</div>
+  <div class="arch" id="arch">Carregando…</div>
+  <p id="name"></p>
+  <p id="text">Buscando personalidade desta sessão.</p>
+  <p id="note">Este cartão não mostra agenda, contatos nem conversas completas.</p>
+  <p><a href="/">Voltar ao GenJutsu AI</a></p>
+</div>
+<script>
+  function sessionFromUrl() {
+    const parts = location.pathname.split("/").filter(Boolean);
+    if (parts[0] === "s" && parts[1]) return parts[1].toUpperCase();
+    return new URLSearchParams(location.search).get("c") || "";
+  }
+
+  async function main() {
+    const code = sessionFromUrl();
+    document.getElementById("code").textContent = code || "—";
+    if (!code) {
+      document.getElementById("arch").textContent = "Sem código";
+      document.getElementById("text").textContent = "Abra /s/CODIGO ou aproxime o NFC gravado.";
+      return;
+    }
+    let cfg;
+    try {
+      const res = await fetch("/api/config");
+      cfg = await res.json();
+    } catch (e) {
+      document.getElementById("arch").textContent = "Erro";
+      document.getElementById("text").textContent = "Não foi possível ler a configuração.";
+      return;
+    }
+    if (!cfg.supabaseUrl || !cfg.supabaseAnonKey) {
+      document.getElementById("arch").textContent = "Config ausente";
+      return;
+    }
+    const { createClient } = supabase;
+    const sb = createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
+    const { data, error } = await sb
+      .from("session_summaries")
+      .select("display_name, personality_text, archetype")
+      .eq("session_code", code)
+      .maybeSingle();
+    if (error || !data) {
+      document.getElementById("arch").textContent = "Não encontrado";
+      document.getElementById("text").textContent = "Esse código ainda não tem resumo. Peça à pessoa para entrar e salvar o perfil.";
+      return;
+    }
+    document.getElementById("arch").textContent = data.archetype || "Sessão";
+    document.getElementById("name").textContent = data.display_name || "";
+    document.getElementById("text").textContent = data.personality_text || "";
+  }
+  main();
+</script>
+</body>
+</html>

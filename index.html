@@ -378,6 +378,22 @@
     font-size: 13px;
     text-align: center;
   }
+  .session-box {
+    margin: 16px 0;
+    padding: 16px;
+    text-align: center;
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    background: #141416;
+  }
+  .session-box .lbl { color: var(--muted); font-size: 12px; margin-bottom: 6px; }
+  .session-box .code {
+    font-family: var(--display);
+    font-size: 28px;
+    letter-spacing: 0.18em;
+    color: #ff3030;
+  }
+  .session-box a { color: #ff6b6b; font-size: 13px; }
 </style>
 </head>
 <body>
@@ -511,6 +527,11 @@
             <div class="email" id="user-email"></div>
           </div>
         </div>
+        <div class="session-box">
+          <div class="lbl">Código da sessão (NFC)</div>
+          <div class="code" data-session-code>—</div>
+          <a class="session-link" href="#" target="_blank" rel="noopener">Abrir resumo</a>
+        </div>
         <button class="cta ghost" id="btn-logout">Desconectar</button>
       </div>
     </div>
@@ -528,6 +549,11 @@
     <select id="q-vibe" class="hidden"><option value=""></option><option value="tranquilo">t</option><option value="agitado">a</option></select>
     <select id="q-tempo" class="hidden"><option value=""></option><option value="quente">q</option><option value="frio">f</option><option value="ameno">a</option></select>
     <button class="cta" id="btn-save-questionnaire" style="margin-top:18px">Finalizar e Salvar Perfil</button>
+    <div class="session-box">
+      <div class="lbl">Grave este código no NFC</div>
+      <div class="code" data-session-code>—</div>
+      <a class="session-link" href="#" target="_blank" rel="noopener">Abrir resumo público</a>
+    </div>
     <div class="status" id="status-questionnaire"></div>
   </section>
 
@@ -535,6 +561,10 @@
     <div class="progress-track" style="margin-top:8px"><div class="progress-bar" id="sync-bar"></div></div>
     <h2 class="screen-title">Sincronização<br>Final</h2>
     <div class="devices">🕶</div>
+    <div class="session-box">
+      <div class="lbl">Seu código</div>
+      <div class="code" data-session-code>—</div>
+    </div>
     <p id="sync-status" style="text-align:center;color:var(--muted)">Conectando...</p>
     <p class="privacy">Coloque o Meta Quest 3S</p>
   </section>
@@ -542,8 +572,105 @@
 
 <script>
   const $ = (id) => document.getElementById(id);
+  const SESSION_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   let sb = null;
   let globalDossie = {};
+  let sessionCode = "";
+
+  function randomSessionCode() {
+    let out = "";
+    for (let i = 0; i < 6; i++) out += SESSION_ALPHABET[Math.floor(Math.random() * SESSION_ALPHABET.length)];
+    return out;
+  }
+
+  function renderSessionCode(code) {
+    sessionCode = code || "";
+    document.querySelectorAll("[data-session-code]").forEach((el) => {
+      el.textContent = sessionCode || "—";
+    });
+    document.querySelectorAll(".session-link").forEach((a) => {
+      a.href = sessionCode ? `/s/${sessionCode}` : "#";
+    });
+  }
+
+  async function ensureSessionCode(user) {
+    if (!sb || !user) return "";
+    const { data, error } = await sb.rpc("genjutsu_ensure_session");
+    if (!error && data) {
+      renderSessionCode(data);
+      return data;
+    }
+    const { data: row } = await sb.from("dossiers").select("session_code").eq("user_id", user.id).maybeSingle();
+    if (row?.session_code) {
+      renderSessionCode(row.session_code);
+      return row.session_code;
+    }
+    const fallback = randomSessionCode();
+    const { error: upErr } = await sb.from("dossiers").upsert(
+      { user_id: user.id, session_code: fallback, updated_at: new Date().toISOString() },
+      { onConflict: "user_id" }
+    );
+    if (upErr) console.warn("session_code fallback:", upErr);
+    renderSessionCode(fallback);
+    return fallback;
+  }
+
+  function buildPersonality(user) {
+    const pref = globalDossie.preferencias || {};
+    const nCal = (globalDossie.calendar || []).length;
+    const nYt = (globalDossie.youtube || []).length;
+    const nTask = (globalDossie.tasks || []).length;
+    const vibe = pref.clima_ambiente === "agitado" ? "ritmo mais dinâmico" : pref.clima_ambiente === "tranquilo" ? "ambiente calmo" : "clima ainda indefinido";
+    const tempo = pref.clima_tempo || "sem preferência de tempo";
+    const text = `${user.user_metadata?.full_name || "Visitante"} prefere ${vibe} e ${tempo}. `
+      + `Nesta sessão há ${nCal} evento(s) de agenda, ${nYt} canal(is) do YouTube e ${nTask} tarefa(s). `
+      + `Este cartão é só o resumo; o dossiê completo fica na conta.`;
+    let archetype = "Perfil em formação";
+    if (pref.clima_ambiente === "tranquilo") archetype = "Ritmo recolhido";
+    if (pref.clima_ambiente === "agitado") archetype = "Ritmo ativo";
+    return { text, archetype };
+  }
+
+  async function logInteraction(user, kind, payload) {
+    if (!sb || !user || !sessionCode) return;
+    const { error } = await sb.from("interactions").insert({
+      user_id: user.id,
+      session_code: sessionCode,
+      kind,
+      payload: payload || {}
+    });
+    if (error) console.warn("interaction:", error);
+  }
+
+  async function logConversation(user, role, content) {
+    if (!sb || !user || !sessionCode || !content) return;
+    const { error } = await sb.from("conversations").insert({
+      user_id: user.id,
+      session_code: sessionCode,
+      role,
+      content
+    });
+    if (error) console.warn("conversation:", error);
+  }
+
+  async function upsertPublicSummary(user) {
+    if (!sb || !user || !sessionCode) return;
+    const { text, archetype } = buildPersonality(user);
+    const { error } = await sb.from("session_summaries").upsert(
+      {
+        session_code: sessionCode,
+        user_id: user.id,
+        display_name: user.user_metadata?.full_name || "Visitante",
+        personality_text: text,
+        archetype,
+        updated_at: new Date().toISOString()
+      },
+      { onConflict: "session_code" }
+    );
+    if (error) console.warn("summary:", error);
+  }
+
+  window.genjutsuLogConversation = logConversation;
 
   function goToApp() {
     $("landing").classList.add("hidden");
@@ -598,13 +725,14 @@
     el.className = "status" + (isError ? " error" : (msg.includes("✓") ? " success" : ""));
   }
 
-  function showLoggedIn(user) {
+  async function showLoggedIn(user) {
     $("logged-out").classList.add("hidden");
     $("logged-in").classList.remove("hidden");
     $("avatar").src = user.user_metadata?.avatar_url || "";
     $("user-name").textContent = user.user_metadata?.full_name || "Usuário";
     $("user-email").textContent = user.email;
     showScreen("screen-sync");
+    await ensureSessionCode(user);
     collectDataInBackground(user);
   }
 
@@ -617,6 +745,7 @@
     $("q-tempo").value = "";
     document.querySelectorAll(".option").forEach((b) => b.classList.remove("selected"));
     globalDossie = {};
+    renderSessionCode("");
     if (sb) {
       $("landing").classList.remove("hidden");
       $("app").classList.add("hidden");
@@ -688,6 +817,12 @@
       } catch (e) { console.warn("Erro nas Tarefas:", e); }
 
       await saveToSupabase(user);
+      await logInteraction(user, "sync", {
+        calendar: (globalDossie.calendar || []).length,
+        youtube: (globalDossie.youtube || []).length,
+        tasks: (globalDossie.tasks || []).length
+      });
+      await upsertPublicSummary(user);
       bar.style.width = "100%";
       $("sync-status").textContent = "Rastro digital sincronizado";
       setTimeout(() => showScreen("screen-questionnaire"), 700);
@@ -699,17 +834,17 @@
 
   async function saveToSupabase(user) {
     if (!sb || !user) return;
-    const { error } = await sb.from("dossiers").upsert(
-      {
-        user_id: user.id,
-        full_name: user.user_metadata?.full_name || user.email,
-        email: user.email,
-        avatar_url: user.user_metadata?.avatar_url || "",
-        dossier_data: globalDossie,
-        updated_at: new Date().toISOString()
-      },
-      { onConflict: "user_id" }
-    );
+    if (!sessionCode) await ensureSessionCode(user);
+    const row = {
+      user_id: user.id,
+      full_name: user.user_metadata?.full_name || user.email,
+      email: user.email,
+      avatar_url: user.user_metadata?.avatar_url || "",
+      dossier_data: globalDossie,
+      updated_at: new Date().toISOString()
+    };
+    if (sessionCode) row.session_code = sessionCode;
+    const { error } = await sb.from("dossiers").upsert(row, { onConflict: "user_id" });
     if (error) throw error;
   }
 
@@ -743,7 +878,9 @@
       if (!user) throw new Error("Sessão expirada.");
       globalDossie.preferencias = { clima_ambiente: vibe, clima_tempo: tempo };
       await saveToSupabase(user);
-      setStatus("status-questionnaire", "✓ Perfil salvo com sucesso! Tudo pronto.");
+      await logInteraction(user, "quiz", globalDossie.preferencias);
+      await upsertPublicSummary(user);
+      setStatus("status-questionnaire", "✓ Perfil salvo. Use o código no NFC: " + sessionCode);
     } catch (err) {
       setStatus("status-questionnaire", "Erro ao salvar: " + err.message, true);
     }
