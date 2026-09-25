@@ -7,7 +7,7 @@ Documento mestre acadêmico (CDD): [docs/GenJutsu_AI_CDD_Completo.md](docs/GenJu
 ## 1. Novo projeto Supabase
 
 1. Crie um projeto em [supabase.com](https://supabase.com).
-2. SQL Editor: rode [`sql/dossiers.sql`](sql/dossiers.sql), [`sql/sessions.sql`](sql/sessions.sql) e [`sql/app_state.sql`](sql/app_state.sql). Se o código de sessão já existia, rode também [`sql/freeze_session_code.sql`](sql/freeze_session_code.sql).
+2. SQL Editor: rode [`sql/dossiers.sql`](sql/dossiers.sql), [`sql/sessions.sql`](sql/sessions.sql), [`sql/app_state.sql`](sql/app_state.sql) e [`sql/admin_read.sql`](sql/admin_read.sql). Se o código de sessão já existia, rode também [`sql/freeze_session_code.sql`](sql/freeze_session_code.sql).
 3. **Authentication → URL configuration**
    - Site URL: `https://SEU-PROJETO.vercel.app`
    - Redirect URLs: `https://SEU-PROJETO.vercel.app/**` e `https://SEU-REF.supabase.co/auth/v1/callback`
@@ -39,9 +39,8 @@ Documento mestre acadêmico (CDD): [docs/GenJutsu_AI_CDD_Completo.md](docs/GenJu
 2. Framework: **Other**. Root: `.`
 3. Environment variables:
    - `SUPABASE_URL`
-   - `SUPABASE_ANON_KEY`
-   - `SUPABASE_SERVICE_ROLE` (só servidor; painel admin)
-   - `ADMIN_SECRET` (senha de https://genjutsuai.vercel.app/admin )
+   - `SUPABASE_ANON_KEY` (chave **anon / publishable** de leitura — não é a secret)
+   - `ADMIN_SECRET` (opcional; senha de `/admin`; se vazio, o PIN é `genjutsu`)
 4. Deploy. A rota `/api/config` entrega essas variáveis ao site.
 5. Depois do primeiro URL, atualize Site URL no Supabase, origins no Google e, se quiser, os links em `privacy.html` / `terms.html`.
 

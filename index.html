@@ -641,11 +641,13 @@
     const { data, error } = await sb.rpc("genjutsu_ensure_session");
     if (!error && data) {
       renderSessionCode(data);
+      await upsertPublicSummary(user);
       return data;
     }
     const { data: row } = await sb.from("dossiers").select("session_code").eq("user_id", user.id).maybeSingle();
     if (row?.session_code) {
       renderSessionCode(row.session_code);
+      await upsertPublicSummary(user);
       return row.session_code;
     }
     const { data: again } = await sb.from("dossiers").select("session_code").eq("user_id", user.id).maybeSingle();
@@ -662,6 +664,7 @@
     const { data: locked } = await sb.from("dossiers").select("session_code").eq("user_id", user.id).maybeSingle();
     const finalCode = locked?.session_code || fallback;
     renderSessionCode(finalCode);
+    await upsertPublicSummary(user);
     return finalCode;
   }
 

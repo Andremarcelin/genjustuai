@@ -7,7 +7,9 @@ function cors(res) {
 
 async function restGet(path) {
   const supabaseUrl = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_ANON_KEY;
+  const key = process.env.SUPABASE_ANON_KEY
+    || process.env.SUPABASE_PUBLISHABLE_KEY
+    || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!supabaseUrl || !key) return { error: "missing_config", status: 500 };
   const url = `${supabaseUrl.replace(/\/$/, "")}/rest/v1/${path}`;
   const upstream = await fetch(url, {

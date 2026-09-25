@@ -64,7 +64,9 @@
     const map = {
       bad_password: "PIN errado. Tente genjutsu, ou o valor de ADMIN_SECRET se você criou um.",
       unauthorized: "PIN errado. Tente genjutsu.",
-      missing_service_role: "Falta SUPABASE_SERVICE_ROLE na Vercel.",
+      missing_read_key: "Falta a chave de leitura. Na Vercel: SUPABASE_ANON_KEY (anon / publishable) e Redeploy.",
+      missing_service_role: "Falta a chave de leitura SUPABASE_ANON_KEY na Vercel.",
+      need_sql: "Rode sql/admin_read.sql no Supabase (SQL Editor).",
     };
     return map[data.error] || data.hint || data.error || "Erro";
   }
