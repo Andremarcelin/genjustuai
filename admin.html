@@ -42,8 +42,14 @@
     <p id="pick-name" style="margin:8px 0 0;font-weight:600">Nenhum</p>
     <p id="pick-code" class="cd" style="margin:6px 0 0">—</p>
   </div>
+  <label class="muted">Ou cole o código de 6 letras (ex. Y2FWQZ)</label>
+  <input type="text" id="manual" maxlength="6" placeholder="Y2FWQZ" style="letter-spacing:0.2em;text-transform:uppercase">
   <button id="save">Iniciar sessão no Quest com este código</button>
   <p class="muted" id="status"></p>
+  <p class="muted" id="sql-help" hidden>
+    No Supabase → SQL Editor, abra <code>sql/admin_read.sql</code> do repo, cole tudo, Run.
+    Sem isso a lista fica vazia (RLS esconde os cadastros).
+  </p>
   <h2>Últimos cadastros</h2>
   <div id="list"></div>
 </div>
@@ -93,9 +99,11 @@
       return;
     }
     const recent = data.recent || [];
-    $("status").textContent = data.current_session_code
-      ? "Quest está em " + data.current_session_code
-      : "Nenhuma sessão no Quest ainda";
+    $("sql-help").hidden = !data.hint;
+    $("status").textContent = data.hint
+      || (data.current_session_code
+        ? "Quest está em " + data.current_session_code
+        : "Nenhuma sessão no Quest ainda");
     $("list").innerHTML = recent.map((r) =>
       `<div class="row" data-c="${r.session_code}" data-n="${(r.display_name || "").replace(/"/g, "")}">
         <div class="nm">${r.display_name || "Sem nome"}</div>
@@ -111,8 +119,10 @@
     else if (data.current_session_code) showPick("Sessão atual", data.current_session_code);
   }
   $("save").onclick = async () => {
+    const typed = $("manual").value.trim().toUpperCase();
+    if (typed) showPick(selected.name || "Código colado", typed);
     if (!selected.code) {
-      $("status").textContent = "Selecione um cadastro na lista.";
+      $("status").textContent = "Selecione um cadastro ou cole o código de 6 caracteres.";
       return;
     }
     let res, data;
