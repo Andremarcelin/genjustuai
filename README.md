@@ -52,3 +52,5 @@ Documento mestre acadêmico (CDD): [docs/GenJutsu_AI_CDD_Completo.md](docs/GenJu
 - `sql/dossiers.sql` — tabela + RLS
 - `sql/sessions.sql` — session_code, interações, conversas, resumo NFC
 - `summary.html` — página pública `/s/CODIGO`
+- `api/session.js` — JSON para o Unity/Quest (`?code=`)
+- [docs/unity-session.md](docs/unity-session.md) — handshake Quest 3S

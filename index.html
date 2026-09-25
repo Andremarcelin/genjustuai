@@ -394,6 +394,14 @@
     color: #ff3030;
   }
   .session-box a { color: #ff6b6b; font-size: 13px; }
+  .session-qr {
+    width: 140px;
+    height: 140px;
+    margin: 10px auto 0;
+    display: none;
+    border-radius: 8px;
+    background: #fff;
+  }
 </style>
 </head>
 <body>
@@ -530,6 +538,7 @@
         <div class="session-box">
           <div class="lbl">Código da sessão (NFC)</div>
           <div class="code" data-session-code>—</div>
+          <img class="session-qr" alt="QR da sessão para o Quest">
           <a class="session-link" href="#" target="_blank" rel="noopener">Abrir resumo</a>
         </div>
         <button class="cta ghost" id="btn-logout">Desconectar</button>
@@ -552,6 +561,7 @@
     <div class="session-box">
       <div class="lbl">Grave este código no NFC</div>
       <div class="code" data-session-code>—</div>
+      <img class="session-qr" alt="QR da sessão para o Quest">
       <a class="session-link" href="#" target="_blank" rel="noopener">Abrir resumo público</a>
     </div>
     <div class="status" id="status-questionnaire"></div>
@@ -564,6 +574,7 @@
     <div class="session-box">
       <div class="lbl">Seu código</div>
       <div class="code" data-session-code>—</div>
+      <img class="session-qr" alt="QR da sessão para o Quest">
     </div>
     <p id="sync-status" style="text-align:center;color:var(--muted)">Conectando...</p>
     <p class="privacy">Coloque o Meta Quest 3S</p>
@@ -590,6 +601,16 @@
     });
     document.querySelectorAll(".session-link").forEach((a) => {
       a.href = sessionCode ? `/s/${sessionCode}` : "#";
+    });
+    const summaryUrl = sessionCode ? `${location.origin}/s/${sessionCode}` : "";
+    document.querySelectorAll(".session-qr").forEach((img) => {
+      if (!summaryUrl) {
+        img.removeAttribute("src");
+        img.style.display = "none";
+        return;
+      }
+      img.src = "https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=" + encodeURIComponent(summaryUrl);
+      img.style.display = "block";
     });
   }
 
