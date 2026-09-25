@@ -648,14 +648,21 @@
       renderSessionCode(row.session_code);
       return row.session_code;
     }
+    const { data: again } = await sb.from("dossiers").select("session_code").eq("user_id", user.id).maybeSingle();
+    if (again?.session_code) {
+      renderSessionCode(again.session_code);
+      return again.session_code;
+    }
     const fallback = randomSessionCode();
     const { error: upErr } = await sb.from("dossiers").upsert(
       { user_id: user.id, session_code: fallback, updated_at: new Date().toISOString() },
       { onConflict: "user_id" }
     );
     if (upErr) console.warn("session_code fallback:", upErr);
-    renderSessionCode(fallback);
-    return fallback;
+    const { data: locked } = await sb.from("dossiers").select("session_code").eq("user_id", user.id).maybeSingle();
+    const finalCode = locked?.session_code || fallback;
+    renderSessionCode(finalCode);
+    return finalCode;
   }
 
   function buildPersonality(user) {
@@ -891,7 +898,6 @@
       dossier_data: globalDossie,
       updated_at: new Date().toISOString()
     };
-    if (sessionCode) row.session_code = sessionCode;
     const { error } = await sb.from("dossiers").upsert(row, { onConflict: "user_id" });
     if (error) throw error;
   }
