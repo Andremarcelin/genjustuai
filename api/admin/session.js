@@ -1,5 +1,4 @@
 const CODE_RE = /^[A-HJ-NP-Z2-9]{6}$/i;
-
 const DEFAULT_PIN = "genjutsu";
 
 function envSecret() {
@@ -31,9 +30,49 @@ function grantCookie(res, secret) {
   );
 }
 
+function readKey() {
+  return (
+    process.env.SUPABASE_ANON_KEY
+    || process.env.SUPABASE_PUBLISHABLE_KEY
+    || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    || process.env.SUPABASE_SERVICE_ROLE
+    || ""
+  );
+}
+
 function restHeaders() {
-  const key = process.env.SUPABASE_SERVICE_ROLE || process.env.SUPABASE_ANON_KEY;
+  const key = readKey();
   return { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json", Prefer: "return=representation" };
+}
+
+function supabaseUrl() {
+  return String(process.env.SUPABASE_URL || "").replace(/\/$/, "");
+}
+
+async function rest(path, options) {
+  const url = `${supabaseUrl()}/rest/v1/${path}`;
+  const upstream = await fetch(url, { ...options, headers: { ...restHeaders(), ...(options?.headers || {}) } });
+  const text = await upstream.text();
+  let json = null;
+  try { json = text ? JSON.parse(text) : null; } catch (e) { json = text; }
+  return { ok: upstream.ok, status: upstream.status, json };
+}
+
+async function listRecent() {
+  const rpc = await rest("rpc/genjutsu_recent_signups", { method: "POST", body: "{}" });
+  if (rpc.ok && Array.isArray(rpc.json)) return rpc.json;
+  const pub = await rest(
+    "session_summaries?select=session_code,display_name,updated_at&order=updated_at.desc&limit=30"
+  );
+  if (pub.ok && Array.isArray(pub.json)) {
+    return pub.json.map((d) => ({
+      session_code: d.session_code,
+      display_name: d.display_name || "Sem nome",
+      email: "",
+      updated_at: d.updated_at,
+    }));
+  }
+  return [];
 }
 
 export default async function handler(req, res) {
@@ -42,33 +81,28 @@ export default async function handler(req, res) {
   if (denied) {
     res.status(401).json({
       error: denied,
-      hint: "PIN padrão: genjutsu. Se você criou ADMIN_SECRET na Vercel, use esse valor.",
+      hint: "PIN padrão: genjutsu.",
     });
     return;
   }
   grantCookie(res, envSecret());
-  const supabaseUrl = (process.env.SUPABASE_URL || "").replace(/\/$/, "");
-  const key = process.env.SUPABASE_SERVICE_ROLE;
-  if (!supabaseUrl || !key) {
-    res.status(501).json({ error: "missing_service_role", hint: "Defina SUPABASE_SERVICE_ROLE e ADMIN_SECRET na Vercel." });
+  if (!supabaseUrl() || !readKey()) {
+    res.status(501).json({
+      error: "missing_read_key",
+      hint: "Na Vercel: SUPABASE_URL + SUPABASE_ANON_KEY (chave publishable / anon de leitura). Redeploy.",
+    });
     return;
   }
 
   if (req.method === "GET") {
-    const list = await fetch(
-      `${supabaseUrl}/rest/v1/dossiers?select=session_code,full_name,email,updated_at&session_code=not.is.null&order=updated_at.desc&limit=30`,
-      { headers: restHeaders() }
-    );
-    const current = await fetch(`${supabaseUrl}/rest/v1/app_state?id=eq.1&select=current_session_code,updated_at`, {
-      headers: restHeaders(),
-    });
-    const dossiers = list.ok ? await list.json() : [];
-    const stateRows = current.ok ? await current.json() : [];
+    const recent = await listRecent();
+    const current = await rest("app_state?id=eq.1&select=current_session_code");
+    const stateRows = current.ok && Array.isArray(current.json) ? current.json : [];
     res.status(200).json({
       current_session_code: stateRows[0]?.current_session_code || null,
-      recent: (Array.isArray(dossiers) ? dossiers : []).map((d) => ({
+      recent: recent.map((d) => ({
         session_code: d.session_code,
-        display_name: d.full_name || d.email || "Sem nome",
+        display_name: d.display_name || d.email || "Sem nome",
         email: d.email || "",
         updated_at: d.updated_at,
       })),
@@ -82,16 +116,19 @@ export default async function handler(req, res) {
       res.status(400).json({ error: "invalid_code" });
       return;
     }
-    const patch = await fetch(`${supabaseUrl}/rest/v1/app_state?id=eq.1`, {
-      method: "PATCH",
-      headers: restHeaders(),
-      body: JSON.stringify({ current_session_code: code, updated_at: new Date().toISOString() }),
+    const set = await rest("rpc/genjutsu_set_current_session", {
+      method: "POST",
+      body: JSON.stringify({ p_code: code }),
     });
-    if (!patch.ok) {
-      res.status(502).json({ error: "upstream", detail: await patch.text() });
+    if (set.ok) {
+      res.status(200).json({ current_session_code: typeof set.json === "string" ? set.json.replace(/"/g, "") : code });
       return;
     }
-    res.status(200).json({ current_session_code: code });
+    res.status(502).json({
+      error: "need_sql",
+      hint: "Rode sql/admin_read.sql no SQL Editor do Supabase.",
+      detail: set.json,
+    });
     return;
   }
 
