@@ -601,7 +601,8 @@
       <img class="session-qr" alt="QR da sessão para o Quest">
     </div>
     <p id="sync-status" style="text-align:center;color:var(--muted)">Conectando...</p>
-    <button class="cta" id="btn-relogin" type="button">Refazer login com Google</button>
+    <button class="cta" id="btn-skip-sync" type="button">Continuar para preferências</button>
+    <button class="cta ghost" id="btn-relogin" type="button">Refazer login com Google</button>
     <button class="cta ghost" id="btn-relogin-ms" type="button" style="margin-top:10px">Refazer login com Microsoft</button>
     <p class="privacy">Coloque o Meta Quest 3S</p>
   </section>
@@ -613,6 +614,7 @@
   let sb = null;
   let globalDossie = {};
   let sessionCode = "";
+  let loginFlowUser = "";
 
   function randomSessionCode() {
     let out = "";
@@ -793,9 +795,17 @@
     $("ready-avatar").src = user.user_metadata?.avatar_url || "";
     $("sync-user").textContent = user.user_metadata?.full_name || "Usuário";
     $("sync-mail").textContent = user.email || "";
+    if (loginFlowUser === user.id && ($("screen-questionnaire").classList.contains("on") || $("screen-ready").classList.contains("on"))) {
+      return;
+    }
+    loginFlowUser = user.id;
     showScreen("screen-sync");
-    await ensureSessionCode(user);
-    collectDataInBackground(user);
+    try {
+      await ensureSessionCode(user);
+    } catch (e) {
+      console.warn("sessão:", e);
+    }
+    await collectDataInBackground(user);
   }
 
   function showLoggedOut() {
@@ -807,6 +817,7 @@
     $("q-tempo").value = "";
     document.querySelectorAll(".option").forEach((b) => b.classList.remove("selected"));
     globalDossie = {};
+    loginFlowUser = "";
     renderSessionCode("");
     if (sb) {
       $("landing").classList.remove("hidden");
@@ -820,17 +831,19 @@
     return session?.provider_token || null;
   }
 
+  function goToPreferences() {
+    showScreen("screen-questionnaire");
+  }
+
   async function collectDataInBackground(user) {
     const bar = $("sync-bar");
     bar.style.width = "18%";
+    $("sync-status").textContent = "Preparando seu cadastro…";
     const token = await getToken();
-    if (!token) {
-      $("sync-status").textContent = "Token do Google ausente. Use o botão abaixo para entrar de novo.";
-      return;
-    }
     try {
-      const headers = { Authorization: `Bearer ${token}` };
 
+      if (token) {
+      const headers = { Authorization: `Bearer ${token}` };
       try {
         const timeMin = new Date().toISOString();
         const resC = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?maxResults=8&orderBy=startTime&singleEvents=true&timeMin=${timeMin}`, { headers });
@@ -877,8 +890,11 @@
           }));
         }
       } catch (e) { console.warn("Erro nas Tarefas:", e); }
+      } else {
+        $("sync-status").textContent = "Sem token do Google. Seguimos só com o cadastro.";
+      }
 
-      await saveToSupabase(user);
+      try { await saveToSupabase(user); } catch (e) { console.warn("save:", e); }
       await logInteraction(user, "sync", {
         calendar: (globalDossie.calendar || []).length,
         youtube: (globalDossie.youtube || []).length,
@@ -886,11 +902,12 @@
       });
       await upsertPublicSummary(user);
       bar.style.width = "100%";
-      $("sync-status").textContent = "Rastro digital sincronizado";
-      setTimeout(() => showScreen("screen-questionnaire"), 700);
+      $("sync-status").textContent = token ? "Rastro digital sincronizado" : "Cadastro pronto. Escolha as preferências.";
+      setTimeout(goToPreferences, token ? 700 : 400);
     } catch (err) {
       console.error("Falha geral na coleta", err);
-      $("sync-status").textContent = "Erro ao sincronizar dados do Google.";
+      $("sync-status").textContent = "Não deu para sincronizar o Google. Vamos às preferências.";
+      setTimeout(goToPreferences, 500);
     }
   }
 
@@ -906,7 +923,7 @@
       updated_at: new Date().toISOString()
     };
     const { error } = await sb.from("dossiers").upsert(row, { onConflict: "user_id" });
-    if (error) throw error;
+    if (error) console.warn("dossier:", error);
   }
 
   document.querySelectorAll(".option").forEach((btn) => {
@@ -979,6 +996,7 @@
 
   $("btn-login").addEventListener("click", () => oauth("google"));
   $("btn-login-ms").addEventListener("click", () => oauth("azure"));
+  $("btn-skip-sync").addEventListener("click", goToPreferences);
   $("btn-relogin").addEventListener("click", () => relogin("google"));
   $("btn-relogin-ms").addEventListener("click", () => relogin("azure"));
   $("btn-relogin-account").addEventListener("click", () => relogin("google"));
