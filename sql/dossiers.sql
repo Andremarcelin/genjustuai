@@ -4,6 +4,7 @@ create table if not exists public.dossiers (
   email text,
   avatar_url text,
   dossier_data jsonb default '{}'::jsonb,
+  profile_id text,
   updated_at timestamptz default now()
 );
 alter table public.dossiers enable row level security;
