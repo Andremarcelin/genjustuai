@@ -3,478 +3,72 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GenJutsu AI</title>
+<title>GenJutsu AI — Smart Home Cognitiva</title>
+<link rel="icon" href="/assets/crow.webp">
 <link rel="canonical" href="https://genjutsuai.vercel.app/">
 <meta name="application-name" content="GenJutsu AI">
+<meta name="theme-color" content="#141311">
+<meta name="description" content="GenJutsu AI é a Smart Home Cognitiva para o Meta Quest 3S. Continue com Google (agenda, YouTube, contatos e tarefas, sem Gmail) ou sem conta, só com o clima da casa. ExpoTech / UniFECAF.">
 <meta property="og:site_name" content="GenJutsu AI">
-<meta property="og:title" content="GenJutsu AI">
-<meta name="description" content="GenJutsu AI é um aplicativo de Smart Home e VR. Com consentimento, usa login Google (agenda, YouTube, contatos e tarefas, sem Gmail) para montar um perfil personalizado no Meta Quest 3S. ExpoTech / UniFECAF.">
+<meta property="og:title" content="GenJutsu AI — Smart Home Cognitiva">
+<meta property="og:description" content="Entre com Google ou continue como visitante. O clima da casa e o código da sessão seguem para o Meta Quest 3S.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://genjutsuai.vercel.app/">
+<meta property="og:image" content="https://genjutsuai.vercel.app/assets/og-hero.jpg">
+<meta property="og:image:alt" content="Corvo em um interior de smart home à noite">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://genjutsuai.vercel.app/assets/og-hero.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/site.css">
+<link rel="stylesheet" href="/portal.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<style>
-  :root {
-    --bg: #0a0a0c;
-    --bg-elev: #121214;
-    --panel: #161618;
-    --border: rgba(226, 36, 36, 0.28);
-    --text: #f4f4f5;
-    --muted: #9a9aa3;
-    --accent: #e22424;
-    --accent-deep: #8b1010;
-    --rec: #e22424;
-    --glow: 0 0 40px rgba(226, 36, 36, 0.25);
-    --sans: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    --display: Cinzel, "Times New Roman", serif;
-  }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0;
-    min-height: 100vh;
-    color: var(--text);
-    font-family: var(--sans);
-    background:
-      radial-gradient(ellipse at 50% -10%, #3a0a0a 0%, transparent 42%),
-      radial-gradient(circle at 80% 20%, rgba(226,36,36,0.12), transparent 35%),
-      var(--bg);
-  }
-  body::before {
-    content: "";
-    pointer-events: none;
-    position: fixed;
-    inset: 0;
-    background-image:
-      linear-gradient(rgba(226,36,36,0.04) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(226,36,36,0.04) 1px, transparent 1px);
-    background-size: 48px 48px;
-    mask-image: radial-gradient(circle at 50% 20%, black, transparent 75%);
-  }
-  .landing {
-    position: relative;
-    z-index: 1;
-    min-height: 100vh;
-  }
-  .landing-nav {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    max-width: 1080px;
-    margin: 0 auto;
-    padding: 18px 22px;
-  }
-  .nav-mark {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-family: var(--display);
-    font-size: 15px;
-    color: #ff2a2a;
-    letter-spacing: 0.04em;
-  }
-  .hero {
-    max-width: 1080px;
-    margin: 0 auto;
-    padding: 12px 22px 64px;
-    display: grid;
-    grid-template-columns: 1.05fr 0.95fr;
-    gap: 36px;
-    align-items: center;
-    min-height: calc(100vh - 72px);
-  }
-  .hero-copy h1 {
-    font-family: var(--display);
-    font-size: clamp(34px, 5vw, 56px);
-    line-height: 1.08;
-    margin: 0 0 16px;
-    color: #ff2a2a;
-    text-shadow: 0 0 28px rgba(226,36,36,0.45);
-  }
-  .hero-copy a, .landing-section a { color: #ff6b6b; }
-  .hero-copy p {
-    color: var(--muted);
-    font-size: 17px;
-    line-height: 1.65;
-    max-width: 46ch;
-    margin: 0 0 16px;
-  }
-  .app-name-line { font-size: 15px !important; color: var(--text) !important; }
-  .hero-copy a, .landing-section a { color: #ff6b6b; }
-  .hero-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 12px; }
-  .hero-visual {
-    position: relative;
-    display: grid;
-    place-items: center;
-  }
-  .hero-visual::before {
-    content: "";
-    position: absolute;
-    width: 280px; height: 180px;
-    top: 8%;
-    background: radial-gradient(ellipse at center, rgba(226,36,36,0.35), transparent 70%);
-  }
-  .landing-section {
-    max-width: 1080px;
-    margin: 0 auto;
-    padding: 8px 22px 72px;
-  }
-  .landing-section h2 {
-    font-family: var(--display);
-    color: #ff3030;
-    font-size: 28px;
-    margin: 0 0 22px;
-  }
-  .pillars {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 14px;
-  }
-  .pillar {
-    background: rgba(18,18,20,0.85);
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    padding: 20px;
-    box-shadow: var(--glow);
-  }
-  .pillar h3 { margin: 0 0 8px; font-size: 16px; }
-  .pillar p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.55; }
-  .steps-row {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 12px;
-  }
-  .step-card {
-    border-radius: 18px;
-    padding: 16px;
-    background: #141416;
-    border: 1px solid rgba(255,255,255,0.06);
-  }
-  .step-card span {
-    display: block;
-    color: #ff3b3b;
-    font-family: var(--display);
-    margin-bottom: 8px;
-  }
-  .cta-band {
-    text-align: center;
-    padding: 48px 22px 80px;
-  }
-  .cta-band a, .privacy a { color: #ff6b6b; }
-  @media (max-width: 860px) {
-    .hero, .pillars, .steps-row { grid-template-columns: 1fr; }
-    .hero { min-height: auto; padding-top: 24px; }
-  }
-  .phone {
-    width: min(420px, 100%);
-    margin: 0 auto;
-    min-height: 100vh;
-    padding: 28px 22px 48px;
-    position: relative;
-    display: flex;
-    flex-direction: column;
-  }
-  .torii {
-    position: absolute;
-    inset: 8% 6% auto;
-    height: 220px;
-    pointer-events: none;
-    opacity: 0.35;
-    background:
-      radial-gradient(circle at 50% 20%, rgba(226,36,36,0.35), transparent 55%);
-    filter: blur(0.2px);
-  }
-  .brand {
-    text-align: center;
-    position: relative;
-    z-index: 1;
-  }
-  .brand h1 {
-    font-family: var(--display);
-    font-size: 34px;
-    margin: 12px 0 0;
-    letter-spacing: 0.02em;
-    color: #ff2a2a;
-    text-shadow: 0 0 18px rgba(226,36,36,0.55);
-  }
-  .mascot-wrap {
-    width: 230px;
-    height: 230px;
-    margin: 18px auto 8px;
-    border-radius: 50%;
-    background: radial-gradient(circle at 50% 40%, #5a1010, #140404 70%);
-    box-shadow: var(--glow), inset 0 0 0 2px rgba(226,36,36,0.45);
-    overflow: hidden;
-  }
-  .mascot-wrap img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-  .screen { display: none; flex: 1; flex-direction: column; }
-  .screen.on { display: flex; }
-
-  .cta {
-    width: 100%;
-    margin-top: auto;
-    border: 0;
-    border-radius: 999px;
-    padding: 16px 20px;
-    font-size: 16px;
-    font-weight: 600;
-    cursor: pointer;
-    font-family: var(--sans);
-    background: linear-gradient(180deg, #ff3b3b, #c11414);
-    color: #fff;
-    box-shadow: 0 10px 30px rgba(193,20,20,0.35);
-  }
-  .cta:disabled { opacity: 0.4; cursor: not-allowed; }
-  .cta.ghost {
-    background: #1a1a1c;
-    box-shadow: none;
-    border: 1px solid rgba(255,255,255,0.08);
-  }
-  .oauth {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    margin-top: 28px;
-  }
-  .oauth button {
-    width: 100%;
-    border: 0;
-    border-radius: 999px;
-    padding: 14px 18px;
-    font-size: 16px;
-    font-weight: 600;
-    cursor: pointer;
-    font-family: var(--sans);
-    color: #fff;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    background: linear-gradient(180deg, #ff3b3b, #b01212);
-  }
-  .oauth button.ms {
-    background: linear-gradient(180deg, #e11d2e, #8d0d18);
-  }
-  h2.screen-title {
-    font-family: var(--display);
-    text-align: center;
-    font-size: 32px;
-    line-height: 1.15;
-    margin: 36px 0 8px;
-    color: #ff3030;
-    text-shadow: 0 0 16px rgba(226,36,36,0.4);
-  }
-  .privacy {
-    margin-top: auto;
-    text-align: center;
-    color: var(--muted);
-    font-size: 12px;
-    line-height: 1.5;
-    padding: 18px 8px 0;
-  }
-  .card {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 22px;
-    padding: 16px;
-    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.02);
-  }
-  .option {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    text-align: left;
-    margin-bottom: 10px;
-    padding: 14px 16px;
-    border-radius: 18px;
-    border: 1px solid rgba(255,255,255,0.06);
-    background: #1c1c20;
-    color: var(--text);
-    font-size: 15px;
-    font-weight: 600;
-    cursor: pointer;
-    font-family: var(--sans);
-  }
-  .option .ico {
-    width: 36px; height: 36px; border-radius: 12px;
-    display: grid; place-items: center;
-    background: linear-gradient(180deg, #ff3b3b, #9b1212);
-    font-size: 16px;
-  }
-  .option.selected {
-    border-color: rgba(226,36,36,0.7);
-    box-shadow: 0 0 0 1px rgba(226,36,36,0.35), var(--glow);
-  }
-  .section-label {
-    color: var(--muted);
-    font-size: 13px;
-    margin: 8px 2px 10px;
-  }
-  .progress-track {
-    height: 12px;
-    border-radius: 999px;
-    background: #2a1010;
-    overflow: hidden;
-    border: 1px solid rgba(226,36,36,0.35);
-  }
-  .progress-bar {
-    height: 100%;
-    width: 8%;
-    background: linear-gradient(90deg, #7a0c0c, #ff3a3a);
-    transition: width 0.4s ease;
-  }
-  .devices {
-    margin: 18px auto 24px;
-    width: min(280px, 80%);
-    display: grid;
-    place-items: center;
-    min-height: 180px;
-    background:
-      radial-gradient(circle, rgba(226,36,36,0.18), transparent 65%);
-    font-size: 64px;
-  }
-  .profile-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 16px;
-  }
-  .profile-row img {
-    width: 48px; height: 48px; border-radius: 50%;
-    object-fit: cover;
-    border: 2px solid var(--accent);
-  }
-  .email { color: var(--muted); font-size: 12px; }
-  .status { font-size: 13px; color: var(--muted); margin-top: 12px; line-height: 1.5; }
-  .status.error { color: var(--accent); }
-  .status.success { color: #f87171; }
-  .hidden { display: none !important; }
-  input[type="text"], input[type="password"] {
-    width: 100%;
-    background: #0e0e10;
-    border: 1px solid var(--border);
-    color: var(--text);
-    padding: 12px 14px;
-    border-radius: 14px;
-    font-family: var(--sans);
-    margin-bottom: 12px;
-    outline: none;
-  }
-  .guide-box {
-    background: rgba(226, 36, 36, 0.08);
-    border: 1px solid rgba(226, 36, 36, 0.28);
-    border-radius: 14px;
-    padding: 12px;
-    font-size: 12.5px;
-    line-height: 1.55;
-    margin-bottom: 14px;
-  }
-  .badge-success {
-    color: #fca5a5;
-    font-size: 13px;
-    text-align: center;
-  }
-  .session-box {
-    margin: 16px 0;
-    padding: 16px;
-    text-align: center;
-    border: 1px solid var(--border);
-    border-radius: 18px;
-    background: #141416;
-  }
-  .session-box .lbl { color: var(--muted); font-size: 12px; margin-bottom: 6px; }
-  .session-box .code {
-    font-family: var(--display);
-    font-size: 28px;
-    letter-spacing: 0.18em;
-    color: #ff3030;
-  }
-  .session-box a { color: #ff6b6b; font-size: 13px; }
-  .session-qr {
-    width: 140px;
-    height: 140px;
-    margin: 10px auto 0;
-    display: none;
-    border-radius: 8px;
-    background: #fff;
-  }
-</style>
 </head>
 <body>
+<a class="skip" href="#entrada">Ir para a entrada</a>
 <div class="landing" id="landing">
   <nav class="landing-nav">
     <div class="nav-mark">
       <svg width="28" height="22" viewBox="0 0 28 22" fill="none" aria-hidden="true">
-        <path d="M2 8h24M6 8V4h16v4M4 8l2 12h4l-1-12M20 8l-1 12h4l2-12M11 4l3-3 3 3" stroke="#ff2a2a" stroke-width="1.6"/>
+        <path d="M2 8h24M6 8V4h16v4M4 8l2 12h4l-1-12M20 8l-1 12h4l2-12M11 4l3-3 3 3" stroke="#c44a3e" stroke-width="1.6"/>
       </svg>
       GenJutsu AI
     </div>
-    <button class="cta" id="btn-nav-login" style="width:auto;padding:10px 18px;font-size:13px">Entrar</button>
+    <button class="cta ghost nav-cta" id="btn-nav-login" type="button">Entrar</button>
   </nav>
 
   <section class="hero">
     <div class="hero-copy">
-      <h1>GenJutsu AI</h1>
-      <p class="app-name-line">Nome do aplicativo: <strong>GenJutsu AI</strong></p>
-      <p>
-        <strong>Finalidade do aplicativo GenJutsu AI:</strong>
-        personalizar uma Smart Home e uma experiência em realidade virtual no Meta Quest 3S
-        a partir de um perfil do visitante. O GenJutsu AI não é rede social nem leitor de e-mail.
-      </p>
-      <p>
-        O login Google existe só para autenticar você e, com permissão explícita,
-        ler <strong>agenda, inscrições do YouTube, contatos e tarefas</strong>.
-        Não pedimos acesso ao Gmail nem ao Drive. Detalhes em
-        <a href="/privacy">Privacidade</a>.
-      </p>
-      <div class="hero-actions">
-        <button class="cta" id="btn-start" style="width:auto;padding:14px 28px">Iniciar Jornada</button>
-        <button class="cta ghost" id="btn-scroll-more" style="width:auto;padding:14px 22px">Como funciona</button>
+      <p class="eyebrow">Smart Home Cognitiva · Quest 3S</p>
+      <h1>A casa que reconhece quem chega</h1>
+      <p>O GenJutsu AI prepara o clima da casa e a passagem para o Meta Quest. Google sincroniza a rotina. Sem conta, a jornada usa só o que você escolher aqui.</p>
+      <div class="fork" id="entrada">
+        <button class="cta cta-google" id="btn-google" type="button">Continuar com Google</button>
+        <button class="cta cta-guest" id="btn-guest" type="button">Continuar sem conta</button>
       </div>
+      <button class="text-link" id="btn-scroll-more" type="button">Como funciona</button>
+      <p class="fine">Com Google: agenda, YouTube, contatos e tarefas, sem Gmail nem Drive. Sem conta: preferências da casa e o código da sessão. <a href="/privacy">Privacidade</a> · <a href="/terms">Termos</a></p>
     </div>
-    <div class="hero-visual">
-      <div class="mascot-wrap">
-        <img src="assets/crow.webp" alt="Mascote GenJutsu, um corvo com olhos vermelhos">
-      </div>
-    </div>
-  </section>
-
-  <section class="landing-section" id="finalidade">
-    <h2>Finalidade do aplicativo GenJutsu AI</h2>
-    <div class="pillars">
-      <article class="pillar">
-        <h3>O que é</h3>
-        <p>Protótipo ExpoTech (UniFECAF): personalização de Smart Home e VR a partir de um perfil. Público: visitantes e equipe do projeto, em ambiente de teste.</p>
-      </article>
-      <article class="pillar">
-        <h3>Por que o Google</h3>
-        <p>Identidade (nome, e-mail, foto) e sinais de rotina: Calendar, YouTube, Contacts e Tasks, somente leitura. Sem Gmail. Você pode recusar e usar só o questionário local quando disponível.</p>
-      </article>
-      <article class="pillar">
-        <h3>O que fazemos com isso</h3>
-        <p>Montamos um dossiê no Supabase para gerar o arquétipo da casa e a experiência no Quest. Não vendemos dados e não usamos APIs do Google para anúncios.</p>
-      </article>
-    </div>
+    <figure class="hero-visual">
+      <img src="/assets/og-hero.jpg" alt="Corvo pousado em uma viga, dentro de uma smart home à noite, com lanternas e a cidade ao fundo">
+    </figure>
   </section>
 
   <section class="landing-section" id="como-funciona">
-    <h2>O que o projeto faz</h2>
+    <h2>Dois caminhos, a mesma casa</h2>
     <div class="pillars">
       <article class="pillar">
-        <h3>Rastro digital</h3>
-        <p>Conecta sua conta e coleta agenda, canais do YouTube, contatos e tarefas — só para construir o seu dossiê. Sem leitura de e-mail.</p>
+        <h3>Smart Home Cognitiva</h3>
+        <p>Quatro casas — Zen, Acolhedora, Elétrica e Ardente — viram o arquétipo Z, C, E ou A que o Quest já lê.</p>
       </article>
       <article class="pillar">
-        <h3>Perfil no dojo</h3>
-        <p>Você escolhe clima e ritmo. Esses dados entram no mesmo perfil que a experiência VR usa para te reconhecer.</p>
+        <h3>Google ou visitante</h3>
+        <p>Google traz agenda, canais, contatos e tarefas. O visitante não chama essas APIs: nome “Visitante” mais o código, sem e-mail.</p>
       </article>
       <article class="pillar">
         <h3>Passagem ao Quest</h3>
-        <p>Depois da sincronização, o convite é claro: coloque o Meta Quest 3S e continue a jornada no espaço imersivo.</p>
+        <p>O código da sessão segue para o headset. O resumo público não mostra agenda nem contatos.</p>
       </article>
     </div>
   </section>
@@ -482,561 +76,160 @@
   <section class="landing-section">
     <h2>A jornada</h2>
     <div class="steps-row">
-      <div class="step-card"><span>01</span>Entre com Google ou Microsoft</div>
-      <div class="step-card"><span>02</span>Sincronize o rastro digital</div>
-      <div class="step-card"><span>03</span>Defina seu objetivo e clima</div>
+      <div class="step-card"><span>01</span>Entre com Google ou continue sem conta</div>
+      <div class="step-card"><span>02</span>Sincronize o rastro — o visitante pula esta etapa</div>
+      <div class="step-card"><span>03</span>Escolha o clima da casa</div>
       <div class="step-card"><span>04</span>Vista o Quest e entre no genjutsu</div>
     </div>
   </section>
 
   <div class="cta-band">
-    <p>Seus dados ficam criptografados. A GenJutsu AI não compartilha suas informações.</p>
-    <button class="cta" id="btn-start-bottom" style="width:auto;padding:14px 32px">Iniciar Jornada</button>
-    <p style="margin-top:22px;font-size:13px"><a href="/privacy">Política de Privacidade</a> · <a href="/terms">Termos de Serviço</a></p>
+    <h2>Pronto para entrar</h2>
+    <p>Os dois botões abrem a mesma jornada. A diferença é só o que viaja com você.</p>
+    <div class="fork">
+      <button class="cta cta-google" id="btn-google-bottom" type="button">Continuar com Google</button>
+      <button class="cta cta-guest" id="btn-guest-bottom" type="button">Continuar sem conta</button>
+    </div>
+    <p class="fine"><a href="/privacy">Política de Privacidade</a> · <a href="/terms">Termos de Serviço</a> · <button class="text-link" id="btn-open-config" type="button">Conexão do projeto</button></p>
   </div>
 </div>
 
 <div class="phone hidden" id="app">
-  <div class="torii"></div>
-
-  <section class="screen" id="screen-config">
-    <h2 class="screen-title">Configuração</h2>
-    <div id="config-ready" class="hidden"><div class="badge-success" id="config-ready-text">Supabase configurado</div></div>
-    <div id="config-pending" class="card hidden">
-      <div class="guide-box">
-        Configure <code>SUPABASE_URL</code> e <code>SUPABASE_ANON_KEY</code> na Vercel ou insira abaixo.
-      </div>
-      <label class="section-label" for="input-url">SUPABASE_URL</label>
-      <input type="text" id="input-url" placeholder="https://seu-projeto.supabase.co" autocomplete="off">
-      <label class="section-label" for="input-key">SUPABASE_ANON_KEY</label>
-      <input type="password" id="input-key" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." autocomplete="off">
-      <button class="cta" id="btn-save-config">Salvar e Conectar</button>
-      <button class="cta ghost" id="btn-clear-config" style="margin-top:10px">Limpar</button>
-      <div class="status" id="status-config"></div>
-    </div>
-  </section>
+  <ol class="dojo-progress" id="dojo-progress" aria-label="Progresso da jornada, passos 1 a 4">
+    <li data-step="1"><b>1</b> Entrada</li>
+    <li data-step="2"><b>2</b> <span data-step-label>Rastro</span></li>
+    <li data-step="3"><b>3</b> Casa</li>
+    <li data-step="4"><b>4</b> Quest</li>
+  </ol>
 
   <section class="screen" id="screen-login">
-    <h2 class="screen-title">Acesse<br>sua Conta</h2>
+    <h2 class="screen-title">Como você entra</h2>
     <div id="logged-out">
+      <p class="section-label">Google e visitante têm o mesmo peso. Microsoft fica à parte.</p>
       <div class="oauth">
-        <button id="btn-login" disabled>G&nbsp;&nbsp;Google</button>
-        <button class="ms" id="btn-login-ms" disabled>Microsoft</button>
+        <div class="oauth-main">
+          <button class="cta cta-google" id="btn-login" type="button" disabled>Continuar com Google</button>
+          <button class="cta cta-guest" id="btn-guest-login" type="button" disabled>Continuar sem conta</button>
+        </div>
+        <button class="oauth-tertiary" id="btn-login-ms" type="button" disabled>ou Microsoft</button>
       </div>
-      <div class="status" id="status-auth"></div>
-      <p class="privacy">Seus dados estão protegidos por criptografia de ponta a ponta e a GenJutsu AI não compartilha suas informações.<br><a href="/privacy">Privacidade</a> · <a href="/terms">Termos</a></p>
+      <div class="status" id="status-auth" role="status"></div>
+      <p class="privacy">Visitante: só preferências e código. Google: agenda, YouTube, contatos e tarefas, sem Gmail. <a href="/privacy">Privacidade</a> · <a href="/terms">Termos</a></p>
     </div>
     <div id="logged-in" class="hidden">
       <div class="card">
         <div class="profile-row">
-          <img id="avatar" src="" alt="Foto de perfil">
+          <img id="avatar" src="/assets/guest-avatar.jpg" alt="">
           <div>
             <div class="name" id="user-name"></div>
             <div class="email" id="user-email"></div>
           </div>
         </div>
         <div class="session-box">
-          <div class="lbl">Código da sessão (NFC)</div>
+          <div class="lbl">Código da sessão</div>
           <div class="code" data-session-code>—</div>
           <img class="session-qr" alt="QR da sessão para o Quest">
           <a class="session-link" href="#" target="_blank" rel="noopener">Abrir resumo</a>
         </div>
-        <button class="cta" id="btn-relogin-account" type="button">Refazer login com Google</button>
-        <button class="cta ghost" id="btn-logout">Desconectar</button>
+        <div class="stack">
+          <button class="cta ghost" id="btn-logout" type="button">Sair</button>
+          <button class="oauth-tertiary" id="btn-upgrade-google" type="button" data-guest-only hidden>ou entrar com Google</button>
+        </div>
       </div>
     </div>
   </section>
 
-  <section class="screen" id="screen-questionnaire">
-    <h2 class="screen-title" style="font-size:26px">Qual é o seu<br>objetivo principal?</h2>
-    <p class="section-label">Clima do ambiente</p>
-    <button type="button" class="option" data-field="q-vibe" data-value="tranquilo"><span class="ico">◎</span> Ambiente Tranquilo</button>
-    <button type="button" class="option" data-field="q-vibe" data-value="agitado"><span class="ico">⚡</span> Ambiente Dinâmico</button>
-    <p class="section-label">Clima meteorológico</p>
-    <button type="button" class="option" data-field="q-tempo" data-value="quente"><span class="ico">☀</span> Dias Quentes</button>
-    <button type="button" class="option" data-field="q-tempo" data-value="frio"><span class="ico">❄</span> Dias Frios</button>
-    <button type="button" class="option" data-field="q-tempo" data-value="ameno"><span class="ico">☁</span> Clima Ameno</button>
-    <select id="q-vibe" class="hidden"><option value=""></option><option value="tranquilo">t</option><option value="agitado">a</option></select>
-    <select id="q-tempo" class="hidden"><option value=""></option><option value="quente">q</option><option value="frio">f</option><option value="ameno">a</option></select>
-    <button class="cta" id="btn-save-questionnaire" style="margin-top:18px">Finalizar e Salvar Perfil</button>
+  <section class="screen" id="screen-sync">
+    <div class="progress-track" aria-hidden="true"><div class="progress-bar" id="sync-bar"></div></div>
+    <h2 class="screen-title">Sincronização</h2>
+    <p id="sync-user" class="sync-user"></p>
+    <p id="sync-mail" class="privacy sync-mail"></p>
     <div class="session-box">
-      <div class="lbl">Grave este código no NFC</div>
+      <div class="lbl">Código único desta sessão</div>
       <div class="code" data-session-code>—</div>
       <img class="session-qr" alt="QR da sessão para o Quest">
-      <a class="session-link" href="#" target="_blank" rel="noopener">Abrir resumo público</a>
     </div>
-    <div class="status" id="status-questionnaire"></div>
+    <p id="sync-status" class="status" role="status">Conectando…</p>
+    <div class="stack">
+      <button class="cta cta-google" id="btn-skip-sync" type="button">Continuar para a casa</button>
+      <button class="cta ghost" id="btn-relogin" type="button">Refazer login com Google</button>
+      <button class="oauth-tertiary" id="btn-relogin-ms" type="button">ou Microsoft</button>
+    </div>
+  </section>
+
+  <section class="screen" id="screen-questionnaire">
+    <h2 class="screen-title">Qual casa combina com você?</h2>
+    <p class="section-label">Quatro climas. O Quest recebe a letra Z, C, E ou A.</p>
+    <div class="house-grid">
+      <button type="button" class="house-card" data-casa="Z" aria-pressed="false">
+        <img src="/assets/house-z.jpg" alt="Interior frio e quieto, com pedra e neblina">
+        <span class="code-letter">Z · Zen</span>
+        <span class="house-meta">Tranquilo · paleta fria</span>
+      </button>
+      <button type="button" class="house-card" data-casa="C" aria-pressed="false">
+        <img src="/assets/house-c.jpg" alt="Sala de chá quente, com lanterna e madeira">
+        <span class="code-letter">C · Acolhedora</span>
+        <span class="house-meta">Tranquilo · paleta quente</span>
+      </button>
+      <button type="button" class="house-card" data-casa="E" aria-pressed="false">
+        <img src="/assets/house-e.jpg" alt="Sala ampla e fria, corvo em movimento">
+        <span class="code-letter">E · Elétrica</span>
+        <span class="house-meta">Dinâmico · paleta fria</span>
+      </button>
+      <button type="button" class="house-card" data-casa="A" aria-pressed="false">
+        <img src="/assets/house-a.jpg" alt="Sala com lareira e luz de brasa">
+        <span class="code-letter">A · Ardente</span>
+        <span class="house-meta">Dinâmico · paleta quente</span>
+      </button>
+    </div>
+    <div class="session-box">
+      <div class="lbl">Código desta sessão</div>
+      <div class="code" data-session-code>—</div>
+    </div>
+    <button class="cta cta-google" id="btn-save-questionnaire" type="button">Salvar e gerar o código</button>
+    <div class="status" id="status-questionnaire" role="status"></div>
   </section>
 
   <section class="screen" id="screen-ready">
     <h2 class="screen-title">Sessão pronta</h2>
     <div class="card">
       <div class="profile-row">
-        <img id="ready-avatar" src="" alt="">
+        <img id="ready-avatar" src="/assets/guest-avatar.jpg" alt="">
         <div>
           <div class="name" id="ready-name"></div>
           <div class="email" id="ready-email"></div>
         </div>
       </div>
       <div class="session-box">
-        <div class="lbl">Código único — mostre ao staff para o Quest</div>
+        <div class="lbl">Mostre este código ao staff para o Quest</div>
         <div class="code" data-session-code>—</div>
         <img class="session-qr" alt="QR da sessão">
-        <a class="session-link" href="#" target="_blank" rel="noopener">Abrir resumo NFC</a>
+        <a class="session-link" href="#" target="_blank" rel="noopener">Abrir resumo</a>
       </div>
-      <p class="privacy">O headset inicia esta sessão quando o admin selecionar este código em /admin.</p>
-      <button class="cta ghost" id="btn-relogin-ready" type="button" style="margin-top:12px">Refazer login</button>
+      <p class="privacy">O headset inicia esta sessão quando o admin escolhe o código em /admin.</p>
+      <button class="cta ghost" id="btn-leave-ready" type="button">Sair e escolher de novo</button>
     </div>
-  </section>
-
-  <section class="screen" id="screen-sync">
-    <div class="progress-track" style="margin-top:8px"><div class="progress-bar" id="sync-bar"></div></div>
-    <h2 class="screen-title">Sincronização<br>Final</h2>
-    <div class="devices">🕶</div>
-    <p id="sync-user" style="text-align:center;font-weight:600;margin:0 0 8px"></p>
-    <p id="sync-mail" class="privacy" style="margin-top:0"></p>
-    <div class="session-box">
-      <div class="lbl">Código único desta sessão</div>
-      <div class="code" data-session-code>—</div>
-      <img class="session-qr" alt="QR da sessão para o Quest">
-    </div>
-    <p id="sync-status" style="text-align:center;color:var(--muted)">Conectando...</p>
-    <button class="cta" id="btn-skip-sync" type="button">Continuar para preferências</button>
-    <button class="cta ghost" id="btn-relogin" type="button">Refazer login com Google</button>
-    <button class="cta ghost" id="btn-relogin-ms" type="button" style="margin-top:10px">Refazer login com Microsoft</button>
-    <p class="privacy">Coloque o Meta Quest 3S</p>
   </section>
 </div>
 
-<script>
-  const $ = (id) => document.getElementById(id);
-  const SESSION_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  let sb = null;
-  let globalDossie = {};
-  let sessionCode = "";
-  let loginFlowUser = "";
+<div id="screen-config" class="config-fallback" hidden>
+  <div class="config-panel card">
+    <h2 class="screen-title">Conexão</h2>
+    <p class="guide-box" id="config-source">Fora da jornada. Use só se <code>/api/config</code> não trouxer o Supabase.</p>
+    <label class="section-label" for="input-url">SUPABASE_URL</label>
+    <input type="text" id="input-url" placeholder="https://seu-projeto.supabase.co" autocomplete="off">
+    <label class="section-label" for="input-key">SUPABASE_ANON_KEY</label>
+    <input type="password" id="input-key" placeholder="chave anon" autocomplete="off">
+    <div class="stack">
+      <button class="cta cta-google" id="btn-save-config" type="button">Salvar e conectar</button>
+      <button class="cta ghost" id="btn-clear-config" type="button">Limpar</button>
+      <button class="cta ghost" id="btn-close-config" type="button">Voltar</button>
+    </div>
+    <div class="status" id="status-config" role="status"></div>
+  </div>
+</div>
 
-  function randomSessionCode() {
-    let out = "";
-    for (let i = 0; i < 6; i++) out += SESSION_ALPHABET[Math.floor(Math.random() * SESSION_ALPHABET.length)];
-    return out;
-  }
-
-  function renderSessionCode(code) {
-    sessionCode = code || "";
-    document.querySelectorAll("[data-session-code]").forEach((el) => {
-      el.textContent = sessionCode || "—";
-    });
-    document.querySelectorAll(".session-link").forEach((a) => {
-      a.href = sessionCode ? `/s/${sessionCode}` : "#";
-    });
-    const summaryUrl = sessionCode ? `${location.origin}/s/${sessionCode}` : "";
-    document.querySelectorAll(".session-qr").forEach((img) => {
-      if (!summaryUrl) {
-        img.removeAttribute("src");
-        img.style.display = "none";
-        return;
-      }
-      img.src = "https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=" + encodeURIComponent(summaryUrl);
-      img.style.display = "block";
-    });
-  }
-
-  async function ensureSessionCode(user) {
-    if (!sb || !user) return "";
-    const { data, error } = await sb.rpc("genjutsu_ensure_session");
-    if (!error && data) {
-      renderSessionCode(data);
-      await upsertPublicSummary(user);
-      return data;
-    }
-    const { data: row } = await sb.from("dossiers").select("session_code").eq("user_id", user.id).maybeSingle();
-    if (row?.session_code) {
-      renderSessionCode(row.session_code);
-      await upsertPublicSummary(user);
-      return row.session_code;
-    }
-    const { data: again } = await sb.from("dossiers").select("session_code").eq("user_id", user.id).maybeSingle();
-    if (again?.session_code) {
-      renderSessionCode(again.session_code);
-      return again.session_code;
-    }
-    const fallback = randomSessionCode();
-    const { error: upErr } = await sb.from("dossiers").upsert(
-      { user_id: user.id, session_code: fallback, updated_at: new Date().toISOString() },
-      { onConflict: "user_id" }
-    );
-    if (upErr) console.warn("session_code fallback:", upErr);
-    const { data: locked } = await sb.from("dossiers").select("session_code").eq("user_id", user.id).maybeSingle();
-    const finalCode = locked?.session_code || fallback;
-    renderSessionCode(finalCode);
-    await upsertPublicSummary(user);
-    return finalCode;
-  }
-
-  function buildPersonality(user) {
-    const pref = globalDossie.preferencias || {};
-    const nCal = (globalDossie.calendar || []).length;
-    const nYt = (globalDossie.youtube || []).length;
-    const nTask = (globalDossie.tasks || []).length;
-    const vibe = pref.clima_ambiente === "agitado" ? "ritmo mais dinâmico" : pref.clima_ambiente === "tranquilo" ? "ambiente calmo" : "clima ainda indefinido";
-    const tempo = pref.clima_tempo || "sem preferência de tempo";
-    const text = `${user.user_metadata?.full_name || "Visitante"} prefere ${vibe} e ${tempo}. `
-      + `Nesta sessão há ${nCal} evento(s) de agenda, ${nYt} canal(is) do YouTube e ${nTask} tarefa(s). `
-      + `Este cartão é só o resumo; o dossiê completo fica na conta.`;
-    let archetype = "Perfil em formação";
-    if (pref.clima_ambiente === "tranquilo") archetype = "Ritmo recolhido";
-    if (pref.clima_ambiente === "agitado") archetype = "Ritmo ativo";
-    return { text, archetype };
-  }
-
-  async function logInteraction(user, kind, payload) {
-    if (!sb || !user || !sessionCode) return;
-    const { error } = await sb.from("interactions").insert({
-      user_id: user.id,
-      session_code: sessionCode,
-      kind,
-      payload: payload || {}
-    });
-    if (error) console.warn("interaction:", error);
-  }
-
-  async function logConversation(user, role, content) {
-    if (!sb || !user || !sessionCode || !content) return;
-    const { error } = await sb.from("conversations").insert({
-      user_id: user.id,
-      session_code: sessionCode,
-      role,
-      content
-    });
-    if (error) console.warn("conversation:", error);
-  }
-
-  async function upsertPublicSummary(user) {
-    if (!sb || !user || !sessionCode) return;
-    const { text, archetype } = buildPersonality(user);
-    const { error } = await sb.from("session_summaries").upsert(
-      {
-        session_code: sessionCode,
-        user_id: user.id,
-        display_name: user.user_metadata?.full_name || "Visitante",
-        personality_text: text,
-        archetype,
-        updated_at: new Date().toISOString()
-      },
-      { onConflict: "session_code" }
-    );
-    if (error) console.warn("summary:", error);
-  }
-
-  window.genjutsuLogConversation = logConversation;
-
-  function goToApp() {
-    $("landing").classList.add("hidden");
-    $("app").classList.remove("hidden");
-    if (sb) showScreen("screen-login");
-    else showScreen("screen-config");
-  }
-
-  function showScreen(id) {
-    $("landing").classList.add("hidden");
-    $("app").classList.remove("hidden");
-    document.querySelectorAll(".screen").forEach((el) => el.classList.remove("on"));
-    $(id).classList.add("on");
-  }
-
-  async function loadConfig() {
-    try {
-      const res = await fetch("/api/config");
-      if (res.ok) {
-        const { supabaseUrl, supabaseAnonKey } = await res.json();
-        if (supabaseUrl && supabaseAnonKey) return { supabaseUrl, supabaseAnonKey, source: "vercel" };
-      }
-    } catch (e) {}
-    try {
-      const storedUrl = sessionStorage.getItem("genjutsu_supabase_url");
-      const storedKey = sessionStorage.getItem("genjutsu_supabase_key");
-      if (storedUrl && storedKey) return { supabaseUrl: storedUrl, supabaseAnonKey: storedKey, source: "session" };
-    } catch (e) {}
-    return null;
-  }
-
-  function setupSupabaseClient(supabaseUrl, supabaseAnonKey, source = "vercel") {
-    const { createClient } = supabase;
-    sb = createClient(supabaseUrl, supabaseAnonKey);
-    $("config-pending").classList.add("hidden");
-    $("config-ready").classList.remove("hidden");
-    $("config-ready-text").textContent = source === "vercel" ? "Supabase configurado via Vercel" : "Supabase configurado localmente";
-    $("btn-login").disabled = false;
-    $("btn-login-ms").disabled = false;
-    sb.auth.onAuthStateChange((event, session) => {
-      if (session) showLoggedIn(session.user);
-      else showLoggedOut();
-    });
-    sb.auth.getSession().then(({ data: { session } }) => {
-      if (session) showLoggedIn(session.user);
-    });
-  }
-
-  function setStatus(id, msg, isError = false) {
-    const el = $(id);
-    el.textContent = msg;
-    el.className = "status" + (isError ? " error" : (msg.includes("✓") ? " success" : ""));
-  }
-
-  async function showLoggedIn(user) {
-    $("logged-out").classList.add("hidden");
-    $("logged-in").classList.remove("hidden");
-    $("avatar").src = user.user_metadata?.avatar_url || "";
-    $("user-name").textContent = user.user_metadata?.full_name || "Usuário";
-    $("user-email").textContent = user.email;
-    $("ready-name").textContent = user.user_metadata?.full_name || "Usuário";
-    $("ready-email").textContent = user.email;
-    $("ready-avatar").src = user.user_metadata?.avatar_url || "";
-    $("sync-user").textContent = user.user_metadata?.full_name || "Usuário";
-    $("sync-mail").textContent = user.email || "";
-    if (loginFlowUser === user.id && ($("screen-questionnaire").classList.contains("on") || $("screen-ready").classList.contains("on"))) {
-      return;
-    }
-    loginFlowUser = user.id;
-    showScreen("screen-sync");
-    try {
-      await ensureSessionCode(user);
-    } catch (e) {
-      console.warn("sessão:", e);
-    }
-    await collectDataInBackground(user);
-  }
-
-  function showLoggedOut() {
-    $("logged-out").classList.remove("hidden");
-    $("logged-in").classList.add("hidden");
-    setStatus("status-auth", "");
-    setStatus("status-questionnaire", "");
-    $("q-vibe").value = "";
-    $("q-tempo").value = "";
-    document.querySelectorAll(".option").forEach((b) => b.classList.remove("selected"));
-    globalDossie = {};
-    loginFlowUser = "";
-    renderSessionCode("");
-    if (sb) {
-      $("landing").classList.remove("hidden");
-      $("app").classList.add("hidden");
-    }
-  }
-
-  async function getToken() {
-    if (!sb) return null;
-    const { data: { session } } = await sb.auth.getSession();
-    return session?.provider_token || null;
-  }
-
-  function goToPreferences() {
-    showScreen("screen-questionnaire");
-  }
-
-  async function collectDataInBackground(user) {
-    const bar = $("sync-bar");
-    bar.style.width = "18%";
-    $("sync-status").textContent = "Preparando seu cadastro…";
-    const token = await getToken();
-    try {
-
-      if (token) {
-      const headers = { Authorization: `Bearer ${token}` };
-      try {
-        const timeMin = new Date().toISOString();
-        const resC = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?maxResults=8&orderBy=startTime&singleEvents=true&timeMin=${timeMin}`, { headers });
-        const dataC = await resC.json();
-        bar.style.width = "35%";
-        if (dataC.items) {
-          globalDossie.calendar = dataC.items.map(e => ({
-            titulo: e.summary || "(sem título)",
-            inicio: e.start?.dateTime || e.start?.date
-          }));
-        }
-      } catch (e) { console.warn("Erro na Agenda:", e); }
-
-      try {
-        const resY = await fetch("https://www.googleapis.com/youtube/v3/subscriptions?part=snippet&mine=true&maxResults=8", { headers });
-        const dataY = await resY.json();
-        bar.style.width = "55%";
-        if (dataY.items) {
-          globalDossie.youtube = dataY.items.map(s => ({ canal: s.snippet.title }));
-        }
-      } catch (e) { console.warn("Erro no YouTube:", e); }
-
-      try {
-        const resP = await fetch("https://people.googleapis.com/v1/people/me/connections?personFields=names,emailAddresses&pageSize=10", { headers });
-        const dataP = await resP.json();
-        bar.style.width = "75%";
-        if (dataP.connections) {
-          globalDossie.contacts = dataP.connections.map((c) => ({
-            nome: c.names?.[0]?.displayName || "(sem nome)",
-            email: c.emailAddresses?.[0]?.value || ""
-          }));
-        }
-      } catch (e) { console.warn("Erro nos Contatos:", e); }
-
-      try {
-        const resT = await fetch("https://tasks.googleapis.com/tasks/v1/lists/@default/tasks?maxResults=10", { headers });
-        const dataT = await resT.json();
-        bar.style.width = "90%";
-        if (dataT.items) {
-          globalDossie.tasks = dataT.items.map((t) => ({
-            titulo: t.title || "(sem título)",
-            status: t.status || "",
-            prazo: t.due || ""
-          }));
-        }
-      } catch (e) { console.warn("Erro nas Tarefas:", e); }
-      } else {
-        $("sync-status").textContent = "Sem token do Google. Seguimos só com o cadastro.";
-      }
-
-      try { await saveToSupabase(user); } catch (e) { console.warn("save:", e); }
-      await logInteraction(user, "sync", {
-        calendar: (globalDossie.calendar || []).length,
-        youtube: (globalDossie.youtube || []).length,
-        tasks: (globalDossie.tasks || []).length
-      });
-      await upsertPublicSummary(user);
-      bar.style.width = "100%";
-      $("sync-status").textContent = token ? "Rastro digital sincronizado" : "Cadastro pronto. Escolha as preferências.";
-      setTimeout(goToPreferences, token ? 700 : 400);
-    } catch (err) {
-      console.error("Falha geral na coleta", err);
-      $("sync-status").textContent = "Não deu para sincronizar o Google. Vamos às preferências.";
-      setTimeout(goToPreferences, 500);
-    }
-  }
-
-  async function saveToSupabase(user) {
-    if (!sb || !user) return;
-    if (!sessionCode) await ensureSessionCode(user);
-    const row = {
-      user_id: user.id,
-      full_name: user.user_metadata?.full_name || user.email,
-      email: user.email,
-      avatar_url: user.user_metadata?.avatar_url || "",
-      dossier_data: globalDossie,
-      updated_at: new Date().toISOString()
-    };
-    const { error } = await sb.from("dossiers").upsert(row, { onConflict: "user_id" });
-    if (error) console.warn("dossier:", error);
-  }
-
-  document.querySelectorAll(".option").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const field = btn.dataset.field;
-      const value = btn.dataset.value;
-      $(field).value = value;
-      document.querySelectorAll(`.option[data-field="${field}"]`).forEach((b) => b.classList.remove("selected"));
-      btn.classList.add("selected");
-    });
-  });
-
-  $("btn-start").addEventListener("click", goToApp);
-  $("btn-start-bottom").addEventListener("click", goToApp);
-  $("btn-nav-login").addEventListener("click", goToApp);
-  $("btn-scroll-more").addEventListener("click", () => {
-    $("como-funciona").scrollIntoView({ behavior: "smooth" });
-  });
-
-  $("btn-save-questionnaire").addEventListener("click", async () => {
-    const vibe = $("q-vibe").value;
-    const tempo = $("q-tempo").value;
-    if (!vibe || !tempo) {
-      setStatus("status-questionnaire", "Por favor, responda as duas perguntas antes de finalizar.", true);
-      return;
-    }
-    setStatus("status-questionnaire", "Salvando suas preferências...");
-    try {
-      const { data: { user } } = await sb.auth.getUser();
-      if (!user) throw new Error("Sessão expirada.");
-      globalDossie.preferencias = { clima_ambiente: vibe, clima_tempo: tempo };
-      await saveToSupabase(user);
-      await logInteraction(user, "quiz", globalDossie.preferencias);
-      await upsertPublicSummary(user);
-      setStatus("status-questionnaire", "✓ Perfil salvo. Use o código no NFC: " + sessionCode);
-      showScreen("screen-ready");
-    } catch (err) {
-      setStatus("status-questionnaire", "Erro ao salvar: " + err.message, true);
-    }
-  });
-
-  async function relogin(provider) {
-    $("sync-status").textContent = "Saindo para pedir o Google de novo…";
-    try {
-      if (sb) await sb.auth.signOut();
-    } catch (e) {}
-    showLoggedOut();
-    goToApp();
-    showScreen("screen-login");
-    await oauth(provider);
-  }
-
-  async function oauth(provider) {
-    setStatus("status-auth", "Redirecionando...");
-    const { error } = await sb.auth.signInWithOAuth({
-      provider,
-      options: {
-        redirectTo: window.location.href,
-        scopes: provider === "google" ? [
-          "https://www.googleapis.com/auth/calendar.readonly",
-          "https://www.googleapis.com/auth/youtube.readonly",
-          "https://www.googleapis.com/auth/contacts.readonly",
-          "https://www.googleapis.com/auth/tasks.readonly"
-        ].join(" ") : undefined,
-        queryParams: provider === "google" ? { access_type: "offline", prompt: "consent" } : undefined
-      }
-    });
-    if (error) setStatus("status-auth", "Erro: " + error.message, true);
-  }
-
-  $("btn-login").addEventListener("click", () => oauth("google"));
-  $("btn-login-ms").addEventListener("click", () => oauth("azure"));
-  $("btn-skip-sync").addEventListener("click", goToPreferences);
-  $("btn-relogin").addEventListener("click", () => relogin("google"));
-  $("btn-relogin-ms").addEventListener("click", () => relogin("azure"));
-  $("btn-relogin-account").addEventListener("click", () => relogin("google"));
-  $("btn-relogin-ready").addEventListener("click", () => relogin("google"));
-
-  $("btn-logout").addEventListener("click", async () => {
-    if (sb) await sb.auth.signOut();
-    showLoggedOut();
-  });
-
-  $("btn-save-config").addEventListener("click", () => {
-    const url = $("input-url").value.trim();
-    const key = $("input-key").value.trim();
-    if (!url || !key) {
-      setStatus("status-config", "Preencha a URL e a Anon Key.", true);
-      return;
-    }
-    sessionStorage.setItem("genjutsu_supabase_url", url);
-    sessionStorage.setItem("genjutsu_supabase_key", key);
-    setupSupabaseClient(url, key, "session");
-    showScreen("screen-login");
-  });
-
-  $("btn-clear-config").addEventListener("click", () => {
-    sessionStorage.removeItem("genjutsu_supabase_url");
-    sessionStorage.removeItem("genjutsu_supabase_key");
-    $("input-url").value = "";
-    $("input-key").value = "";
-  });
-
-  async function main() {
-    const config = await loadConfig();
-    if (config) {
-      setupSupabaseClient(config.supabaseUrl, config.supabaseAnonKey, config.source);
-    } else {
-      $("config-pending").classList.remove("hidden");
-      $("config-ready").classList.add("hidden");
-    }
-  }
-  main();
-</script>
+<script src="/js/personality.js"></script>
+<script src="/js/portal.js"></script>
 </body>
 </html>
