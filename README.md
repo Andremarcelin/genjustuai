@@ -64,7 +64,8 @@ Documento mestre acadêmico (CDD): [docs/GenJutsu_AI_CDD_Completo.md](docs/GenJu
 ## Estrutura
 
 - `index.html` — landing, jornada e o fork Google / visitante
-- `site.css`, `portal.css` — visual (carvão, vermelho contido, Cinzel nos títulos, Inter no corpo)
+- `site.css`, `portal.css` — visual (preto fosco, neon vermelho `#FF1A1A`, Cinzel nos títulos, Inter no corpo)
+- `assets/icon-crow.jpg` — ícone do corvo; `assets/landing-frame.jpg` — fundo com circuitos e nuvens
 - `js/personality.js` — nome, e-mail, avatar e texto do resumo (visitante não ganha frase de agenda)
 - `js/portal.js` — OAuth, `signInAnonymously` e gravação no Supabase
 - `api/config.js` — Vercel Function (`SUPABASE_URL`, `SUPABASE_ANON_KEY`)
