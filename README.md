@@ -1,6 +1,22 @@
 # GenJutsu AI
 
-Portal de perfil digital para a experiência VR. Hospedagem: **Vercel**. Auth e banco: **Supabase**. Login Google (Agenda, YouTube, Contatos, Tarefas) — sem Gmail.
+Portal da Smart Home Cognitiva para a experiência no Meta Quest 3S. Hospedagem: **Vercel**. Auth e banco: **Supabase**.
+
+Dois caminhos com o mesmo peso:
+
+1. **Continuar com Google** — OAuth com agenda, YouTube, contatos e tarefas (sem Gmail). Sincroniza o rastro e segue para a casa.
+2. **Continuar sem conta** — `sb.auth.signInAnonymously()`. Não chama Calendar, YouTube, Contacts nem Tasks. O nome público é `Visitante` + código da sessão, o e-mail fica vazio e o avatar é [`assets/guest-avatar.jpg`](assets/guest-avatar.jpg).
+
+Microsoft aparece só como “ou Microsoft”, fora desse par.
+
+O questionário grava `display_name` e `archetype` nos dois caminhos. O Quest já lê esses campos. A casa escolhida vira a letra:
+
+| Letra | Casa | Clima | Paleta |
+| --- | --- | --- | --- |
+| Z | Zen | tranquilo | fria |
+| C | Acolhedora | tranquilo | quente |
+| E | Elétrica | dinâmico | fria |
+| A | Ardente | dinâmico | quente |
 
 Documento mestre acadêmico (CDD): [docs/GenJutsu_AI_CDD_Completo.md](docs/GenJutsu_AI_CDD_Completo.md). Gap vs este repo: [docs/architecture/gap-cdd-vs-repo.md](docs/architecture/gap-cdd-vs-repo.md).
 
@@ -12,7 +28,8 @@ Documento mestre acadêmico (CDD): [docs/GenJutsu_AI_CDD_Completo.md](docs/GenJu
    - Site URL: `https://SEU-PROJETO.vercel.app`
    - Redirect URLs: `https://SEU-PROJETO.vercel.app/**` e `https://SEU-REF.supabase.co/auth/v1/callback`
 4. **Authentication → Providers → Google**: ative e cole Client ID / Secret do Google Cloud (passo 2).
-5. Em **Settings → API**, copie **Project URL** e a chave **anon**.
+5. **Authentication → Providers → Anonymous**: ative **Anonymous sign-ins**. Sem isso, “Continuar sem conta” falha. O usuário anônimo entra no papel `authenticated` com `auth.uid()` preenchido — não é o papel `anon` da chave pública. As políticas `auth.uid() = user_id` e o `grant execute` de `genjutsu_ensure_session()` para `authenticated` já aceitam esse usuário. Rode [`sql/anonymous_auth.sql`](sql/anonymous_auth.sql) só para reafirmar os grants; não conceda a função ao papel `anon`.
+6. Em **Settings → API**, copie **Project URL** e a chave **anon**.
 
 ## 2. Novo projeto Google Cloud
 
@@ -46,11 +63,21 @@ Documento mestre acadêmico (CDD): [docs/GenJutsu_AI_CDD_Completo.md](docs/GenJu
 
 ## Estrutura
 
-- `index.html` — UI, OAuth e coleta do dossiê
+- `index.html` — landing, jornada e o fork Google / visitante
+- `site.css`, `portal.css` — visual (preto fosco, neon vermelho `#FF1A1A`, Cinzel nos títulos, Inter no corpo)
+- `assets/icon-crow.jpg` — ícone do corvo; `assets/landing-frame.jpg` — fundo com circuitos e nuvens
+- `js/personality.js` — nome, e-mail, avatar e texto do resumo (visitante não ganha frase de agenda)
+- `js/portal.js` — OAuth, `signInAnonymously` e gravação no Supabase
 - `api/config.js` — Vercel Function (`SUPABASE_URL`, `SUPABASE_ANON_KEY`)
-- `vercel.json` — rewrites `/privacy` e `/terms`
+- `vercel.json` — rewrites `/privacy`, `/terms`, `/admin` e `/s/:code`
 - `sql/dossiers.sql` — tabela + RLS
-- `sql/sessions.sql` — session_code, interações, conversas, resumo NFC
+- `sql/sessions.sql` — session_code, interações, conversas, resumo NFC, `genjutsu_ensure_session`
+- `sql/anonymous_auth.sql` — grants reafirmados para o papel `authenticated` (inclui anônimo)
 - `summary.html` — página pública `/s/CODIGO`
+- `admin.html` — escolha da sessão do Quest
 - `api/session.js` — JSON para o Unity/Quest (`?code=`)
 - [docs/unity-session.md](docs/unity-session.md) — handshake Quest 3S
+
+O resumo do visitante descreve só clima e casa. A frase “N evento(s) de agenda…” só entra quando a fonte do dossiê é Google.
+
+`node test/personality.test.js` confere o nome `Visitante` + código, o e-mail vazio e a ausência dessa frase.
