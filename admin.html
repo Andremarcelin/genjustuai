@@ -4,147 +4,140 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Admin sessão — GenJutsu AI</title>
+<link rel="icon" href="/assets/icon-crow.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<style>
-  body { margin: 0; font-family: Inter, sans-serif; background: #0a0a0c; color: #f4f4f5; padding: 28px 18px; }
-  h1 { font-family: Cinzel, serif; color: #ff2a2a; }
-  h2 { font-size: 16px; margin: 22px 0 10px; }
-  input, button { font: inherit; padding: 10px 12px; border-radius: 10px; border: 1px solid #333; width: 100%; box-sizing: border-box; margin: 6px 0 14px; }
-  input { background: #141416; color: #fff; }
-  button { background: #c11414; color: #fff; border: 0; cursor: pointer; font-weight: 600; }
-  .muted { color: #9a9aa3; font-size: 14px; }
-  .row {
-    padding: 12px;
-    margin-bottom: 8px;
-    border: 1px solid #2a2a2e;
-    border-radius: 12px;
-    cursor: pointer;
-    background: #141416;
-    text-align: left;
-  }
-  .row.on { border-color: #e22424; }
-  .row .nm { font-weight: 600; }
-  .row .cd { letter-spacing: 0.12em; color: #ff6b6b; font-size: 15px; margin-top: 4px; }
-  .wrap { max-width: 420px; margin: 0 auto; }
-  .pick { padding: 14px; border: 1px solid rgba(226,36,36,0.4); border-radius: 14px; margin-bottom: 16px; }
-</style>
+<link rel="stylesheet" href="/site.css">
 </head>
-<body>
-<div class="wrap">
+<body class="page-admin">
+<div class="admin-wrap">
+  <p class="eyebrow">GenJutsu AI</p>
   <h1>Sessão do Quest</h1>
-  <p class="muted">Selecione um cadastro recente. O Quest em <code>GET /api/session</code> carrega essa pessoa, sem digitar código.</p>
-  <label class="muted" id="pin-label">PIN (padrão: genjutsu)</label>
+  <p class="muted">O Quest em <code>GET /api/session</code> carrega a pessoa escolhida. Visitante aparece sem e-mail.</p>
+  <label class="muted" id="pin-label" for="secret">PIN (padrão: genjutsu)</label>
   <input type="text" id="secret" autocomplete="off" spellcheck="false" placeholder="genjutsu">
-  <button id="load" style="background:#222">Atualizar lista</button>
+  <button class="secondary" id="load" type="button">Atualizar lista</button>
   <div class="pick" id="pick">
     <div class="muted">Selecionado para o Quest</div>
-    <p id="pick-name" style="margin:8px 0 0;font-weight:600">Nenhum</p>
-    <p id="pick-code" class="cd" style="margin:6px 0 0">—</p>
+    <p id="pick-name" class="nm">Nenhum</p>
+    <p id="pick-code" class="cd">—</p>
   </div>
-  <label class="muted">Ou cole o código de 6 letras (ex. Y2FWQZ)</label>
-  <input type="text" id="manual" maxlength="6" placeholder="Y2FWQZ" style="letter-spacing:0.2em;text-transform:uppercase">
-  <button id="save">Iniciar sessão no Quest com este código</button>
-  <p class="muted" id="status"></p>
+  <h2>Últimos cadastros</h2>
+  <div id="list"></div>
+  <label class="muted" for="manual">Ou cole o código de 6 letras</label>
+  <input type="text" id="manual" maxlength="6" placeholder="Y2FWQZ" autocomplete="off" spellcheck="false">
+  <button id="save" type="button">Iniciar sessão no Quest com este código</button>
+  <p class="status" id="status" role="status"></p>
   <p class="muted" id="sql-help" hidden>
     No Supabase → SQL Editor, abra <code>sql/admin_read.sql</code> do repo, cole tudo, Run.
     Sem isso a lista fica vazia (RLS esconde os cadastros).
   </p>
-  <h2>Últimos cadastros</h2>
-  <div id="list"></div>
 </div>
 <script>
-  const $ = (id) => document.getElementById(id);
-  const PIN = "genjutsu";
-  let selected = { name: "", code: "" };
+  var $ = function (id) { return document.getElementById(id); };
+  var PIN = "genjutsu";
+  var selected = { name: "", code: "" };
+  function esc(value) {
+    return String(value || "").replace(/[&<>"']/g, function (ch) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch];
+    });
+  }
   function headers() {
-    const secret = ($("secret").value.trim() || PIN);
+    var secret = ($("secret").value.trim() || PIN);
     try { localStorage.setItem("genjutsu_admin", secret); } catch (e) {}
     return {
       "Content-Type": "application/json",
       Authorization: "Bearer " + secret,
-      "x-admin-secret": secret,
+      "x-admin-secret": secret
     };
   }
   function explain(data) {
-    const map = {
+    var map = {
       bad_password: "PIN errado. Tente genjutsu, ou o valor de ADMIN_SECRET se você criou um.",
       unauthorized: "PIN errado. Tente genjutsu.",
       missing_read_key: "Falta a chave de leitura. Na Vercel: SUPABASE_ANON_KEY (anon / publishable) e Redeploy.",
       missing_service_role: "Falta a chave de leitura SUPABASE_ANON_KEY na Vercel.",
-      need_sql: "Rode sql/admin_read.sql no Supabase (SQL Editor).",
+      need_sql: "Rode sql/admin_read.sql no Supabase (SQL Editor)."
     };
     return map[data.error] || data.hint || data.error || "Erro";
   }
+  function setStatus(text, isError) {
+    $("status").textContent = text;
+    $("status").className = isError ? "status error" : "status";
+  }
   function showPick(name, code) {
-    selected = { name, code };
+    selected = { name: name, code: code };
     $("pick-name").textContent = name || "Sem nome";
     $("pick-code").textContent = code || "—";
-    $("list").querySelectorAll(".row").forEach((el) => {
+    $("list").querySelectorAll(".row").forEach(function (el) {
       el.classList.toggle("on", el.dataset.c === code);
     });
   }
   async function load() {
-    $("status").textContent = "Carregando…";
-    let res, data;
+    setStatus("Carregando…", false);
+    var res, data;
     try {
       res = await fetch("/api/admin/session", { headers: headers(), credentials: "same-origin" });
       data = await res.json();
     } catch (e) {
-      $("status").textContent = "Sem rede. Recarregue a página.";
+      setStatus("Sem rede. Recarregue a página.", true);
       return;
     }
     if (!res.ok) {
-      $("status").textContent = explain(data);
+      setStatus(explain(data), true);
       return;
     }
-    const recent = data.recent || [];
+    var recent = data.recent || [];
     $("sql-help").hidden = !data.hint;
-    $("status").textContent = data.hint
+    setStatus(data.hint
       || (data.current_session_code
         ? "Quest está em " + data.current_session_code
-        : "Nenhuma sessão no Quest ainda");
-    $("list").innerHTML = recent.map((r) =>
-      `<div class="row" data-c="${r.session_code}" data-n="${(r.display_name || "").replace(/"/g, "")}">
-        <div class="nm">${r.display_name || "Sem nome"}</div>
-        <div class="muted">${r.email || ""}</div>
-        <div class="cd">${r.session_code}</div>
-      </div>`
-    ).join("") || "<p class='muted'>Nenhum cadastro com código ainda.</p>";
-    $("list").querySelectorAll(".row").forEach((el) => {
-      el.onclick = () => showPick(el.dataset.n, el.dataset.c);
+        : "Nenhuma sessão no Quest ainda"), Boolean(data.hint));
+    $("list").innerHTML = recent.map(function (r) {
+      var email = r.email ? esc(r.email) : "Convidado · sem e-mail";
+      return '<button type="button" class="row" data-c="' + esc(r.session_code) + '" data-n="' + esc(r.display_name || "") + '">'
+        + '<div class="nm">' + esc(r.display_name || "Sem nome") + "</div>"
+        + '<div class="muted">' + email + "</div>"
+        + '<div class="cd">' + esc(r.session_code) + "</div>"
+        + "</button>";
+    }).join("") || "<p class='muted'>Nenhum cadastro com código ainda.</p>";
+    $("list").querySelectorAll(".row").forEach(function (el) {
+      el.onclick = function () { showPick(el.dataset.n, el.dataset.c); };
     });
-    const cur = recent.find((r) => r.session_code === data.current_session_code);
+    var cur = recent.find(function (r) { return r.session_code === data.current_session_code; });
     if (cur) showPick(cur.display_name, cur.session_code);
     else if (data.current_session_code) showPick("Sessão atual", data.current_session_code);
   }
-  $("save").onclick = async () => {
-    const typed = $("manual").value.trim().toUpperCase();
+  $("save").onclick = async function () {
+    var typed = $("manual").value.trim().toUpperCase();
     if (typed) showPick(selected.name || "Código colado", typed);
     if (!selected.code) {
-      $("status").textContent = "Selecione um cadastro ou cole o código de 6 caracteres.";
+      setStatus("Selecione um cadastro ou cole o código de 6 caracteres.", true);
       return;
     }
-    let res, data;
+    var res, data;
     try {
       res = await fetch("/api/admin/session", {
         method: "POST",
         headers: headers(),
         credentials: "same-origin",
-        body: JSON.stringify({ code: selected.code }),
+        body: JSON.stringify({ code: selected.code })
       });
       data = await res.json();
     } catch (e) {
-      $("status").textContent = "Sem rede. Tente de novo.";
+      setStatus("Sem rede. Tente de novo.", true);
       return;
     }
-    $("status").textContent = res.ok
+    setStatus(res.ok
       ? "Quest iniciado com " + selected.name + " · " + data.current_session_code
-      : explain(data);
+      : explain(data), !res.ok);
   };
   try { $("secret").value = localStorage.getItem("genjutsu_admin") || PIN; } catch (e) { $("secret").value = PIN; }
-  $("load").onclick = () => { load().catch(() => {}); };
-  load().catch(() => {});
+  $("load").onclick = function () { load().catch(function () {}); };
+  $("manual").addEventListener("input", function () {
+    $("manual").value = $("manual").value.toUpperCase();
+  });
+  load().catch(function () {});
 </script>
 </body>
 </html>
