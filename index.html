@@ -13,6 +13,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/js/zcea-profile.js"></script>
 <style>
   :root {
     --bg: #0a0a0c;
@@ -352,6 +353,16 @@
   .status { font-size: 13px; color: var(--muted); margin-top: 12px; line-height: 1.5; }
   .status.error { color: var(--accent); }
   .status.success { color: #f87171; }
+  .quest-profile {
+    margin: 14px 0 4px;
+    text-align: center;
+    border: 1px solid rgba(226,36,36,0.35);
+    border-radius: 999px;
+    padding: 8px 14px;
+    font-size: 14px;
+    letter-spacing: 0.04em;
+  }
+  .quest-profile[hidden] { display: none !important; }
   .hidden { display: none !important; }
   input[type="text"], input[type="password"] {
     width: 100%;
@@ -558,6 +569,7 @@
     <button type="button" class="option" data-field="q-tempo" data-value="ameno"><span class="ico">☁</span> Clima Ameno</button>
     <select id="q-vibe" class="hidden"><option value=""></option><option value="tranquilo">t</option><option value="agitado">a</option></select>
     <select id="q-tempo" class="hidden"><option value=""></option><option value="quente">q</option><option value="frio">f</option><option value="ameno">a</option></select>
+    <div class="quest-profile" id="quiz-profile" hidden></div>
     <button class="cta" id="btn-save-questionnaire" style="margin-top:18px">Finalizar e Salvar Perfil</button>
     <div class="session-box">
       <div class="lbl">Grave este código no NFC</div>
@@ -578,6 +590,7 @@
           <div class="email" id="ready-email"></div>
         </div>
       </div>
+      <div class="quest-profile" id="ready-profile" hidden></div>
       <div class="session-box">
         <div class="lbl">Código único — mostre ao staff para o Quest</div>
         <div class="code" data-session-code>—</div>
@@ -615,6 +628,7 @@
   let globalDossie = {};
   let sessionCode = "";
   let loginFlowUser = "";
+  let hydratePromise = null;
 
   function randomSessionCode() {
     let out = "";
@@ -642,8 +656,81 @@
     });
   }
 
+  function columnMissing(error) {
+    const code = error?.code || "";
+    if (code === "23514") return false;
+    const msg = error?.message || "";
+    return code === "PGRST204" || code === "42703" || (/profile_id/.test(msg) && /schema cache|does not exist|could not find/i.test(msg));
+  }
+
+  function currentProfile() {
+    const pref = globalDossie.preferencias || {};
+    const resolved = GenjutsuZcea.resolve(pref.clima_ambiente, pref.clima_tempo);
+    if (resolved.profile_id) return resolved;
+    const id = GenjutsuZcea.sanitize(pref.profile_id);
+    if (!id) return { profile_id: null, letter: null, archetype: null };
+    return {
+      profile_id: id,
+      letter: GenjutsuZcea.META[id].letter,
+      archetype: GenjutsuZcea.META[id].archetype,
+    };
+  }
+
+  function renderQuestProfile(resolved) {
+    const defined = !!(resolved && resolved.profile_id);
+    const label = defined ? `Perfil do Quest: ${resolved.letter} · ${resolved.archetype}` : "";
+    ["quiz-profile", "ready-profile"].forEach((id) => {
+      const el = $(id);
+      if (!el) return;
+      el.hidden = !defined;
+      el.textContent = label;
+    });
+  }
+
+  function applyPreferencesToForm() {
+    const pref = globalDossie.preferencias || {};
+    const fields = [
+      ["q-vibe", pref.clima_ambiente],
+      ["q-tempo", pref.clima_tempo],
+    ];
+    fields.forEach(([id, value]) => {
+      if (!value) return;
+      $(id).value = value;
+      document.querySelectorAll(`.option[data-field="${id}"]`).forEach((b) => {
+        b.classList.toggle("selected", b.dataset.value === value);
+      });
+    });
+    renderQuestProfile(currentProfile());
+  }
+
+  async function hydrateDossierOnce(user) {
+    let res = await sb.from("dossiers").select("dossier_data, profile_id").eq("user_id", user.id).maybeSingle();
+    if (res.error && columnMissing(res.error)) {
+      res = await sb.from("dossiers").select("dossier_data").eq("user_id", user.id).maybeSingle();
+    }
+    if (res.error || !res.data) return;
+    const stored = res.data.dossier_data && typeof res.data.dossier_data === "object" ? res.data.dossier_data : {};
+    const preferencias = globalDossie.preferencias || stored.preferencias;
+    globalDossie = { ...stored, ...globalDossie };
+    if (preferencias) globalDossie.preferencias = preferencias;
+    if (!globalDossie.preferencias?.profile_id && res.data.profile_id) {
+      globalDossie.preferencias = { ...(globalDossie.preferencias || {}), profile_id: res.data.profile_id };
+    }
+  }
+
+  function hydrateDossier(user) {
+    if (!sb || !user) return Promise.resolve();
+    if (!hydratePromise) {
+      hydratePromise = hydrateDossierOnce(user).catch((e) => {
+        console.warn("hydrate:", e);
+      });
+    }
+    return hydratePromise;
+  }
+
   async function ensureSessionCode(user) {
     if (!sb || !user) return "";
+    await hydrateDossier(user);
     const { data, error } = await sb.rpc("genjutsu_ensure_session");
     if (!error && data) {
       renderSessionCode(data);
@@ -676,18 +763,25 @@
 
   function buildPersonality(user) {
     const pref = globalDossie.preferencias || {};
+    const resolved = currentProfile();
     const nCal = (globalDossie.calendar || []).length;
     const nYt = (globalDossie.youtube || []).length;
     const nTask = (globalDossie.tasks || []).length;
     const vibe = pref.clima_ambiente === "agitado" ? "ritmo mais dinâmico" : pref.clima_ambiente === "tranquilo" ? "ambiente calmo" : "clima ainda indefinido";
     const tempo = pref.clima_tempo || "sem preferência de tempo";
-    const text = `${user.user_metadata?.full_name || "Visitante"} prefere ${vibe} e ${tempo}. `
+    const name = user.user_metadata?.full_name || "Visitante";
+    const profileSentence = resolved.profile_id
+      ? `${name} está no perfil ${resolved.archetype} (${resolved.letter}). `
+      : "";
+    const text = `${profileSentence}${name} prefere ${vibe} e ${tempo}. `
       + `Nesta sessão há ${nCal} evento(s) de agenda, ${nYt} canal(is) do YouTube e ${nTask} tarefa(s). `
       + `Este cartão é só o resumo; o dossiê completo fica na conta.`;
-    let archetype = "Perfil em formação";
-    if (pref.clima_ambiente === "tranquilo") archetype = "Ritmo recolhido";
-    if (pref.clima_ambiente === "agitado") archetype = "Ritmo ativo";
-    return { text, archetype };
+    return {
+      text,
+      archetype: resolved.archetype || "Perfil em formação",
+      profile_id: resolved.profile_id,
+      letter: resolved.letter,
+    };
   }
 
   async function logInteraction(user, kind, payload) {
@@ -712,21 +806,28 @@
     if (error) console.warn("conversation:", error);
   }
 
-  async function upsertPublicSummary(user) {
-    if (!sb || !user || !sessionCode) return;
-    const { text, archetype } = buildPersonality(user);
-    const { error } = await sb.from("session_summaries").upsert(
-      {
-        session_code: sessionCode,
-        user_id: user.id,
-        display_name: user.user_metadata?.full_name || "Visitante",
-        personality_text: text,
-        archetype,
-        updated_at: new Date().toISOString()
-      },
-      { onConflict: "session_code" }
-    );
-    if (error) console.warn("summary:", error);
+  async function upsertPublicSummary(user, opts = {}) {
+    if (!sb || !user || !sessionCode) return { ok: false, error: new Error("Sessão ainda sem código.") };
+    const { text, archetype, profile_id } = buildPersonality(user);
+    const payload = {
+      session_code: sessionCode,
+      user_id: user.id,
+      display_name: user.user_metadata?.full_name || "Visitante",
+      personality_text: text,
+      archetype,
+      updated_at: new Date().toISOString()
+    };
+    if (profile_id) payload.profile_id = profile_id;
+    let { error } = await sb.from("session_summaries").upsert(payload, { onConflict: "session_code" });
+    if (error && payload.profile_id && columnMissing(error)) {
+      if (opts.requireProfile) return { ok: false, needSql: true, error };
+      delete payload.profile_id;
+      const again = await sb.from("session_summaries").upsert(payload, { onConflict: "session_code" });
+      if (again.error) return { ok: false, error: again.error };
+      return { ok: true, profilePendingSql: true };
+    }
+    if (error) return { ok: false, error };
+    return { ok: true };
   }
 
   window.genjutsuLogConversation = logConversation;
@@ -817,7 +918,9 @@
     $("q-tempo").value = "";
     document.querySelectorAll(".option").forEach((b) => b.classList.remove("selected"));
     globalDossie = {};
+    hydratePromise = null;
     loginFlowUser = "";
+    renderQuestProfile(null);
     renderSessionCode("");
     if (sb) {
       $("landing").classList.remove("hidden");
@@ -832,6 +935,7 @@
   }
 
   function goToPreferences() {
+    applyPreferencesToForm();
     showScreen("screen-questionnaire");
   }
 
@@ -894,13 +998,17 @@
         $("sync-status").textContent = "Sem token do Google. Seguimos só com o cadastro.";
       }
 
-      try { await saveToSupabase(user); } catch (e) { console.warn("save:", e); }
+      try {
+        const saved = await saveToSupabase(user);
+        if (!saved.ok) console.warn("dossier:", saved.error);
+      } catch (e) { console.warn("save:", e); }
       await logInteraction(user, "sync", {
         calendar: (globalDossie.calendar || []).length,
         youtube: (globalDossie.youtube || []).length,
         tasks: (globalDossie.tasks || []).length
       });
-      await upsertPublicSummary(user);
+      const summary = await upsertPublicSummary(user);
+      if (!summary.ok) console.warn("summary:", summary.error);
       bar.style.width = "100%";
       $("sync-status").textContent = token ? "Rastro digital sincronizado" : "Cadastro pronto. Escolha as preferências.";
       setTimeout(goToPreferences, token ? 700 : 400);
@@ -911,9 +1019,10 @@
     }
   }
 
-  async function saveToSupabase(user) {
-    if (!sb || !user) return;
+  async function saveToSupabase(user, opts = {}) {
+    if (!sb || !user) return { ok: false, error: new Error("Sem Supabase.") };
     if (!sessionCode) await ensureSessionCode(user);
+    const profile = currentProfile();
     const row = {
       user_id: user.id,
       full_name: user.user_metadata?.full_name || user.email,
@@ -922,8 +1031,18 @@
       dossier_data: globalDossie,
       updated_at: new Date().toISOString()
     };
-    const { error } = await sb.from("dossiers").upsert(row, { onConflict: "user_id" });
-    if (error) console.warn("dossier:", error);
+    if (profile.profile_id) row.profile_id = profile.profile_id;
+    let { error } = await sb.from("dossiers").upsert(row, { onConflict: "user_id" });
+    if (error && row.profile_id && columnMissing(error)) {
+      const rest = { ...row };
+      delete rest.profile_id;
+      const again = await sb.from("dossiers").upsert(rest, { onConflict: "user_id" });
+      if (again.error) return { ok: false, error: again.error };
+      if (opts.requireProfile) return { ok: false, needSql: true, error };
+      return { ok: true, profilePendingSql: true };
+    }
+    if (error) return { ok: false, error };
+    return { ok: true };
   }
 
   document.querySelectorAll(".option").forEach((btn) => {
@@ -933,6 +1052,7 @@
       $(field).value = value;
       document.querySelectorAll(`.option[data-field="${field}"]`).forEach((b) => b.classList.remove("selected"));
       btn.classList.add("selected");
+      renderQuestProfile(GenjutsuZcea.resolve($("q-vibe").value, $("q-tempo").value));
     });
   });
 
@@ -950,18 +1070,36 @@
       setStatus("status-questionnaire", "Por favor, responda as duas perguntas antes de finalizar.", true);
       return;
     }
+    const resolved = GenjutsuZcea.resolve(vibe, tempo);
+    if (!resolved.profile_id) {
+      setStatus("status-questionnaire", "Não foi possível definir o perfil ZCEA dessas respostas.", true);
+      return;
+    }
     setStatus("status-questionnaire", "Salvando suas preferências...");
     try {
       const { data: { user } } = await sb.auth.getUser();
       if (!user) throw new Error("Sessão expirada.");
-      globalDossie.preferencias = { clima_ambiente: vibe, clima_tempo: tempo };
-      await saveToSupabase(user);
+      globalDossie.preferencias = {
+        clima_ambiente: vibe,
+        clima_tempo: tempo,
+        profile_id: resolved.profile_id,
+      };
+      renderQuestProfile(resolved);
+      const saved = await saveToSupabase(user, { requireProfile: true });
+      if (!saved.ok) {
+        if (saved.needSql) throw Object.assign(new Error("Rode sql/profile_id.sql no SQL Editor do Supabase e salve de novo."), { needSql: true });
+        throw saved.error || new Error("Não foi possível gravar o dossiê.");
+      }
       await logInteraction(user, "quiz", globalDossie.preferencias);
-      await upsertPublicSummary(user);
-      setStatus("status-questionnaire", "✓ Perfil salvo. Use o código no NFC: " + sessionCode);
+      const summary = await upsertPublicSummary(user, { requireProfile: true });
+      if (!summary.ok) {
+        if (summary.needSql) throw Object.assign(new Error("Rode sql/profile_id.sql no SQL Editor do Supabase e salve de novo."), { needSql: true });
+        throw summary.error || new Error("Não foi possível gravar o resumo da sessão.");
+      }
+      setStatus("status-questionnaire", "✓ Perfil " + resolved.archetype + " (" + resolved.letter + ") salvo. Use o código no NFC: " + sessionCode);
       showScreen("screen-ready");
     } catch (err) {
-      setStatus("status-questionnaire", "Erro ao salvar: " + err.message, true);
+      setStatus("status-questionnaire", "Erro ao salvar: " + (err.message || "falha desconhecida"), true);
     }
   });
 

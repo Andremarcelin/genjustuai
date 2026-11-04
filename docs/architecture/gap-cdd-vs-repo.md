@@ -29,6 +29,8 @@ Classes: Refúgio, Sintetizador, Laboratório, Jardim Vivo, Galeria, Núcleo Soc
 
 O JSON atual (`calendar`, `youtube`, `contacts`, `tasks`, `preferencias`) **não** é esse vetor. Precisa de mapeamento documentado ou questionário expandido.
 
+A demo Quest deste repo não classifica essas 8 classes. Ela grava um `profile_id` entre Zen, Cyber, Excentrico e Acolhedor a partir de `clima_ambiente` + `clima_tempo` (`js/zcea-profile.js`, contrato em `docs/unity-session.md`). Isso é hipótese de cena VR, separada do classificador do CDD.
+
 ## Stack CDD vs código hoje
 
 | CDD | Hoje |

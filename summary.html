@@ -59,6 +59,7 @@
   }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/js/zcea-profile.js"></script>
 </head>
 <body>
 <div class="card">
@@ -102,17 +103,31 @@
     }
     const { createClient } = supabase;
     const sb = createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
-    const { data, error } = await sb
+    let res = await sb
       .from("session_summaries")
-      .select("display_name, personality_text, archetype")
+      .select("display_name, personality_text, archetype, profile_id")
       .eq("session_code", code)
       .maybeSingle();
+    const missingColumn = res.error && res.error.code !== "23514" && (
+      res.error.code === "PGRST204"
+      || res.error.code === "42703"
+      || (/profile_id/.test(res.error.message || "") && /schema cache|does not exist|could not find/i.test(res.error.message || ""))
+    );
+    if (missingColumn) {
+      res = await sb
+        .from("session_summaries")
+        .select("display_name, personality_text, archetype")
+        .eq("session_code", code)
+        .maybeSingle();
+    }
+    const { data, error } = res;
     if (error || !data) {
       document.getElementById("arch").textContent = "Não encontrado";
       document.getElementById("text").textContent = "Esse código ainda não tem resumo. Peça à pessoa para entrar e salvar o perfil.";
       return;
     }
-    document.getElementById("arch").textContent = data.archetype || "Sessão";
+    const profileLabel = window.GenjutsuZcea ? GenjutsuZcea.label(data.profile_id) : "";
+    document.getElementById("arch").textContent = profileLabel || data.archetype || "Sessão";
     document.getElementById("name").textContent = data.display_name || "";
     document.getElementById("text").textContent = data.personality_text || "";
   }
