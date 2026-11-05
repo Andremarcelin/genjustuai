@@ -5,7 +5,7 @@ O headset **não digita código**. Um admin escolhe a sessão atual em `/admin`.
 ## Expo
 
 1. Visitante responde as duas perguntas e salva sem conta. O site chama `signInAnonymously()` e gera o código (`sql/sessions.sql`, `sql/anonymous_auth.sql`, `sql/profile_id.sql`, com Anonymous sign-ins ligado no dashboard).
-2. Staff abre `https://genjutsuai.vercel.app/admin`, cola `ADMIN_SECRET`, escolhe o código, **Definir sessão do Quest**.
+2. Staff abre `https://genjutsuai.vercel.app/admin` sem PIN, escolhe o código e clica **Iniciar sessão no Quest com este código**.
 3. O Quest chama `GET https://genjutsuai.vercel.app/api/session` (sem query) e carrega essa pessoa.
 
 ## Vercel env
@@ -13,7 +13,8 @@ O headset **não digita código**. Um admin escolhe a sessão atual em `/admin`.
 - `SUPABASE_URL`
 - `SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE` (Settings → API → `service_role` — só no servidor)
-- `ADMIN_SECRET` (senha longa, só para `/admin`)
+
+`ADMIN_SECRET` não é usada. `/admin` está aberto de propósito neste MVP.
 
 ## Contrato Unity
 

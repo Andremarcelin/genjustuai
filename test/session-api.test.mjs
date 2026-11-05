@@ -214,28 +214,73 @@ test("admin POST schema miss is need_sql without the postgres payload", async ()
   });
 });
 
-test("admin without env is missing_config and a bad pin does not reach Supabase", async () => {
+test("admin is open without a PIN even when ADMIN_SECRET is set", async () => {
   let called = false;
   global.fetch = async () => { called = true; return jsonResponse([]); };
   await withEnv({}, async () => {
     const res = mockRes();
-    await adminHandler({
-      method: "GET",
-      headers: { authorization: "Bearer genjutsu" },
-    }, res);
+    await adminHandler({ method: "GET", headers: {} }, res);
     assert.equal(res.statusCode, 503);
     assert.equal(res.body.error, "missing_config");
     assert.equal(called, false);
     assert.equal(leaked(res).includes("service_role"), false);
+    assert.equal(res.headers["Set-Cookie"], undefined);
   });
 
-  await withEnv({ SUPABASE_URL: "https://example.supabase.co", SUPABASE_ANON_KEY: ANON }, async () => {
+  global.fetch = async (url) => {
+    called = true;
+    const target = String(url);
+    if (target.includes("genjutsu_recent_signups")) {
+      return jsonResponse([{
+        session_code: "AB3K7Q",
+        display_name: "Visitante AB3K7Q",
+        email: "",
+        updated_at: "2026-11-05T00:00:00Z",
+      }]);
+    }
+    if (target.includes("app_state")) return jsonResponse([{ current_session_code: "AB3K7Q" }]);
+    return jsonResponse([]);
+  };
+  await withEnv({
+    SUPABASE_URL: "https://example.supabase.co",
+    SUPABASE_ANON_KEY: ANON,
+    ADMIN_SECRET: "custom-pin-should-be-ignored",
+  }, async () => {
+    called = false;
     const res = mockRes();
-    await adminHandler({ method: "GET", headers: { authorization: "Bearer nope" } }, res);
-    assert.equal(res.statusCode, 401);
-    assert.equal(res.body.error, "bad_password");
-    assert.equal(called, false);
+    await adminHandler({ method: "GET", headers: {} }, res);
+    assert.equal(called, true);
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.body.current_session_code, "AB3K7Q");
+    assert.equal(res.body.recent[0].display_name, "Visitante AB3K7Q");
+    assert.equal(res.headers["Set-Cookie"], undefined);
+    const raw = leaked(res);
+    assert.equal(raw.includes("custom-pin-should-be-ignored"), false);
+    assert.equal(raw.includes(ANON), false);
+    assert.equal(raw.includes("bad_password"), false);
+
+    global.fetch = async () => jsonResponse("AB3K7Q");
+    const post = mockRes();
+    await adminHandler({
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: { code: "AB3K7Q" },
+    }, post);
+    assert.equal(post.statusCode, 200);
+    assert.equal(post.body.current_session_code, "AB3K7Q");
+    assert.equal(post.headers["Set-Cookie"], undefined);
   });
+});
+
+test("admin page loads the session UI without a PIN field", () => {
+  const html = fs.readFileSync(new URL("../admin.html", import.meta.url), "utf8");
+  assert.match(html, /\/api\/admin\/session/);
+  assert.match(html, /Últimos cadastros/);
+  assert.match(html, /Iniciar sessão no Quest com este código/);
+  assert.doesNotMatch(html, /id="secret"/);
+  assert.doesNotMatch(html, /x-admin-secret/);
+  assert.doesNotMatch(html, /ADMIN_SECRET/);
+  assert.doesNotMatch(html, /genjutsu_admin/);
 });
 
 test("server allowlist matches the quiz profile ids", () => {
