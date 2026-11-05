@@ -1,6 +1,10 @@
 -- Visitante sem conta (Supabase Anonymous sign-ins).
--- Rode depois de sql/sessions.sql. Também é preciso ligar Anonymous no dashboard:
+-- Ordem no SQL Editor: dossiers, sessions, app_state, admin_read, este arquivo, profile_id.
+-- Também é preciso ligar Anonymous no dashboard (não dá para ligar só com SQL):
 -- Authentication → Providers → Anonymous → Enable anonymous sign-ins.
+--
+-- profile_id entra nas tabelas dossiers e session_summaries. O GRANT da tabela
+-- para authenticated já cobre a coluna nova. Não conceda a função ao papel anon.
 --
 -- Um sign-in anônimo cria usuário em auth.users com is_anonymous = true.
 -- O JWT usa o papel `authenticated` e auth.uid() vem preenchido.

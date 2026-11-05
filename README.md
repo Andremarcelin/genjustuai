@@ -2,33 +2,42 @@
 
 Portal da Smart Home Cognitiva para a experiência no Meta Quest 3S. Hospedagem: **Vercel**. Auth e banco: **Supabase**.
 
-Dois caminhos com o mesmo peso:
+O caminho principal não pede Google. A pessoa responde duas perguntas e salva como visitante. Se não houver sessão, o cliente chama `supabase.auth.signInAnonymously()` e, com o papel `authenticated`, chama `genjutsu_ensure_session()` e grava `dossiers` + `session_summaries` (incluindo `profile_id`).
 
-1. **Continuar com Google** — OAuth com agenda, YouTube, contatos e tarefas (sem Gmail). Sincroniza o rastro e segue para a casa.
-2. **Continuar sem conta** — `sb.auth.signInAnonymously()`. Não chama Calendar, YouTube, Contacts nem Tasks. O nome público é `Visitante` + código da sessão, o e-mail fica vazio e o avatar é [`assets/guest-avatar.jpg`](assets/guest-avatar.jpg).
+1. **Continuar sem conta** — abre o questionário. O botão **Salvar sem conta e gerar o código** cria a sessão anônima se ainda não existir. Não chama Calendar, YouTube, Contacts nem Tasks. O nome público é `Visitante` + código da sessão, o e-mail fica vazio e o avatar é [`assets/guest-avatar.jpg`](assets/guest-avatar.jpg).
+2. **Continuar com Google** — opcional. OAuth com agenda, YouTube, contatos e tarefas (sem Gmail). As mesmas duas perguntas gravam o mesmo `profile_id`.
 
 Microsoft aparece só como “ou Microsoft”, fora desse par.
 
-O questionário grava `display_name` e `archetype` nos dois caminhos. O Quest já lê esses campos. A casa escolhida vira a letra:
+O perfil do Quest é ZCEA, não as casas de marketing (Acolhedora / Elétrica / Ardente) nem os 8 arquétipos do CDD. `profile_id` é o id estável. `archetype` é o alias legível (`Excentrico` → `Excêntrico`).
 
-| Letra | Casa | Clima | Paleta |
-| --- | --- | --- | --- |
-| Z | Zen | tranquilo | fria |
-| C | Acolhedora | tranquilo | quente |
-| E | Elétrica | dinâmico | fria |
-| A | Ardente | dinâmico | quente |
+| clima_ambiente | clima_tempo | profile_id | archetype | Letra |
+| --- | --- | --- | --- | --- |
+| tranquilo | frio | Zen | Zen | Z |
+| tranquilo | quente | Acolhedor | Acolhedor | A |
+| tranquilo | ameno | Acolhedor | Acolhedor | A |
+| agitado | frio | Cyber | Cyber | C |
+| agitado | ameno | Cyber | Cyber | C |
+| agitado | quente | Excentrico | Excêntrico | E |
 
 Documento mestre acadêmico (CDD): [docs/GenJutsu_AI_CDD_Completo.md](docs/GenJutsu_AI_CDD_Completo.md). Gap vs este repo: [docs/architecture/gap-cdd-vs-repo.md](docs/architecture/gap-cdd-vs-repo.md).
 
 ## 1. Novo projeto Supabase
 
-1. Crie um projeto em [supabase.com](https://supabase.com).
-2. SQL Editor: rode [`sql/dossiers.sql`](sql/dossiers.sql), [`sql/sessions.sql`](sql/sessions.sql), [`sql/app_state.sql`](sql/app_state.sql) e [`sql/admin_read.sql`](sql/admin_read.sql). Se o código de sessão já existia, rode também [`sql/freeze_session_code.sql`](sql/freeze_session_code.sql).
+1. Crie um projeto em [supabase.com](https://supabase.com). O projeto ao vivo `ahzsvjimyfzjcfuhgdgw` pode ter só `dossiers`. Não assuma que `session_summaries`, `app_state` ou `sessions` já existem.
+2. SQL Editor, **nesta ordem** (os arquivos são idempotentes; `profile_id.sql` precisa da policy de leitura que `sessions.sql` ou `admin_read.sql` criam):
+   1. [`sql/dossiers.sql`](sql/dossiers.sql)
+   2. [`sql/sessions.sql`](sql/sessions.sql) — `genjutsu_ensure_session()`, código de 6 caracteres, `session_summaries`
+   3. [`sql/app_state.sql`](sql/app_state.sql)
+   4. [`sql/admin_read.sql`](sql/admin_read.sql)
+   5. [`sql/anonymous_auth.sql`](sql/anonymous_auth.sql) — reafirma grants para o papel `authenticated`. Não concede `genjutsu_ensure_session()` ao papel `anon` da chave pública.
+   6. [`sql/profile_id.sql`](sql/profile_id.sql) — coluna `profile_id` em `dossiers` e `session_summaries` (Zen, Cyber, Excentrico, Acolhedor)
+   7. [`sql/freeze_session_code.sql`](sql/freeze_session_code.sql) — só se o código de sessão já existia antes do trigger
 3. **Authentication → URL configuration**
    - Site URL: `https://SEU-PROJETO.vercel.app`
    - Redirect URLs: `https://SEU-PROJETO.vercel.app/**` e `https://SEU-REF.supabase.co/auth/v1/callback`
-4. **Authentication → Providers → Google**: ative e cole Client ID / Secret do Google Cloud (passo 2).
-5. **Authentication → Providers → Anonymous**: ative **Anonymous sign-ins**. Sem isso, “Continuar sem conta” falha. O usuário anônimo entra no papel `authenticated` com `auth.uid()` preenchido — não é o papel `anon` da chave pública. As políticas `auth.uid() = user_id` e o `grant execute` de `genjutsu_ensure_session()` para `authenticated` já aceitam esse usuário. Rode [`sql/anonymous_auth.sql`](sql/anonymous_auth.sql) só para reafirmar os grants; não conceda a função ao papel `anon`.
+4. **Authentication → Providers → Google**: ative e cole Client ID / Secret do Google Cloud (passo 2). Opcional para o visitante.
+5. **Authentication → Providers → Anonymous**: ative **Anonymous sign-ins**. Esse interruptor fica no dashboard e **não liga por SQL**. Sem ele, “Salvar sem conta” falha. O usuário anônimo entra no papel `authenticated` com `auth.uid()` preenchido — não é o papel `anon` da chave pública. As políticas `auth.uid() = user_id` e o `grant execute` de `genjutsu_ensure_session()` para `authenticated` já aceitam esse usuário.
 6. Em **Settings → API**, copie **Project URL** e a chave **anon**.
 
 ## 2. Novo projeto Google Cloud
@@ -63,16 +72,19 @@ Documento mestre acadêmico (CDD): [docs/GenJutsu_AI_CDD_Completo.md](docs/GenJu
 
 ## Estrutura
 
-- `index.html` — landing, jornada e o fork Google / visitante
+- `index.html` — landing e as duas perguntas. O botão principal salva sem conta.
 - `site.css`, `portal.css` — visual (preto fosco, neon vermelho `#FF1A1A`, Cinzel nos títulos, Inter no corpo)
 - `assets/icon-crow.jpg` — ícone do corvo; `assets/landing-frame.jpg` — fundo com circuitos e nuvens
+- `js/zcea-profile.js` — mapa das duas respostas para `profile_id`
+- `js/guest-save.js` — `signInAnonymously()` quando não há sessão, depois dossiê + resumo
 - `js/personality.js` — nome, e-mail, avatar e texto do resumo (visitante não ganha frase de agenda)
-- `js/portal.js` — OAuth, `signInAnonymously` e gravação no Supabase
+- `js/portal.js` — OAuth opcional e a gravação no Supabase
 - `api/config.js` — Vercel Function (`SUPABASE_URL`, `SUPABASE_ANON_KEY`)
 - `vercel.json` — rewrites `/privacy`, `/terms`, `/admin` e `/s/:code`
 - `sql/dossiers.sql` — tabela + RLS
 - `sql/sessions.sql` — session_code, interações, conversas, resumo NFC, `genjutsu_ensure_session`
 - `sql/anonymous_auth.sql` — grants reafirmados para o papel `authenticated` (inclui anônimo)
+- `sql/profile_id.sql` — coluna ZCEA em `dossiers` e `session_summaries`
 - `summary.html` — página pública `/s/CODIGO`
 - `admin.html` — escolha da sessão do Quest
 - `api/session.js` — JSON para o Unity/Quest (`?code=`)
@@ -81,3 +93,13 @@ Documento mestre acadêmico (CDD): [docs/GenJutsu_AI_CDD_Completo.md](docs/GenJu
 O resumo do visitante descreve só clima e casa. A frase “N evento(s) de agenda…” só entra quando a fonte do dossiê é Google.
 
 `node test/personality.test.js` confere o nome `Visitante` + código, o e-mail vazio e a ausência dessa frase.
+
+`node --test test/guest-save.test.js test/zcea-profile.test.js test/session-api.test.mjs` confere o save sem login (sessão anônima, `profile_id`, código de 6 caracteres) e o JSON de `GET /api/session`.
+
+## Como verificar o visitante
+
+1. Com Anonymous sign-ins ligado e o SQL acima aplicado, abra o site.
+2. **Continuar sem conta**. Não entre com Google.
+3. Ambiente dinâmico + dias quentes → selo `Perfil do Quest: E · Excêntrico`.
+4. **Salvar sem conta e gerar o código**. A tela mostra um código de 6 caracteres, o QR e o selo. O texto diz que salvou como visitante, sem conta.
+5. `GET /api/session?code=CODIGO` devolve `session_code`, `display_name`, `personality_text`, `archetype` e `profile_id` (`Excentrico`).
