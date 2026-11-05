@@ -2,10 +2,10 @@
 
 Portal da Smart Home Cognitiva para a experiência no Meta Quest 3S. Hospedagem: **Vercel**. Auth e banco: **Supabase**.
 
-O caminho principal não pede Google. A pessoa responde duas perguntas e salva como visitante. Se não houver sessão, o cliente chama `supabase.auth.signInAnonymously()` e, com o papel `authenticated`, chama `genjutsu_ensure_session()` e grava `dossiers` + `session_summaries` (incluindo `profile_id`).
+O caminho principal não pede Google. A pessoa escreve o nome, responde duas perguntas e salva como visitante. Se não houver sessão, o cliente chama `supabase.auth.signInAnonymously()` e, com o papel `authenticated`, chama `genjutsu_ensure_session()` e grava `dossiers` + `session_summaries` (incluindo `profile_id`). Não há seletor de casa.
 
-1. **Continuar sem conta** — abre o questionário. O botão **Salvar sem conta e gerar o código** cria a sessão anônima se ainda não existir. Não chama Calendar, YouTube, Contacts nem Tasks. O nome público é `Visitante` + código da sessão, o e-mail fica vazio e o avatar é [`assets/guest-avatar.jpg`](assets/guest-avatar.jpg).
-2. **Continuar com Google** — opcional. OAuth com agenda, YouTube, contatos e tarefas (sem Gmail). As mesmas duas perguntas gravam o mesmo `profile_id`.
+1. **Continuar sem conta** — abre o questionário. O nome é obrigatório. O botão **Salvar sem conta e gerar o código** cria a sessão anônima se ainda não existir. Não chama Calendar, YouTube, Contacts nem Tasks. O nome público é o que a pessoa escreveu (o fallback antigo `Visitante` + código só aparece se esse nome não existir). O e-mail fica vazio e o avatar é [`assets/guest-avatar.jpg`](assets/guest-avatar.jpg).
+2. **Continuar com Google** — opcional. OAuth com agenda, YouTube, contatos e tarefas (sem Gmail). O nome da conta preenche o campo e as mesmas duas perguntas gravam o mesmo `profile_id`.
 
 Microsoft aparece só como “ou Microsoft”, fora desse par.
 
@@ -93,7 +93,7 @@ Documento mestre acadêmico (CDD): [docs/GenJutsu_AI_CDD_Completo.md](docs/GenJu
 
 O resumo do visitante descreve só clima e casa. A frase “N evento(s) de agenda…” só entra quando a fonte do dossiê é Google.
 
-`node test/personality.test.js` confere o nome `Visitante` + código, o e-mail vazio e a ausência dessa frase.
+`node test/personality.test.js` confere o fallback `Visitante` + código, o nome escrito quando existe, o e-mail vazio e a ausência dessa frase.
 
 `node --test test/guest-save.test.js test/zcea-profile.test.js test/session-api.test.mjs` confere o save sem login (sessão anônima, `profile_id`, código de 6 caracteres) e o JSON de `GET /api/session`.
 
@@ -101,6 +101,6 @@ O resumo do visitante descreve só clima e casa. A frase “N evento(s) de agend
 
 1. Com Anonymous sign-ins ligado e o SQL acima aplicado, abra o site.
 2. **Continuar sem conta**. Não entre com Google.
-3. Ambiente dinâmico + dias quentes → selo `Perfil do Quest: E · Excêntrico`.
-4. **Salvar sem conta e gerar o código**. A tela mostra um código de 6 caracteres, o QR e o selo. O texto diz que salvou como visitante, sem conta.
-5. `GET /api/session?code=CODIGO` devolve `session_code`, `display_name`, `personality_text`, `archetype` e `profile_id` (`Excentrico`).
+3. Escreva um nome. **Aceso e em movimento** + **Aconchego** (valores `agitado` + `quente`). Não há lista de casas.
+4. **Salvar sem conta e gerar o código**. A tela final abre um pergaminho com a frase do perfil Excêntrico e, abaixo, os registros salvos (nome, respostas, `profile_id` `Excentrico`, código). O QR continua na mesma tela.
+5. `GET /api/session?code=CODIGO` devolve `session_code`, `display_name` (o nome escrito), `personality_text` (a frase), `archetype` `Excêntrico` e `profile_id` `Excentrico`.

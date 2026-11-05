@@ -1,7 +1,6 @@
 (function () {
   var P = window.GenjutsuPersonality;
   var G = window.GenjutsuGuestSave;
-  var Z = window.GenjutsuZcea;
   var $ = function (id) { return document.getElementById(id); };
   var SESSION_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   var GOOGLE_SCOPES = [
@@ -67,12 +66,15 @@
       img.src = avatar;
       img.alt = guest ? "Silhueta de visitante" : "Foto de perfil";
     });
+    var typed = visitorNameValue();
+    if (guest && typed) name = typed;
+    else if (globalDossie && globalDossie.nome_exibicao) name = globalDossie.nome_exibicao;
     $("user-name").textContent = name;
-    $("ready-name").textContent = name;
+    if ($("ready-name")) $("ready-name").textContent = name;
     $("sync-user").textContent = name;
     var emailLine = email || (guest ? "Sem conta Google" : "");
     $("user-email").textContent = emailLine;
-    $("ready-email").textContent = emailLine;
+    if ($("ready-email")) $("ready-email").textContent = emailLine;
     $("sync-mail").textContent = email || (guest ? "Visitante · sem APIs do Google" : "");
     document.querySelectorAll("[data-guest-only]").forEach(function (el) {
       el.hidden = !guest;
@@ -116,7 +118,10 @@
     var guest = guestIntent || (currentPaintUser ? P.isGuest(currentPaintUser) : false);
     var step = { "screen-login": 1, "screen-sync": 2, "screen-questionnaire": 3, "screen-ready": 4 }[id] || 1;
     setProgress(step, guest);
-    if (id === "screen-questionnaire") paintSaveCopy();
+    if (id === "screen-questionnaire") {
+      paintSaveCopy();
+      prefillVisitorName();
+    }
     var title = screen && screen.querySelector(".screen-title");
     if (title) {
       title.tabIndex = -1;
@@ -318,6 +323,13 @@
       b.classList.remove("selected");
       b.setAttribute("aria-pressed", "false");
     });
+    var nameInput = $("visitor-name");
+    if (nameInput) {
+      nameInput.value = "";
+      nameInput.removeAttribute("aria-invalid");
+    }
+    if ($("ready-phrase")) $("ready-phrase").textContent = "";
+    renderSessionFields([]);
     renderQuestProfile(null);
     globalDossie = {};
     renderSessionCode("");
@@ -506,16 +518,60 @@
     }
   }
 
+  function visitorNameValue() {
+    var input = $("visitor-name");
+    if (!input || !G) return "";
+    return G.normalizeVisitorName(input.value);
+  }
+
+  function prefillVisitorName() {
+    var input = $("visitor-name");
+    if (!input || input.value.trim() || !currentPaintUser) return;
+    var name = P.displayName(currentPaintUser, sessionCode);
+    if (/^Visitante(\s|$)/.test(name)) return;
+    input.value = name;
+  }
+
   function paintSaveCopy() {
     var guest = guestIntent || !currentPaintUser || P.isGuest(currentPaintUser);
     var note = $("guest-save-note");
     var btn = $("btn-save-questionnaire");
     if (note) {
       note.textContent = guest
-        ? "Sem conta. Você salva como visitante: as duas respostas geram o código da sessão e o perfil do Quest. O Google não é necessário."
-        : "Conta Google conectada. Salvar grava o perfil do Quest neste código. Quem não tem conta usa o mesmo questionário como visitante.";
+        ? "Sem conta. Dá para salvar como visitante: escreva o nome e responda as duas perguntas. A casa é inferida — você não escolhe o dojo. O Google não é necessário."
+        : "Conta Google conectada. O nome pode ser o da conta. Salvar grava o perfil inferido neste código. Quem não tem conta usa o mesmo questionário como visitante.";
     }
     if (btn) btn.textContent = guest ? "Salvar sem conta e gerar o código" : "Salvar perfil e gerar o código";
+  }
+
+  function renderSessionFields(fields) {
+    var dl = $("ready-records");
+    if (!dl) return;
+    dl.replaceChildren();
+    (fields || []).forEach(function (pair) {
+      var dt = document.createElement("dt");
+      dt.textContent = pair[0];
+      var dd = document.createElement("dd");
+      dd.textContent = pair[1];
+      if (pair[0] === "Código da sessão") dd.className = "record-code";
+      dl.appendChild(dt);
+      dl.appendChild(dd);
+    });
+  }
+
+  function paintReady(saved) {
+    var phrase = saved && saved.persona ? saved.persona.phrase : "";
+    if ($("ready-phrase")) $("ready-phrase").textContent = phrase || "";
+    var sign = $("ready-profile");
+    var profile = saved && saved.profile;
+    if (sign) {
+      var defined = !!(profile && profile.profile_id);
+      sign.hidden = !defined;
+      sign.textContent = defined ? profile.letter + " · " + profile.archetype : "";
+    }
+    renderSessionFields(saved && saved.fields);
+    var readyNote = $("ready-guest-note");
+    if (readyNote) readyNote.hidden = !(saved && saved.guest);
   }
 
   function renderQuestProfile(resolved) {
@@ -556,8 +612,8 @@
       revealApp();
       showScreen("screen-questionnaire");
       setStatus("status-questionnaire", guestIntent
-        ? "Responda as duas perguntas. A gravação não pede login Google."
-        : "Responda as duas perguntas. Sua conta Google já está conectada.");
+        ? "Escreva seu nome e responda as duas perguntas. A gravação não pede login Google."
+        : "Confirme o nome e responda as duas perguntas. Sua conta Google já está conectada.");
     } finally {
       authBusy = false;
     }
@@ -581,7 +637,6 @@
         b.classList.toggle("selected", on);
         b.setAttribute("aria-pressed", on ? "true" : "false");
       });
-      renderQuestProfile(Z.resolve(selectedValue("clima_ambiente"), selectedValue("clima_tempo")));
     });
   });
 
@@ -611,6 +666,18 @@
   $("btn-save-questionnaire").addEventListener("click", async function () {
     var vibe = selectedValue("clima_ambiente");
     var tempo = selectedValue("clima_tempo");
+    var visitorName = visitorNameValue();
+    var savingAsGuest = guestIntent || !currentPaintUser || P.isGuest(currentPaintUser);
+    var nameInput = $("visitor-name");
+    if (savingAsGuest && !visitorName) {
+      if (nameInput) {
+        nameInput.setAttribute("aria-invalid", "true");
+        nameInput.focus();
+      }
+      setStatus("status-questionnaire", "Escreva seu nome antes de salvar.", true);
+      return;
+    }
+    if (nameInput) nameInput.removeAttribute("aria-invalid");
     if (!G.selection(vibe, tempo)) {
       setStatus("status-questionnaire", "Responda as duas perguntas antes de salvar.", true);
       return;
@@ -619,7 +686,6 @@
       setStatus("status-questionnaire", "A conexão com o Supabase não está pronta.", true);
       return;
     }
-    var savingAsGuest = guestIntent || !currentPaintUser || P.isGuest(currentPaintUser);
     setStatus("status-questionnaire", savingAsGuest
       ? "Salvando como visitante, sem conta…"
       : "Salvando suas preferências…");
@@ -637,6 +703,7 @@
           if (avatar.charAt(0) === "/") avatar = location.origin + avatar;
           return avatar;
         },
+        visitorName: visitorName,
         personality: P.buildPersonality,
         remember: function (dossier) { globalDossie = dossier; },
         ensureSession: ensureSessionCode,
@@ -650,9 +717,19 @@
       guestIntent = saved.guest;
       journeyUserId = saved.user.id;
       currentPaintUser = saved.user;
+      if (saved.guest && visitorName) {
+        var avatar = location.origin + "/assets/guest-avatar.jpg";
+        try {
+          await sb.auth.updateUser({
+            data: { full_name: visitorName, avatar_url: avatar, guest: true }
+          });
+        } catch (e) {
+          console.warn("nome do visitante:", e);
+        }
+      }
       renderSessionCode(saved.sessionCode);
       paintIdentity(saved.user);
-      renderQuestProfile(saved.profile);
+      paintReady(saved);
       await logInteraction(saved.user, "quiz", globalDossie.preferencias);
       setStatus("status-questionnaire", G.savedMessage(saved.sessionCode, saved.profile, {
         guest: saved.guest,
