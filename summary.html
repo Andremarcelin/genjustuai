@@ -7,26 +7,30 @@
 <link rel="icon" href="/assets/icon-crow.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/site.css">
+<link rel="stylesheet" href="/portal.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/js/zcea-profile.js"></script>
 <script src="/js/personality.js"></script>
 </head>
 <body class="page-summary">
-<div class="summary-card">
-  <img class="portrait" id="portrait" src="/assets/og-hero.jpg" alt="GenJutsu AI">
-  <h1>GenJutsu AI</h1>
-  <p>Resumo da sessão</p>
-  <div class="code" id="code">—</div>
-  <div>
-    <div class="arch" id="arch">Carregando…</div>
+<div class="summary-sheet">
+  <article class="parchment" aria-labelledby="summary-kicker">
+    <p class="parchment-kicker" id="summary-kicker">Leitura da casa</p>
+    <h1 class="parchment-name" id="name"></h1>
+    <p class="parchment-phrase" id="phrase">Buscando a frase desta sessão.</p>
+    <p class="parchment-sign" id="arch">Carregando…</p>
+  </article>
+  <section class="session-record" aria-labelledby="record-title">
+    <h2 id="record-title">Registros desta sessão</h2>
     <div class="guest-flag" id="guest-flag" hidden>Salvo sem conta, como visitante</div>
-  </div>
-  <p id="name"></p>
-  <p id="text">Buscando personalidade desta sessão.</p>
-  <p id="note">Este cartão não mostra agenda, contatos nem conversas completas.</p>
-  <p><a href="/">Voltar ao GenJutsu AI</a></p>
+    <dl id="summary-records"></dl>
+    <p class="lbl">Código da sessão</p>
+    <div class="code" id="code">—</div>
+    <p class="record-foot" id="note">Este cartão não mostra agenda, contatos nem conversas completas.</p>
+    <p><a href="/">Voltar ao GenJutsu AI</a></p>
+  </section>
 </div>
 <script>
   function sessionFromUrl() {
@@ -40,7 +44,7 @@
     document.getElementById("code").textContent = code || "—";
     if (!code) {
       document.getElementById("arch").textContent = "Sem código";
-      document.getElementById("text").textContent = "Abra /s/CODIGO ou aproxime o NFC gravado.";
+      document.getElementById("phrase").textContent = "Abra /s/CODIGO ou aproxime o NFC gravado.";
       return;
     }
     var cfg;
@@ -49,7 +53,7 @@
       cfg = await res.json();
     } catch (e) {
       document.getElementById("arch").textContent = "Erro";
-      document.getElementById("text").textContent = "Não foi possível ler a configuração.";
+      document.getElementById("phrase").textContent = "Não foi possível ler a configuração.";
       return;
     }
     if (!cfg.supabaseUrl || !cfg.supabaseAnonKey) {
@@ -71,21 +75,36 @@
     }
     if (result.error || !result.data) {
       document.getElementById("arch").textContent = "Não encontrado";
-      document.getElementById("text").textContent = "Esse código ainda não tem resumo. Peça à pessoa para entrar e salvar o perfil.";
+      document.getElementById("phrase").textContent = "Esse código ainda não tem resumo. Peça à pessoa para entrar e salvar o perfil.";
       return;
     }
     var data = result.data;
+    var P = window.GenjutsuPersonality;
     var name = data.display_name || "";
     var guest = /^Visitante\b/.test(name);
-    document.getElementById("arch").textContent = window.GenjutsuPersonality.formatArchetype(data.profile_id || data.archetype);
+    var phrase = P.phraseFor(data.profile_id || data.archetype, name);
+    document.getElementById("arch").textContent = P.formatArchetype(data.profile_id || data.archetype);
     document.getElementById("name").textContent = name;
-    document.getElementById("text").textContent = data.personality_text || "";
-    if (guest) {
-      var portrait = document.getElementById("portrait");
-      portrait.src = "/assets/guest-avatar.jpg";
-      portrait.alt = "Silhueta de visitante";
-      document.getElementById("guest-flag").hidden = false;
-    }
+    document.getElementById("phrase").textContent = phrase || data.personality_text || "";
+    var fields = P.sessionFields({
+      display_name: name,
+      profile_id: data.profile_id || "",
+      archetype: data.archetype || "",
+      session_code: code,
+      personality_text: data.personality_text || "",
+      fonte: guest ? "convidado" : ""
+    });
+    var dl = document.getElementById("summary-records");
+    fields.forEach(function (pair) {
+      var dt = document.createElement("dt");
+      dt.textContent = pair[0];
+      var dd = document.createElement("dd");
+      dd.textContent = pair[1];
+      if (pair[0] === "Código da sessão") dd.className = "record-code";
+      dl.appendChild(dt);
+      dl.appendChild(dd);
+    });
+    if (guest) document.getElementById("guest-flag").hidden = false;
   }
   main();
 </script>

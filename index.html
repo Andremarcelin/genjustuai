@@ -20,7 +20,7 @@
 <meta name="twitter:image" content="https://genjutsuai.vercel.app/assets/og-hero.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/site.css">
 <link rel="stylesheet" href="/portal.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -60,11 +60,11 @@
     <div class="pillars">
       <article class="pillar">
         <h3>Perfil do Quest</h3>
-        <p>Duas perguntas definem Zen, Cyber, Excêntrico ou Acolhedor. O Quest lê o profile_id estável: Zen, Cyber, Excentrico ou Acolhedor.</p>
+        <p>O nome e duas perguntas inferem Zen, Cyber, Excêntrico ou Acolhedor. Ninguém escolhe a casa. O Quest lê o profile_id estável: Zen, Cyber, Excentrico ou Acolhedor.</p>
       </article>
       <article class="pillar">
         <h3>Google ou visitante</h3>
-        <p>O visitante salva sem conta e não chama essas APIs: nome “Visitante” mais o código, sem e-mail. Google continua opcional.</p>
+        <p>O visitante escreve o nome, responde e salva sem conta. Não chama as APIs do Google e fica sem e-mail. Google continua opcional.</p>
       </article>
       <article class="pillar">
         <h3>Passagem ao Quest</h3>
@@ -78,7 +78,7 @@
     <div class="steps-row">
       <div class="step-card"><span>01</span>Continue sem conta — Google é opcional</div>
       <div class="step-card"><span>02</span>Sincronize o rastro — o visitante pula esta etapa</div>
-      <div class="step-card"><span>03</span>Responda as duas perguntas e salve</div>
+      <div class="step-card"><span>03</span>Escreva o nome e responda as duas perguntas</div>
       <div class="step-card"><span>04</span>Vista o Quest e entre no genjutsu</div>
     </div>
   </section>
@@ -159,18 +159,21 @@
   </section>
 
   <section class="screen" id="screen-questionnaire">
-    <h2 class="screen-title">Duas perguntas, sem conta</h2>
-    <p class="guest-save-note" id="guest-save-note">Sem conta. Você salva como visitante: as duas respostas geram o código da sessão e o perfil do Quest. O Google não é necessário.</p>
-    <p class="section-label" id="label-vibe">Clima do ambiente</p>
+    <h2 class="screen-title">Seu nome e duas perguntas</h2>
+    <p class="guest-save-note" id="guest-save-note">Sem conta. Dá para salvar como visitante: escreva o nome e responda as duas perguntas. A casa é inferida — você não escolhe o dojo. O Google não é necessário.</p>
+    <label class="section-label" for="visitor-name">Como você quer ser chamado?</label>
+    <input type="text" id="visitor-name" name="visitor-name" maxlength="40" autocomplete="name" required aria-describedby="visitor-name-hint" placeholder="Seu nome">
+    <p class="field-hint" id="visitor-name-hint">O nome entra na frase da sessão. Pelo menos 2 letras.</p>
+    <p class="section-label" id="label-vibe">Como você quer se sentir na casa?</p>
     <div class="option-col" role="group" aria-labelledby="label-vibe">
-      <button type="button" class="option" data-field="clima_ambiente" data-value="tranquilo" aria-pressed="false">Ambiente tranquilo</button>
-      <button type="button" class="option" data-field="clima_ambiente" data-value="agitado" aria-pressed="false">Ambiente dinâmico</button>
+      <button type="button" class="option" data-field="clima_ambiente" data-value="tranquilo" aria-pressed="false">Calmo e leve</button>
+      <button type="button" class="option" data-field="clima_ambiente" data-value="agitado" aria-pressed="false">Aceso e em movimento</button>
     </div>
-    <p class="section-label" id="label-tempo">Clima do tempo</p>
+    <p class="section-label" id="label-tempo">Que temperatura combina com você agora?</p>
     <div class="option-col" role="group" aria-labelledby="label-tempo">
-      <button type="button" class="option" data-field="clima_tempo" data-value="quente" aria-pressed="false">Dias quentes</button>
-      <button type="button" class="option" data-field="clima_tempo" data-value="frio" aria-pressed="false">Dias frios</button>
-      <button type="button" class="option" data-field="clima_tempo" data-value="ameno" aria-pressed="false">Clima ameno</button>
+      <button type="button" class="option" data-field="clima_tempo" data-value="frio" aria-pressed="false">Frescor</button>
+      <button type="button" class="option" data-field="clima_tempo" data-value="quente" aria-pressed="false">Aconchego</button>
+      <button type="button" class="option" data-field="clima_tempo" data-value="ameno" aria-pressed="false">Neutro</button>
     </div>
     <div class="quest-profile" id="quiz-profile" hidden></div>
     <button class="cta cta-guest" id="btn-save-questionnaire" type="button">Salvar sem conta e gerar o código</button>
@@ -179,25 +182,25 @@
 
   <section class="screen" id="screen-ready">
     <h2 class="screen-title">Sessão pronta</h2>
-    <div class="card">
-      <div class="profile-row">
-        <img id="ready-avatar" src="/assets/guest-avatar.jpg" alt="">
-        <div>
-          <div class="name" id="ready-name"></div>
-          <div class="email" id="ready-email"></div>
-        </div>
-      </div>
+    <article class="parchment" aria-labelledby="ready-kicker">
+      <p class="parchment-kicker" id="ready-kicker">Leitura da casa</p>
+      <p class="parchment-name" id="ready-name"></p>
+      <p class="parchment-phrase" id="ready-phrase"></p>
+      <p class="parchment-sign" id="ready-profile" hidden></p>
+    </article>
+    <section class="session-record" aria-labelledby="record-title">
+      <h3 id="record-title">Registros desta sessão</h3>
       <p class="guest-save-note" id="ready-guest-note">Salvo sem conta, como visitante.</p>
-      <div class="quest-profile" id="ready-profile" hidden></div>
-      <div class="session-box">
+      <dl id="ready-records"></dl>
+      <div class="session-box parchment-pass">
         <div class="lbl">Mostre este código ao staff para o Quest</div>
         <div class="code" data-session-code>—</div>
-        <img class="session-qr" alt="QR da sessão">
+        <img class="session-qr" alt="QR da sessão para o Quest">
         <a class="session-link" href="#" target="_blank" rel="noopener">Abrir resumo</a>
       </div>
-      <p class="privacy">O headset inicia esta sessão quando o admin escolhe o código em /admin.</p>
-      <button class="cta ghost" id="btn-leave-ready" type="button">Sair e escolher de novo</button>
-    </div>
+      <p class="record-foot">O headset inicia esta sessão quando o admin escolhe o código em /admin.</p>
+    </section>
+    <button class="cta ghost" id="btn-leave-ready" type="button">Sair e escolher de novo</button>
   </section>
 </div>
 

@@ -28,11 +28,11 @@
     return null;
   }
 
-  async function ensureUser(auth) {
+  async function ensureUser(auth, prefetched) {
     if (!auth || typeof auth.getSession !== "function" || typeof auth.signInAnonymously !== "function") {
       throw new Error("Cliente Supabase indisponível.");
     }
-    var existing = await auth.getSession();
+    var existing = prefetched || await auth.getSession();
     var user = sessionUser(existing);
     if (user) return { user: user, createdAnonymous: false };
     var created = await auth.signInAnonymously();
@@ -44,6 +44,33 @@
     user = sessionUser(created);
     if (!user) throw new Error("Não foi possível abrir a sessão de visitante.");
     return { user: user, createdAnonymous: true };
+  }
+
+  function fieldsFor(source) {
+    var scope = typeof globalThis !== "undefined" ? globalThis : this;
+    var personality = scope && scope.GenjutsuPersonality;
+    if (personality && typeof personality.sessionFields === "function") {
+      return personality.sessionFields(source);
+    }
+    if (typeof require === "function") {
+      var loaded = require("./personality.js");
+      if (loaded && typeof loaded.sessionFields === "function") return loaded.sessionFields(source);
+    }
+    return [];
+  }
+
+  function normalizeVisitorName(value) {
+    var name = String(value || "").replace(/[\u0000-\u001F\u007F]/g, "").replace(/\s+/g, " ").trim();
+    if (name.length < 2 || name.length > 40) return "";
+    return name;
+  }
+
+  function applyVisitorName(user, visitorName, guest) {
+    if (!visitorName) return user;
+    var meta = Object.assign({}, (user && user.user_metadata) || {});
+    meta.full_name = visitorName;
+    if (guest) meta.guest = true;
+    return Object.assign({}, user || {}, { user_metadata: meta });
   }
 
   function selection(vibe, tempo) {
@@ -114,12 +141,30 @@
       incomplete.code = "incomplete";
       throw incomplete;
     }
-    var authResult = await ensureUser(deps.auth);
+    var visitorName = normalizeVisitorName(deps.visitorName);
+    if (!deps.auth || typeof deps.auth.getSession !== "function") {
+      throw new Error("Cliente Supabase indisponível.");
+    }
+    var peek = await deps.auth.getSession();
+    var existingUser = sessionUser(peek);
+    var guestLikely = !existingUser || (typeof deps.isGuest === "function" && deps.isGuest(existingUser));
+    if (guestLikely && !visitorName) {
+      var nameErr = new Error("Escreva seu nome antes de salvar.");
+      nameErr.code = "name_required";
+      throw nameErr;
+    }
+    var authResult = await ensureUser(deps.auth, peek);
     var user = authResult.user;
 
     var base = Object.assign({}, deps.dossier || {});
     var guest = authResult.createdAnonymous || (deps.isGuest && deps.isGuest(user));
+    if (guest && !visitorName) {
+      var lateName = new Error("Escreva seu nome antes de salvar.");
+      lateName.code = "name_required";
+      throw lateName;
+    }
     if (guest) base.fonte = "convidado";
+    if (visitorName) base.nome_exibicao = visitorName;
     base.preferencias = {
       clima_ambiente: picked.clima_ambiente,
       clima_tempo: picked.clima_tempo,
@@ -127,10 +172,11 @@
     };
     if (typeof deps.remember === "function") deps.remember(base);
 
-    var sessionCode = String(await deps.ensureSession(user) || "").trim().toUpperCase();
+    var namedUser = applyVisitorName(user, visitorName, guest);
+    var sessionCode = String(await deps.ensureSession(namedUser) || "").trim().toUpperCase();
     if (!CODE_RE.test(sessionCode)) throw new Error(sqlFailure());
 
-    var persona = deps.personality(user, base, sessionCode);
+    var persona = deps.personality(namedUser, base, sessionCode);
     var profileId = (persona && persona.profile_id) || picked.profile_id;
     var now = new Date().toISOString();
     var dossierRow = {
@@ -155,15 +201,39 @@
 
     var dossierWrite = await writeRow(deps.writeDossier, dossierRow);
     var summaryWrite = await writeRow(deps.writeSummary, summaryRow);
+    var profilePendingSql = dossierWrite.profilePendingSql || summaryWrite.profilePendingSql;
+    var recordSource = {
+      display_name: persona.displayName,
+      preferencias: base.preferencias,
+      profile_id: profileId,
+      archetype: persona.archetype,
+      letter: persona.letter,
+      session_code: sessionCode,
+      email: dossierRow.email,
+      fonte: base.fonte || "",
+      avatar_url: dossierRow.avatar_url,
+      user_id: namedUser.id,
+      personality_text: persona.text,
+      updated_at: now
+    };
+    if (base.fonte === "google") {
+      recordSource.calendar_count = (base.calendar || []).length;
+      recordSource.youtube_count = (base.youtube || []).length;
+      recordSource.contacts_count = (base.contacts || []).length;
+      recordSource.tasks_count = (base.tasks || []).length;
+    }
+    var fields = fieldsFor(recordSource);
     return {
       sessionCode: sessionCode,
-      user: user,
+      user: namedUser,
+      visitorName: persona.displayName,
       createdAnonymous: authResult.createdAnonymous,
       guest: guest,
       profile: picked,
       persona: persona,
       dossier: base,
-      profilePendingSql: dossierWrite.profilePendingSql || summaryWrite.profilePendingSql
+      fields: fields,
+      profilePendingSql: profilePendingSql
     };
   }
 
@@ -171,6 +241,7 @@
     CODE_RE: CODE_RE,
     anonymousFailureMessage: anonymousFailureMessage,
     ensureUser: ensureUser,
+    normalizeVisitorName: normalizeVisitorName,
     selection: selection,
     columnMissing: columnMissing,
     savedMessage: savedMessage,

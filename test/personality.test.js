@@ -23,6 +23,12 @@ assert.strictEqual(P.isGuest(google), false);
 assert.strictEqual(P.isGuest({ user_metadata: { guest: true } }), true);
 assert.strictEqual(P.displayName(guest, "AB3K7Q"), "Visitante AB3K7Q");
 assert.strictEqual(P.displayName(guest, ""), "Visitante");
+const namedGuest = {
+  id: "guest-2",
+  is_anonymous: true,
+  user_metadata: { full_name: "Lina", guest: true }
+};
+assert.strictEqual(P.displayName(namedGuest, "AB3K7Q"), "Lina");
 assert.strictEqual(P.emailFor(guest), "");
 assert.strictEqual(P.emailFor(google), "ana@example.com");
 assert.strictEqual(P.avatarFor(guest), "/assets/guest-avatar.jpg");
@@ -37,9 +43,23 @@ const guestText = P.buildPersonality(guest, {
 assert.strictEqual(guestText.archetype, "Zen");
 assert.strictEqual(guestText.profile_id, "Zen");
 assert.strictEqual(guestText.displayName, "Visitante AB3K7Q");
+assert.strictEqual(guestText.phrase, P.phraseFor("Zen", "Visitante AB3K7Q"));
 assert.ok(guestText.text.includes("Visitante AB3K7Q"));
-assert.ok(guestText.text.includes("perfil Zen (Z)"));
+assert.ok(guestText.text.includes("água parada"));
 assert.ok(!/agenda|YouTube|tarefa/i.test(guestText.text), guestText.text);
+
+const namedText = P.buildPersonality(guest, {
+  fonte: "convidado",
+  nome_exibicao: "Lina",
+  preferencias: { clima_ambiente: "agitado", clima_tempo: "ameno", profile_id: "Cyber" }
+}, "AB3K7Q");
+assert.strictEqual(namedText.displayName, "Lina");
+assert.ok(namedText.phrase.includes("Lina"));
+assert.ok(namedText.phrase.includes("pulso elétrico"));
+assert.strictEqual(P.phraseFor("Excentrico", "Lina").includes("gesto ousado"), true);
+assert.strictEqual(P.phraseFor("Acolhedor", "Lina").includes("aconchego"), true);
+assert.strictEqual(P.answerText("clima_ambiente", "tranquilo"), "Calmo e leve (tranquilo)");
+assert.strictEqual(P.answerText("clima_tempo", "quente"), "Aconchego (quente)");
 
 const googleText = P.buildPersonality(google, {
   fonte: "google",
@@ -50,6 +70,8 @@ const googleText = P.buildPersonality(google, {
 }, "ZZZZZZ");
 assert.strictEqual(googleText.archetype, "Excêntrico");
 assert.strictEqual(googleText.profile_id, "Excentrico");
+assert.ok(googleText.phrase.includes("Ana"));
+assert.ok(googleText.phrase.includes("gesto ousado"));
 assert.ok(/1 evento\(s\) de agenda, 0 canal\(is\) do YouTube e 2 tarefa\(s\)/.test(googleText.text));
 
 const unsynced = P.buildPersonality(google, { preferencias: { clima_ambiente: "tranquilo" } }, "");
@@ -80,6 +102,23 @@ assert.ok(portal.includes("if (P.isGuest(user))"));
 assert.ok(!portal.includes("Nesta sessão há") , "calendar sentence must live in personality.js");
 assert.ok(index.includes("Salvar sem conta e gerar o código"));
 assert.ok(index.includes("como visitante"));
+assert.ok(index.includes('id="visitor-name"'));
+assert.ok(index.includes("Como você quer se sentir na casa?"));
+assert.ok(index.includes("Calmo e leve"));
+assert.ok(index.includes("Aceso e em movimento"));
+assert.ok(index.includes("Que temperatura combina com você agora?"));
+assert.ok(index.includes("Frescor"));
+assert.ok(index.includes("Aconchego"));
+assert.ok(index.includes(">Neutro<"));
+assert.ok(index.includes('data-value="tranquilo"'));
+assert.ok(index.includes('data-value="agitado"'));
+assert.ok(index.includes('data-value="frio"'));
+assert.ok(index.includes('data-value="quente"'));
+assert.ok(index.includes('data-value="ameno"'));
+assert.ok(index.includes('id="ready-phrase"'));
+assert.ok(index.includes('id="ready-records"'));
+assert.ok(index.includes('class="parchment"'));
+assert.ok(!/house-card|data-house|Escolha a casa|Escolha o dojo/.test(index));
 assert.ok(!/Acolhedora|Elétrica|Ardente/.test(index));
 
 const privacy = fs.readFileSync(path.join(__dirname, "..", "privacy.html"), "utf8");

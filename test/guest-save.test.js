@@ -57,6 +57,7 @@ function depsFor(auth, hooks) {
     isGuest: P.isGuest,
     emailFor: P.emailFor,
     avatarFor: function () { return "/assets/guest-avatar.jpg"; },
+    visitorName: options.visitorName,
     personality: P.buildPersonality,
     remember: function (dossier) { writes.remembered = dossier; },
     ensureSession: async function (user) {
@@ -80,7 +81,7 @@ function depsFor(auth, hooks) {
 test("save without a session signs in anonymously and writes the ZCEA profile", async () => {
   const user = guestUser();
   const auth = authWith(null, user);
-  const deps = depsFor(auth);
+  const deps = depsFor(auth, { visitorName: "Lina" });
   const saved = await G.saveWithoutLogin(deps);
 
   assert.deepEqual(auth.calls, ["getSession", "signInAnonymously"]);
@@ -100,7 +101,8 @@ test("save without a session signs in anonymously and writes the ZCEA profile", 
   assert.equal(dossier.session_code, CODE);
   assert.equal(dossier.profile_id, "Excentrico");
   assert.equal(dossier.email, "");
-  assert.equal(dossier.full_name, "Visitante " + CODE);
+  assert.equal(dossier.full_name, "Lina");
+  assert.equal(dossier.dossier_data.nome_exibicao, "Lina");
   assert.equal(dossier.dossier_data.fonte, "convidado");
   assert.equal(dossier.dossier_data.preferencias.profile_id, "Excentrico");
   assert.equal(dossier.dossier_data.preferencias.clima_ambiente, "agitado");
@@ -111,9 +113,22 @@ test("save without a session signs in anonymously and writes the ZCEA profile", 
   assert.equal(summary.user_id, user.id);
   assert.equal(summary.profile_id, "Excentrico");
   assert.equal(summary.archetype, "Excêntrico");
-  assert.equal(summary.display_name, "Visitante " + CODE);
-  assert.match(summary.personality_text, /Excêntrico \(E\)/);
-  assert.doesNotMatch(summary.personality_text, /agenda|YouTube|tarefa/i);
+  assert.equal(summary.display_name, "Lina");
+  assert.match(summary.personality_text, /Lina/);
+  assert.match(summary.personality_text, /gesto ousado/);
+  assert.doesNotMatch(summary.personality_text, /agenda|YouTube|tarefa|oculto/i);
+  const labels = Object.fromEntries(saved.fields);
+  assert.equal(labels.Nome, "Lina");
+  assert.equal(labels["Como você quer se sentir"], "Aceso e em movimento (agitado)");
+  assert.equal(labels.Temperatura, "Aconchego (quente)");
+  assert.equal(labels.profile_id, "Excentrico");
+  assert.equal(labels["Arquétipo"], "Excêntrico");
+  assert.equal(labels.Letra, "E");
+  assert.equal(labels["Código da sessão"], CODE);
+  assert.equal(labels["E-mail"], "sem e-mail");
+  assert.equal(labels.Fonte, "convidado");
+  assert.equal(labels["Texto salvo"], summary.personality_text);
+  assert.equal(JSON.stringify(saved.fields).includes("oculto"), false);
   assert.match(G.savedMessage(CODE, saved.profile, { guest: true }), /Salvo como visitante, sem conta/);
   assert.match(G.savedMessage(CODE, saved.profile, { guest: true }), /Perfil do Quest: E · Excêntrico/);
   assert.match(G.savedMessage(CODE, saved.profile, { guest: true }), new RegExp(CODE));
@@ -137,13 +152,18 @@ test("an existing Google session is reused and anonymous sign-in is not called",
   assert.equal(deps.writes.dossier[0].full_name, "Ana");
   assert.equal(deps.writes.dossier[0].dossier_data.fonte, "google");
   assert.equal(deps.writes.dossier[0].profile_id, "Zen");
+  assert.match(deps.writes.summary[0].personality_text, /água parada/);
   assert.match(deps.writes.summary[0].personality_text, /1 evento\(s\) de agenda/);
+  const googleLabels = Object.fromEntries(saved.fields);
+  assert.equal(googleLabels.Nome, "Ana");
+  assert.equal(googleLabels["Agenda (itens)"], "1");
+  assert.equal(googleLabels["E-mail"], "ana@example.com");
   assert.match(G.savedMessage(CODE, saved.profile, { guest: false }), /^✓ Perfil salvo\./);
 });
 
 test("disabled anonymous provider stops before the session RPC", async () => {
   const auth = authWith(null, null);
-  const deps = depsFor(auth);
+  const deps = depsFor(auth, { visitorName: "Lina" });
   await assert.rejects(() => G.saveWithoutLogin(deps), (err) => {
     assert.match(err.message, /Anonymous sign-ins/);
     assert.match(err.message, /Authentication → Providers/);
@@ -168,10 +188,25 @@ test("incomplete answers do not create a visitor", async () => {
   assert.equal(deps.writes.dossier.length, 0);
 });
 
+test("a guest without a name does not open an anonymous session", async () => {
+  const auth = authWith(null, guestUser());
+  const deps = depsFor(auth);
+  await assert.rejects(() => G.saveWithoutLogin(deps), (err) => {
+    assert.equal(err.code, "name_required");
+    assert.match(err.message, /nome/);
+    return true;
+  });
+  assert.deepEqual(auth.calls, ["getSession"]);
+  assert.equal(deps.writes.dossier.length, 0);
+  assert.equal(G.normalizeVisitorName("  Li  "), "Li");
+  assert.equal(G.normalizeVisitorName("A"), "");
+  assert.equal(G.normalizeVisitorName("   "), "");
+});
+
 test("a missing profile_id column still stores the session code", async () => {
   const auth = authWith(null, guestUser());
   const missing = { code: "PGRST204", message: "Could not find the 'profile_id' column of 'session_summaries' in the schema cache" };
-  const deps = depsFor(auth, { summaryError: missing, dossierError: missing });
+  const deps = depsFor(auth, { summaryError: missing, dossierError: missing, visitorName: "Lina" });
   const saved = await G.saveWithoutLogin(deps);
   assert.equal(saved.profilePendingSql, true);
   assert.equal(saved.sessionCode, CODE);
@@ -188,10 +223,22 @@ test("the page copy tells the visitor they are saving without an account", () =>
   const anon = fs.readFileSync(path.join(__dirname, "..", "sql", "anonymous_auth.sql"), "utf8");
   assert.match(index, /Salvar sem conta e gerar o código/);
   assert.match(index, /salvar como visitante/i);
+  assert.match(index, /id="visitor-name"/);
+  assert.match(index, /Como você quer se sentir na casa/);
+  assert.match(index, /Calmo e leve/);
+  assert.match(index, /Aceso e em movimento/);
+  assert.match(index, /Que temperatura combina com você agora/);
   assert.match(index, /data-field="clima_ambiente"/);
+  assert.match(index, /data-value="tranquilo"/);
+  assert.match(index, /data-value="agitado"/);
+  assert.match(index, /data-value="frio"/);
+  assert.match(index, /data-value="quente"/);
   assert.match(index, /data-value="ameno"/);
   assert.match(index, /id="quiz-profile"/);
   assert.match(index, /id="ready-profile"/);
+  assert.match(index, /id="ready-records"/);
+  assert.match(index, /class="parchment"/);
+  assert.doesNotMatch(index, /house-card|data-house|Escolha a casa|Escolha o dojo/);
   assert.match(portal, /signInWithOAuth/);
   assert.match(portal, /saveWithoutLogin/);
   assert.doesNotMatch(portal, /Sessão expirada/);
