@@ -30,6 +30,7 @@ create table if not exists public.session_summaries (
   display_name text,
   personality_text text,
   archetype text,
+  profile_id text,
   updated_at timestamptz default now()
 );
 

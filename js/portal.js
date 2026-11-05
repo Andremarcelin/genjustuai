@@ -1,5 +1,7 @@
 (function () {
   var P = window.GenjutsuPersonality;
+  var G = window.GenjutsuGuestSave;
+  var Z = window.GenjutsuZcea;
   var $ = function (id) { return document.getElementById(id); };
   var SESSION_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   var GOOGLE_SCOPES = [
@@ -17,6 +19,8 @@
   var inflightUserId = "";
   var inflight = null;
   var authBusy = false;
+  var saveInProgress = false;
+  var guestIntent = false;
   var configReady = Promise.resolve();
 
   function randomSessionCode() {
@@ -109,9 +113,10 @@
     document.querySelectorAll(".screen").forEach(function (el) { el.classList.remove("on"); });
     var screen = $(id);
     if (screen) screen.classList.add("on");
-    var guest = currentPaintUser ? P.isGuest(currentPaintUser) : false;
+    var guest = guestIntent || (currentPaintUser ? P.isGuest(currentPaintUser) : false);
     var step = { "screen-login": 1, "screen-sync": 2, "screen-questionnaire": 3, "screen-ready": 4 }[id] || 1;
     setProgress(step, guest);
+    if (id === "screen-questionnaire") paintSaveCopy();
     var title = screen && screen.querySelector(".screen-title");
     if (title) {
       title.tabIndex = -1;
@@ -163,6 +168,10 @@
     });
     var sawAuthEvent = false;
     sb.auth.onAuthStateChange(function (_event, session) {
+      if (saveInProgress) {
+        if (session && session.user) paintIdentity(session.user);
+        return;
+      }
       if (!sawAuthEvent) {
         sawAuthEvent = true;
         if (!session) return;
@@ -249,17 +258,20 @@
   async function upsertPublicSummary(user) {
     if (!sb || !user || !sessionCode) return;
     var persona = P.buildPersonality(user, globalDossie, sessionCode);
-    var result = await sb.from("session_summaries").upsert(
-      {
-        session_code: sessionCode,
-        user_id: user.id,
-        display_name: persona.displayName,
-        personality_text: persona.text,
-        archetype: persona.archetype,
-        updated_at: new Date().toISOString()
-      },
-      { onConflict: "session_code" }
-    );
+    var row = {
+      session_code: sessionCode,
+      user_id: user.id,
+      display_name: persona.displayName,
+      personality_text: persona.text,
+      archetype: persona.archetype,
+      updated_at: new Date().toISOString()
+    };
+    if (persona.profile_id) row.profile_id = persona.profile_id;
+    var result = await sb.from("session_summaries").upsert(row, { onConflict: "session_code" });
+    if (result.error && row.profile_id && G.columnMissing(result.error)) {
+      delete row.profile_id;
+      result = await sb.from("session_summaries").upsert(row, { onConflict: "session_code" });
+    }
     if (result.error) console.warn("summary:", result.error);
   }
 
@@ -280,7 +292,13 @@
       updated_at: new Date().toISOString()
     };
     if (sessionCode) row.session_code = sessionCode;
+    var personaProfile = P.buildPersonality(user, globalDossie, sessionCode);
+    if (personaProfile.profile_id) row.profile_id = personaProfile.profile_id;
     var result = await sb.from("dossiers").upsert(row, { onConflict: "user_id" });
+    if (result.error && row.profile_id && G.columnMissing(result.error)) {
+      delete row.profile_id;
+      result = await sb.from("dossiers").upsert(row, { onConflict: "user_id" });
+    }
     if (result.error) console.warn("dossier:", result.error);
   }
 
@@ -288,6 +306,7 @@
     if (journeyPhase === "leaving") return;
     journeyUserId = "";
     journeyPhase = "";
+    guestIntent = false;
     inflightUserId = "";
     inflight = null;
     currentPaintUser = null;
@@ -295,10 +314,11 @@
     $("logged-in").classList.add("hidden");
     setStatus("status-auth", "");
     setStatus("status-questionnaire", "");
-    document.querySelectorAll(".house-card").forEach(function (b) {
+    document.querySelectorAll(".option").forEach(function (b) {
       b.classList.remove("selected");
       b.setAttribute("aria-pressed", "false");
     });
+    renderQuestProfile(null);
     globalDossie = {};
     renderSessionCode("");
     if (sb && $("screen-config").hidden) showLanding();
@@ -440,21 +460,13 @@
       });
       await upsertPublicSummary(user);
       bar.style.width = "100%";
-      $("sync-status").textContent = token ? "Rastro digital sincronizado" : "Cadastro pronto. Escolha a casa.";
+      $("sync-status").textContent = token ? "Rastro digital sincronizado" : "Cadastro pronto. Responda as duas perguntas.";
       setTimeout(goToPreferences, token ? 700 : 400);
     } catch (err) {
       console.error("Falha geral na coleta", err);
-      $("sync-status").textContent = "Não deu para sincronizar o Google. Vamos à casa.";
+      $("sync-status").textContent = "Não deu para sincronizar o Google. Vamos às duas perguntas.";
       setTimeout(goToPreferences, 500);
     }
-  }
-
-  function anonymousHelp(error) {
-    var msg = (error && (error.message || error.code || "")) + "";
-    if (/anonymous/i.test(msg)) {
-      return "Sessões anônimas estão desligadas neste Supabase. Em Authentication → Providers, ative Anonymous sign-ins.";
-    }
-    return "Não foi possível entrar sem conta: " + (error.message || "erro desconhecido");
   }
 
   async function oauth(provider) {
@@ -494,23 +506,58 @@
     }
   }
 
+  function paintSaveCopy() {
+    var guest = guestIntent || !currentPaintUser || P.isGuest(currentPaintUser);
+    var note = $("guest-save-note");
+    var btn = $("btn-save-questionnaire");
+    if (note) {
+      note.textContent = guest
+        ? "Sem conta. Você salva como visitante: as duas respostas geram o código da sessão e o perfil do Quest. O Google não é necessário."
+        : "Conta Google conectada. Salvar grava o perfil do Quest neste código. Quem não tem conta usa o mesmo questionário como visitante.";
+    }
+    if (btn) btn.textContent = guest ? "Salvar sem conta e gerar o código" : "Salvar perfil e gerar o código";
+  }
+
+  function renderQuestProfile(resolved) {
+    var defined = !!(resolved && resolved.profile_id);
+    var label = defined ? "Perfil do Quest: " + resolved.letter + " · " + resolved.archetype : "";
+    ["quiz-profile", "ready-profile"].forEach(function (id) {
+      var el = $(id);
+      if (!el) return;
+      el.hidden = !defined;
+      el.textContent = label;
+    });
+    var readyNote = $("ready-guest-note");
+    if (readyNote) {
+      var guest = guestIntent || (currentPaintUser && P.isGuest(currentPaintUser));
+      readyNote.hidden = !guest;
+    }
+  }
+
+  function selectedValue(field) {
+    var current = document.querySelector('.option.selected[data-field="' + field + '"]');
+    return current ? current.dataset.value : "";
+  }
+
   async function startGuest() {
     if (authBusy) return;
     if (!(await requireClient())) return;
     authBusy = true;
-    revealApp();
-    showScreen("screen-login");
-    setStatus("status-auth", "Abrindo sessão de visitante…");
     try {
-      var result = await sb.auth.signInAnonymously();
-      if (result.error) {
-        setStatus("status-auth", anonymousHelp(result.error), true);
-        return;
+      var existing = await sb.auth.getSession();
+      var session = existing && existing.data && existing.data.session;
+      var user = session && session.user;
+      guestIntent = !user || P.isGuest(user);
+      journeyPhase = "quiz";
+      if (user) {
+        journeyUserId = user.id;
+        paintIdentity(user);
       }
-      var user = result.data && (result.data.user || (result.data.session && result.data.session.user));
-      if (user) await showLoggedIn(user);
-    } catch (e) {
-      setStatus("status-auth", anonymousHelp(e), true);
+      revealApp();
+      showScreen("screen-questionnaire");
+      setStatus("status-questionnaire", guestIntent
+        ? "Responda as duas perguntas. A gravação não pede login Google."
+        : "Responda as duas perguntas. Sua conta Google já está conectada.");
     } finally {
       authBusy = false;
     }
@@ -526,20 +573,17 @@
     showLanding();
   }
 
-  document.querySelectorAll(".house-card").forEach(function (btn) {
+  document.querySelectorAll(".option").forEach(function (btn) {
     btn.addEventListener("click", function () {
-      document.querySelectorAll(".house-card").forEach(function (b) {
+      var field = btn.dataset.field;
+      document.querySelectorAll('.option[data-field="' + field + '"]').forEach(function (b) {
         var on = b === btn;
         b.classList.toggle("selected", on);
         b.setAttribute("aria-pressed", on ? "true" : "false");
       });
+      renderQuestProfile(Z.resolve(selectedValue("clima_ambiente"), selectedValue("clima_tempo")));
     });
   });
-
-  function selectedHouse() {
-    var current = document.querySelector(".house-card.selected");
-    return current ? current.dataset.casa : "";
-  }
 
   $("btn-google").addEventListener("click", startGoogle);
   $("btn-guest").addEventListener("click", startGuest);
@@ -565,33 +609,62 @@
   $("btn-leave-ready").addEventListener("click", leaveJourney);
 
   $("btn-save-questionnaire").addEventListener("click", async function () {
-    var casa = selectedHouse();
-    var house = P.HOUSES[casa];
-    if (!house) {
-      setStatus("status-questionnaire", "Escolha uma casa antes de salvar.", true);
+    var vibe = selectedValue("clima_ambiente");
+    var tempo = selectedValue("clima_tempo");
+    if (!G.selection(vibe, tempo)) {
+      setStatus("status-questionnaire", "Responda as duas perguntas antes de salvar.", true);
       return;
     }
-    setStatus("status-questionnaire", "Salvando suas preferências…");
+    if (!sb) {
+      setStatus("status-questionnaire", "A conexão com o Supabase não está pronta.", true);
+      return;
+    }
+    var savingAsGuest = guestIntent || !currentPaintUser || P.isGuest(currentPaintUser);
+    setStatus("status-questionnaire", savingAsGuest
+      ? "Salvando como visitante, sem conta…"
+      : "Salvando suas preferências…");
+    saveInProgress = true;
     try {
-      var result = await sb.auth.getUser();
-      var user = result && result.data && result.data.user;
-      if (!user) throw new Error("Sessão expirada.");
-      if (P.isGuest(user)) globalDossie.fonte = "convidado";
-      globalDossie.preferencias = {
-        casa: house.id,
-        clima_ambiente: house.vibe,
-        clima_tempo: house.tempo,
-        paleta: house.palette
-      };
-      await saveToSupabase(user);
-      await logInteraction(user, "quiz", globalDossie.preferencias);
-      await upsertPublicSummary(user);
-      paintIdentity(user);
-      setStatus("status-questionnaire", "✓ Perfil salvo. Código da sessão: " + sessionCode);
+      var saved = await G.saveWithoutLogin({
+        auth: sb.auth,
+        vibe: vibe,
+        tempo: tempo,
+        dossier: globalDossie,
+        isGuest: P.isGuest,
+        emailFor: P.emailFor,
+        avatarFor: function (user) {
+          var avatar = P.avatarFor(user);
+          if (avatar.charAt(0) === "/") avatar = location.origin + avatar;
+          return avatar;
+        },
+        personality: P.buildPersonality,
+        remember: function (dossier) { globalDossie = dossier; },
+        ensureSession: ensureSessionCode,
+        writeDossier: function (row) {
+          return sb.from("dossiers").upsert(row, { onConflict: "user_id" });
+        },
+        writeSummary: function (row) {
+          return sb.from("session_summaries").upsert(row, { onConflict: "session_code" });
+        }
+      });
+      guestIntent = saved.guest;
+      journeyUserId = saved.user.id;
+      currentPaintUser = saved.user;
+      renderSessionCode(saved.sessionCode);
+      paintIdentity(saved.user);
+      renderQuestProfile(saved.profile);
+      await logInteraction(saved.user, "quiz", globalDossie.preferencias);
+      setStatus("status-questionnaire", G.savedMessage(saved.sessionCode, saved.profile, {
+        guest: saved.guest,
+        profilePendingSql: saved.profilePendingSql
+      }));
       journeyPhase = "ready";
       showScreen("screen-ready");
+      setStatus("status-questionnaire", "");
     } catch (err) {
-      setStatus("status-questionnaire", "Erro ao salvar: " + err.message, true);
+      setStatus("status-questionnaire", err.message || "Erro ao salvar.", true);
+    } finally {
+      saveInProgress = false;
     }
   });
 
