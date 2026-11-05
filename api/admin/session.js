@@ -1,4 +1,4 @@
-import { readSupabaseConfig, supabaseRest } from "../../lib/supabase-rest.mjs";
+import { readSupabaseConfig, supabaseRest } from "../../lib/supabase-rest.cjs";
 
 const CODE_RE = /^[A-HJ-NP-Z2-9]{6}$/i;
 
