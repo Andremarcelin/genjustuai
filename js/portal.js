@@ -210,6 +210,22 @@
     return true;
   }
 
+  async function loadStoredDossier(user) {
+    if (!sb || !user) return;
+    var result = await sb.from("dossiers").select("dossier_data, profile_id, session_code, full_name").eq("user_id", user.id).maybeSingle();
+    if (!result || result.error || !result.data) return;
+    var stored = result.data.dossier_data;
+    if (!stored || typeof stored !== "object" || Array.isArray(stored)) stored = {};
+    var fromColumn = result.data.profile_id
+      ? { preferencias: { profile_id: result.data.profile_id } }
+      : {};
+    globalDossie = G.mergeStoredDossier(G.mergeStoredDossier(stored, fromColumn), globalDossie);
+    if (result.data.full_name && !globalDossie.nome_exibicao) {
+      globalDossie.nome_exibicao = result.data.full_name;
+    }
+    if (result.data.session_code && !sessionCode) renderSessionCode(result.data.session_code);
+  }
+
   async function ensureSessionCode(user) {
     if (!sb || !user) return "";
     var rpc = await sb.rpc("genjutsu_ensure_session");
@@ -263,15 +279,18 @@
   async function upsertPublicSummary(user) {
     if (!sb || !user || !sessionCode) return;
     var persona = P.buildPersonality(user, globalDossie, sessionCode);
+    // Sem ZCEA o Quest fica no branco. Não gravar "Perfil em formação"
+    // por cima de um resumo, nem publicar a sessão antes do questionário.
+    if (!persona.profile_id) return;
     var row = {
       session_code: sessionCode,
       user_id: user.id,
       display_name: persona.displayName,
       personality_text: persona.text,
       archetype: persona.archetype,
+      profile_id: persona.profile_id,
       updated_at: new Date().toISOString()
     };
-    if (persona.profile_id) row.profile_id = persona.profile_id;
     var result = await sb.from("session_summaries").upsert(row, { onConflict: "session_code" });
     if (result.error && row.profile_id && G.columnMissing(result.error)) {
       delete row.profile_id;
@@ -286,6 +305,9 @@
     if (!sb || !user) return;
     if (!sessionCode) await ensureSessionCode(user);
     var persona = P.buildPersonality(user, globalDossie, sessionCode);
+    if (persona.profile_id && globalDossie.preferencias) {
+      globalDossie.preferencias.profile_id = persona.profile_id;
+    }
     var avatar = P.avatarFor(user);
     if (avatar.charAt(0) === "/") avatar = location.origin + avatar;
     var row = {
@@ -297,8 +319,7 @@
       updated_at: new Date().toISOString()
     };
     if (sessionCode) row.session_code = sessionCode;
-    var personaProfile = P.buildPersonality(user, globalDossie, sessionCode);
-    if (personaProfile.profile_id) row.profile_id = personaProfile.profile_id;
+    if (persona.profile_id) row.profile_id = persona.profile_id;
     var result = await sb.from("dossiers").upsert(row, { onConflict: "user_id" });
     if (result.error && row.profile_id && G.columnMissing(result.error)) {
       delete row.profile_id;
@@ -358,6 +379,8 @@
       return;
     }
     journeyUserId = user.id;
+    await loadStoredDossier(user);
+    paintIdentity(user);
     if (P.isGuest(user)) {
       journeyPhase = "quiz";
       globalDossie.fonte = "convidado";
@@ -637,6 +660,7 @@
         b.classList.toggle("selected", on);
         b.setAttribute("aria-pressed", on ? "true" : "false");
       });
+      renderQuestProfile(G.selection(selectedValue("clima_ambiente"), selectedValue("clima_tempo")));
     });
   });
 

@@ -1,4 +1,5 @@
 import { readSupabaseConfig, supabaseRest } from "../../lib/supabase-rest.cjs";
+import { sanitizeProfileId } from "../session.js";
 
 const CODE_RE = /^[A-HJ-NP-Z2-9]{6}$/i;
 
@@ -32,6 +33,42 @@ function isHardFailure(result) {
 
 function publicFailure(result) {
   return result?.error === "missing_config" ? "missing_config" : "supabase_unreachable";
+}
+
+async function profilesFor(codes) {
+  const list = [...new Set(codes.filter(Boolean))];
+  const empty = new Map();
+  if (!list.length) return empty;
+  const filter = list.map((code) => encodeURIComponent(code)).join(",");
+  let result = await rest(
+    `session_summaries?session_code=in.(${filter})&select=session_code,display_name,profile_id`
+  );
+  if (isSchema(result)) {
+    result = await rest(
+      `session_summaries?session_code=in.(${filter})&select=session_code,display_name`
+    );
+  }
+  if (!result.ok || !Array.isArray(result.json)) return empty;
+  const found = new Map();
+  for (const row of result.json) {
+    found.set(String(row.session_code || "").toUpperCase(), {
+      display_name: row.display_name ?? null,
+      profile_id: sanitizeProfileId(row.profile_id),
+    });
+  }
+  return found;
+}
+
+function withProfile(row, profiles) {
+  const code = String(row.session_code || "").toUpperCase();
+  const extra = profiles.get(code);
+  return {
+    session_code: row.session_code,
+    display_name: row.display_name || extra?.display_name || row.email || "Sem nome",
+    email: row.email || "",
+    profile_id: extra?.profile_id ?? null,
+    updated_at: row.updated_at,
+  };
 }
 
 async function listRecent() {
@@ -88,12 +125,8 @@ export default async function handler(req, res) {
         return;
       }
       const stateRows = current.ok && Array.isArray(current.json) ? current.json : [];
-      const recent = listed.rows.map((d) => ({
-        session_code: d.session_code,
-        display_name: d.display_name || d.email || "Sem nome",
-        email: d.email || "",
-        updated_at: d.updated_at,
-      }));
+      const profiles = await profilesFor(listed.rows.map((d) => d.session_code));
+      const recent = listed.rows.map((d) => withProfile(d, profiles));
       res.status(200).json({
         current_session_code: stateRows[0]?.current_session_code || null,
         recent,
@@ -118,7 +151,14 @@ export default async function handler(req, res) {
       });
       if (set.ok) {
         const value = typeof set.json === "string" ? set.json : code;
-        res.status(200).json({ current_session_code: String(value).replace(/"/g, "") });
+        const currentCode = String(value).replace(/"/g, "");
+        const profiles = await profilesFor([currentCode]);
+        const extra = profiles.get(currentCode.toUpperCase());
+        res.status(200).json({
+          current_session_code: currentCode,
+          display_name: extra?.display_name ?? null,
+          profile_id: extra?.profile_id ?? null,
+        });
         return;
       }
       if (isSchema(set)) {

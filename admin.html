@@ -19,6 +19,7 @@
     <div class="muted">Selecionado para o Quest</div>
     <p id="pick-name" class="nm">Nenhum</p>
     <p id="pick-code" class="cd">—</p>
+    <p id="pick-profile" class="muted">Sem perfil do Quest</p>
   </div>
   <h2>Últimos cadastros</h2>
   <div id="list"></div>
@@ -33,7 +34,7 @@
 </div>
 <script>
   var $ = function (id) { return document.getElementById(id); };
-  var selected = { name: "", code: "" };
+  var selected = { name: "", code: "", profileId: "" };
   function esc(value) {
     return String(value || "").replace(/[&<>"']/g, function (ch) {
       return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch];
@@ -56,10 +57,14 @@
     $("status").textContent = text;
     $("status").className = isError ? "status error" : "status";
   }
-  function showPick(name, code) {
-    selected = { name: name, code: code };
+  function profileLabel(profileId) {
+    return profileId ? "Perfil do Quest: " + profileId : "Sem perfil do Quest";
+  }
+  function showPick(name, code, profileId) {
+    selected = { name: name, code: code, profileId: profileId || "" };
     $("pick-name").textContent = name || "Sem nome";
     $("pick-code").textContent = code || "—";
+    $("pick-profile").textContent = profileLabel(selected.profileId);
     $("list").querySelectorAll(".row").forEach(function (el) {
       el.classList.toggle("on", el.dataset.c === code);
     });
@@ -86,22 +91,23 @@
         : "Nenhuma sessão no Quest ainda"), Boolean(data.hint));
     $("list").innerHTML = recent.map(function (r) {
       var email = r.email ? esc(r.email) : "Convidado · sem e-mail";
-      return '<button type="button" class="row" data-c="' + esc(r.session_code) + '" data-n="' + esc(r.display_name || "") + '">'
+      return '<button type="button" class="row" data-c="' + esc(r.session_code) + '" data-n="' + esc(r.display_name || "") + '" data-p="' + esc(r.profile_id || "") + '">'
         + '<div class="nm">' + esc(r.display_name || "Sem nome") + "</div>"
         + '<div class="muted">' + email + "</div>"
+        + '<div class="muted">' + esc(profileLabel(r.profile_id)) + "</div>"
         + '<div class="cd">' + esc(r.session_code) + "</div>"
         + "</button>";
     }).join("") || "<p class='muted'>Nenhum cadastro com código ainda.</p>";
     $("list").querySelectorAll(".row").forEach(function (el) {
-      el.onclick = function () { showPick(el.dataset.n, el.dataset.c); };
+      el.onclick = function () { showPick(el.dataset.n, el.dataset.c, el.dataset.p); };
     });
     var cur = recent.find(function (r) { return r.session_code === data.current_session_code; });
-    if (cur) showPick(cur.display_name, cur.session_code);
-    else if (data.current_session_code) showPick("Sessão atual", data.current_session_code);
+    if (cur) showPick(cur.display_name, cur.session_code, cur.profile_id);
+    else if (data.current_session_code) showPick("Sessão atual", data.current_session_code, "");
   }
   $("save").onclick = async function () {
     var typed = $("manual").value.trim().toUpperCase();
-    if (typed) showPick(selected.name || "Código colado", typed);
+    if (typed) showPick(selected.code === typed ? selected.name : "Código colado", typed, selected.code === typed ? selected.profileId : "");
     if (!selected.code) {
       setStatus("Selecione um cadastro ou cole o código de 6 caracteres.", true);
       return;
@@ -119,8 +125,11 @@
       setStatus("Sem rede. Tente de novo.", true);
       return;
     }
+    if (res.ok && data.profile_id) selected.profileId = data.profile_id;
+    if (res.ok && data.display_name) selected.name = data.display_name;
+    if (res.ok) showPick(selected.name, data.current_session_code || selected.code, data.profile_id || selected.profileId);
     setStatus(res.ok
-      ? "Quest iniciado com " + selected.name + " · " + data.current_session_code
+      ? "Quest iniciado com " + selected.name + " · " + data.current_session_code + ". " + profileLabel(data.profile_id)
       : explain(data), !res.ok);
   };
   $("load").onclick = function () { load().catch(function () {}); };
