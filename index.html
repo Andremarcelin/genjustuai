@@ -42,13 +42,13 @@
       <img class="crow-mark" src="/assets/icon-crow.jpg" alt="Corvo GenJutsu, olhos vermelhos e torii neon">
       <p class="eyebrow">Smart Home Cognitiva · Quest 3S</p>
       <h1>A casa que reconhece quem chega</h1>
-      <p>O GenJutsu AI prepara o clima da casa e a passagem para o Meta Quest. Google sincroniza a rotina. Sem conta, a jornada usa só o que você escolher aqui.</p>
+      <p>Responda duas perguntas e salve sem conta. O código da sessão e o perfil do Quest aparecem na hora. Google fica opcional e só sincroniza a rotina.</p>
       <div class="fork" id="entrada">
-        <button class="cta cta-google" id="btn-google" type="button">Continuar com Google</button>
         <button class="cta cta-guest" id="btn-guest" type="button">Continuar sem conta</button>
+        <button class="cta cta-google" id="btn-google" type="button">Continuar com Google</button>
       </div>
       <button class="text-link" id="btn-scroll-more" type="button">Como funciona</button>
-      <p class="fine">Com Google: agenda, YouTube, contatos e tarefas, sem Gmail nem Drive. Sem conta: preferências da casa e o código da sessão. <a href="/privacy">Privacidade</a> · <a href="/terms">Termos</a></p>
+      <p class="fine">Sem conta: você salva como visitante e recebe o código. Com Google: agenda, YouTube, contatos e tarefas, sem Gmail nem Drive. <a href="/privacy">Privacidade</a> · <a href="/terms">Termos</a></p>
     </div>
     <figure class="hero-visual">
       <img src="/assets/og-hero.jpg" alt="Corvo com olhos vermelhos em uma smart home, torii neon e cidade ao fundo">
@@ -59,12 +59,12 @@
     <h2>Dois caminhos, a mesma casa</h2>
     <div class="pillars">
       <article class="pillar">
-        <h3>Smart Home Cognitiva</h3>
-        <p>Quatro casas — Zen, Acolhedora, Elétrica e Ardente — viram o arquétipo Z, C, E ou A que o Quest já lê.</p>
+        <h3>Perfil do Quest</h3>
+        <p>Duas perguntas definem Zen, Cyber, Excêntrico ou Acolhedor. O Quest lê o profile_id estável: Zen, Cyber, Excentrico ou Acolhedor.</p>
       </article>
       <article class="pillar">
         <h3>Google ou visitante</h3>
-        <p>Google traz agenda, canais, contatos e tarefas. O visitante não chama essas APIs: nome “Visitante” mais o código, sem e-mail.</p>
+        <p>O visitante salva sem conta e não chama essas APIs: nome “Visitante” mais o código, sem e-mail. Google continua opcional.</p>
       </article>
       <article class="pillar">
         <h3>Passagem ao Quest</h3>
@@ -76,19 +76,19 @@
   <section class="landing-section">
     <h2>A jornada</h2>
     <div class="steps-row">
-      <div class="step-card"><span>01</span>Entre com Google ou continue sem conta</div>
+      <div class="step-card"><span>01</span>Continue sem conta — Google é opcional</div>
       <div class="step-card"><span>02</span>Sincronize o rastro — o visitante pula esta etapa</div>
-      <div class="step-card"><span>03</span>Escolha o clima da casa</div>
+      <div class="step-card"><span>03</span>Responda as duas perguntas e salve</div>
       <div class="step-card"><span>04</span>Vista o Quest e entre no genjutsu</div>
     </div>
   </section>
 
   <div class="cta-band">
     <h2>Pronto para entrar</h2>
-    <p>Os dois botões abrem a mesma jornada. A diferença é só o que viaja com você.</p>
+    <p>O caminho principal é salvar como visitante. Google só entra se você quiser a rotina.</p>
     <div class="fork">
-      <button class="cta cta-google" id="btn-google-bottom" type="button">Continuar com Google</button>
       <button class="cta cta-guest" id="btn-guest-bottom" type="button">Continuar sem conta</button>
+      <button class="cta cta-google" id="btn-google-bottom" type="button">Continuar com Google</button>
     </div>
     <p class="fine"><a href="/privacy">Política de Privacidade</a> · <a href="/terms">Termos de Serviço</a> · <button class="text-link" id="btn-open-config" type="button">Conexão do projeto</button></p>
   </div>
@@ -99,14 +99,14 @@
   <ol class="dojo-progress" id="dojo-progress" aria-label="Progresso da jornada, passos 1 a 4">
     <li data-step="1"><b>1</b> Entrada</li>
     <li data-step="2"><b>2</b> <span data-step-label>Rastro</span></li>
-    <li data-step="3"><b>3</b> Casa</li>
+    <li data-step="3"><b>3</b> Perfil</li>
     <li data-step="4"><b>4</b> Quest</li>
   </ol>
 
   <section class="screen" id="screen-login">
     <h2 class="screen-title">Como você entra</h2>
     <div id="logged-out">
-      <p class="section-label">Google e visitante têm o mesmo peso. Microsoft fica à parte.</p>
+      <p class="section-label">Salvar sem conta é o caminho principal. Google é opcional. Microsoft fica à parte.</p>
       <div class="oauth">
         <div class="oauth-main">
           <button class="cta cta-google" id="btn-login" type="button" disabled>Continuar com Google</button>
@@ -159,35 +159,21 @@
   </section>
 
   <section class="screen" id="screen-questionnaire">
-    <h2 class="screen-title">Qual casa combina com você?</h2>
-    <p class="section-label">Quatro climas. O Quest recebe a letra Z, C, E ou A.</p>
-    <div class="house-grid">
-      <button type="button" class="house-card" data-casa="Z" aria-pressed="false">
-        <img src="/assets/house-z.jpg" alt="Interior frio e quieto, com pedra e neblina">
-        <span class="code-letter">Z · Zen</span>
-        <span class="house-meta">Tranquilo · paleta fria</span>
-      </button>
-      <button type="button" class="house-card" data-casa="C" aria-pressed="false">
-        <img src="/assets/house-c.jpg" alt="Sala de chá quente, com lanterna e madeira">
-        <span class="code-letter">C · Acolhedora</span>
-        <span class="house-meta">Tranquilo · paleta quente</span>
-      </button>
-      <button type="button" class="house-card" data-casa="E" aria-pressed="false">
-        <img src="/assets/house-e.jpg" alt="Sala ampla e fria, corvo em movimento">
-        <span class="code-letter">E · Elétrica</span>
-        <span class="house-meta">Dinâmico · paleta fria</span>
-      </button>
-      <button type="button" class="house-card" data-casa="A" aria-pressed="false">
-        <img src="/assets/house-a.jpg" alt="Sala com lareira e luz de brasa">
-        <span class="code-letter">A · Ardente</span>
-        <span class="house-meta">Dinâmico · paleta quente</span>
-      </button>
+    <h2 class="screen-title">Duas perguntas, sem conta</h2>
+    <p class="guest-save-note" id="guest-save-note">Sem conta. Você salva como visitante: as duas respostas geram o código da sessão e o perfil do Quest. O Google não é necessário.</p>
+    <p class="section-label" id="label-vibe">Clima do ambiente</p>
+    <div class="option-col" role="group" aria-labelledby="label-vibe">
+      <button type="button" class="option" data-field="clima_ambiente" data-value="tranquilo" aria-pressed="false">Ambiente tranquilo</button>
+      <button type="button" class="option" data-field="clima_ambiente" data-value="agitado" aria-pressed="false">Ambiente dinâmico</button>
     </div>
-    <div class="session-box">
-      <div class="lbl">Código desta sessão</div>
-      <div class="code" data-session-code>—</div>
+    <p class="section-label" id="label-tempo">Clima do tempo</p>
+    <div class="option-col" role="group" aria-labelledby="label-tempo">
+      <button type="button" class="option" data-field="clima_tempo" data-value="quente" aria-pressed="false">Dias quentes</button>
+      <button type="button" class="option" data-field="clima_tempo" data-value="frio" aria-pressed="false">Dias frios</button>
+      <button type="button" class="option" data-field="clima_tempo" data-value="ameno" aria-pressed="false">Clima ameno</button>
     </div>
-    <button class="cta cta-google" id="btn-save-questionnaire" type="button">Salvar e gerar o código</button>
+    <div class="quest-profile" id="quiz-profile" hidden></div>
+    <button class="cta cta-guest" id="btn-save-questionnaire" type="button">Salvar sem conta e gerar o código</button>
     <div class="status" id="status-questionnaire" role="status"></div>
   </section>
 
@@ -201,6 +187,8 @@
           <div class="email" id="ready-email"></div>
         </div>
       </div>
+      <p class="guest-save-note" id="ready-guest-note">Salvo sem conta, como visitante.</p>
+      <div class="quest-profile" id="ready-profile" hidden></div>
       <div class="session-box">
         <div class="lbl">Mostre este código ao staff para o Quest</div>
         <div class="code" data-session-code>—</div>
@@ -230,7 +218,9 @@
   </div>
 </div>
 
+<script src="/js/zcea-profile.js"></script>
 <script src="/js/personality.js"></script>
+<script src="/js/guest-save.js"></script>
 <script src="/js/portal.js"></script>
 </body>
 </html>

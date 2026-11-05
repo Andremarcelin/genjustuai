@@ -377,6 +377,44 @@
   box-shadow: var(--glow);
 }
 
+.guest-save-note {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0 0 12px;
+}
+
+.option-col { display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
+
+.option {
+  width: 100%;
+  text-align: left;
+  border-radius: 16px;
+  border: 1px solid var(--line-soft);
+  background: #000;
+  color: var(--text);
+  padding: 14px 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.option.selected {
+  border-color: var(--accent);
+  box-shadow: var(--glow);
+}
+
+.quest-profile {
+  margin: 12px 0;
+  text-align: center;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  padding: 8px 14px;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+}
+
+.quest-profile[hidden] { display: none !important; }
+
 .stack { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
 
 .stack .cta { margin: 0; }

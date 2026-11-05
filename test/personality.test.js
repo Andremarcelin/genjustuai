@@ -32,12 +32,13 @@ const guestText = P.buildPersonality(guest, {
   calendar: [{ titulo: "não deve aparecer" }],
   youtube: [{ canal: "x" }],
   tasks: [{ titulo: "y" }],
-  preferencias: { casa: "Z", clima_ambiente: "tranquilo", clima_tempo: "frio", paleta: "fria" }
+  preferencias: { clima_ambiente: "tranquilo", clima_tempo: "frio", profile_id: "Zen" }
 }, "AB3K7Q");
-assert.strictEqual(guestText.archetype, "Z");
+assert.strictEqual(guestText.archetype, "Zen");
+assert.strictEqual(guestText.profile_id, "Zen");
 assert.strictEqual(guestText.displayName, "Visitante AB3K7Q");
 assert.ok(guestText.text.includes("Visitante AB3K7Q"));
-assert.ok(guestText.text.includes("Casa Zen (Z)"));
+assert.ok(guestText.text.includes("perfil Zen (Z)"));
 assert.ok(!/agenda|YouTube|tarefa/i.test(guestText.text), guestText.text);
 
 const googleText = P.buildPersonality(google, {
@@ -45,20 +46,19 @@ const googleText = P.buildPersonality(google, {
   calendar: [{}],
   youtube: [],
   tasks: [{}, {}],
-  preferencias: { casa: "A", clima_ambiente: "agitado", clima_tempo: "quente", paleta: "quente" }
+  preferencias: { clima_ambiente: "agitado", clima_tempo: "quente", profile_id: "Excentrico" }
 }, "ZZZZZZ");
-assert.strictEqual(googleText.archetype, "A");
+assert.strictEqual(googleText.archetype, "Excêntrico");
+assert.strictEqual(googleText.profile_id, "Excentrico");
 assert.ok(/1 evento\(s\) de agenda, 0 canal\(is\) do YouTube e 2 tarefa\(s\)/.test(googleText.text));
 
 const unsynced = P.buildPersonality(google, { preferencias: { clima_ambiente: "tranquilo" } }, "");
 assert.ok(!/agenda/.test(unsynced.text), unsynced.text);
-assert.strictEqual(unsynced.archetype, "C");
-assert.strictEqual(P.formatArchetype("E"), "E · Elétrica");
-
-["Z", "C", "E", "A"].forEach(function (id) {
-  assert.ok(P.HOUSES[id]);
-  assert.strictEqual(P.HOUSES[id].id, id);
-});
+assert.strictEqual(unsynced.archetype, "Perfil em formação");
+assert.strictEqual(unsynced.profile_id, null);
+assert.strictEqual(P.formatArchetype("Excentrico"), "E · Excêntrico");
+assert.strictEqual(P.formatArchetype("Excêntrico"), "E · Excêntrico");
+assert.strictEqual(P.formatArchetype("Z"), "Z · Zen");
 
 const index = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
 const styleBlocks = index.match(/<style[\s\S]*?<\/style>/g) || [];
@@ -72,10 +72,15 @@ assert.ok(/id="screen-config"[^>]*hidden/.test(index));
 assert.ok(!/class="[^"]*\bscreen\b[^"]*" id="screen-config"|id="screen-config"[^>]*class="[^"]*\bscreen\b/.test(index));
 
 const portal = fs.readFileSync(path.join(__dirname, "..", "js", "portal.js"), "utf8");
-assert.ok(portal.includes("signInAnonymously"));
+const guestSave = fs.readFileSync(path.join(__dirname, "..", "js", "guest-save.js"), "utf8");
+assert.ok(guestSave.includes("signInAnonymously"));
+assert.ok(portal.includes("saveWithoutLogin"));
 assert.ok(portal.includes("calendar.readonly"));
 assert.ok(portal.includes("if (P.isGuest(user))"));
 assert.ok(!portal.includes("Nesta sessão há") , "calendar sentence must live in personality.js");
+assert.ok(index.includes("Salvar sem conta e gerar o código"));
+assert.ok(index.includes("como visitante"));
+assert.ok(!/Acolhedora|Elétrica|Ardente/.test(index));
 
 const privacy = fs.readFileSync(path.join(__dirname, "..", "privacy.html"), "utf8");
 const terms = fs.readFileSync(path.join(__dirname, "..", "terms.html"), "utf8");

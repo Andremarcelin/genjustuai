@@ -4,7 +4,7 @@ O headset **não digita código**. Um admin escolhe a sessão atual em `/admin`.
 
 ## Expo
 
-1. Visitante entra no celular e gera o código (SQL `sessions.sql` + `app_state.sql`).
+1. Visitante responde as duas perguntas e salva sem conta. O site chama `signInAnonymously()` e gera o código (`sql/sessions.sql`, `sql/anonymous_auth.sql`, `sql/profile_id.sql`, com Anonymous sign-ins ligado no dashboard).
 2. Staff abre `https://genjutsuai.vercel.app/admin`, cola `ADMIN_SECRET`, escolhe o código, **Definir sessão do Quest**.
 3. O Quest chama `GET https://genjutsuai.vercel.app/api/session` (sem query) e carrega essa pessoa.
 
@@ -17,13 +17,49 @@ O headset **não digita código**. Um admin escolhe a sessão atual em `/admin`.
 
 ## Contrato Unity
 
-`GET https://genjutsuai.vercel.app/api/session`
+`GET https://genjutsuai.vercel.app/api/session`  
+`GET https://genjutsuai.vercel.app/api/session?code=AB3K7Q` (NFC / debug)
 
-**200** — mesmo JSON de antes (`session_code`, `display_name`, `personality_text`, `archetype`).
+**200**
 
-**404** `no_current_session` — admin ainda não definiu · **404** `not_found` — código sem resumo.
+```json
+{
+  "session_code": "AB3K7Q",
+  "display_name": "Visitante AB3K7Q",
+  "personality_text": "Visitante AB3K7Q está no perfil Zen (Z). Visitante AB3K7Q prefere ambiente calmo e frio.",
+  "archetype": "Zen",
+  "profile_id": "Zen"
+}
+```
 
-`GET /api/session?code=AB3K7Q` continua para NFC/debug.
+| Campo | Uso |
+|---|---|
+| `profile_id` | Id estável da demo. Unity escolhe a cena por este campo: `Zen`, `Cyber`, `Excentrico`, `Acolhedor`. `null` se o questionário ainda não foi salvo ou a coluna SQL ainda não existe. |
+| `archetype` | Alias legível do mesmo perfil. `Excentrico` aparece como `Excêntrico`. |
+| `session_code`, `display_name`, `personality_text` | Iguais ao contrato anterior. |
+
+Erros, sempre JSON `{ "error": "..." }` e sem URL, chave ou corpo do Supabase:
+
+| HTTP | `error` | Quando |
+|---|---|---|
+| 503 | `missing_config` | `SUPABASE_URL` / anon key ausentes ou recusadas (401/403). |
+| 503 | `supabase_unreachable` | DNS, rede, timeout ou resposta inválida. |
+| 404 | `no_current_session` | `GET` sem `code` e o admin ainda não definiu a sessão. |
+| 404 | `not_found` | Código sem linha em `session_summaries`. |
+| 400 | `invalid_code` | Código fora de 6 caracteres do alfabeto da sessão. |
+
+## Mapa do questionário → ProfileId
+
+| clima_ambiente | clima_tempo | profile_id | archetype |
+|---|---|---|---|
+| tranquilo | frio | Zen | Zen |
+| tranquilo | quente | Acolhedor | Acolhedor |
+| tranquilo | ameno | Acolhedor | Acolhedor |
+| agitado | frio | Cyber | Cyber |
+| agitado | ameno | Cyber | Cyber |
+| agitado | quente | Excentrico | Excêntrico |
+
+Implementação: `js/zcea-profile.js`. O visitante grava `profile_id` em `dossiers`, em `dossier_data.preferencias` e em `session_summaries` sem login Google.
 
 ## SessionGate.cs
 
@@ -38,6 +74,7 @@ public class SessionSummary {
     public string display_name;
     public string personality_text;
     public string archetype;
+    public string profile_id;
 }
 
 public class SessionGate : MonoBehaviour {
@@ -52,7 +89,7 @@ public class SessionGate : MonoBehaviour {
                 yield break;
             }
             var data = JsonUtility.FromJson<SessionSummary>(req.downloadHandler.text);
-            Debug.Log(data.session_code + " " + data.archetype);
+            Debug.Log(data.session_code + " " + data.profile_id + " " + data.archetype);
         }
     }
 }

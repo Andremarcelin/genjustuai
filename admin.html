@@ -56,8 +56,10 @@
       bad_password: "PIN errado. Tente genjutsu, ou o valor de ADMIN_SECRET se você criou um.",
       unauthorized: "PIN errado. Tente genjutsu.",
       missing_read_key: "Falta a chave de leitura. Na Vercel: SUPABASE_ANON_KEY (anon / publishable) e Redeploy.",
+      missing_config: "Falta SUPABASE_URL ou SUPABASE_ANON_KEY na Vercel. Redeploy.",
+      supabase_unreachable: "O Supabase não respondeu. Confira a URL do projeto.",
       missing_service_role: "Falta a chave de leitura SUPABASE_ANON_KEY na Vercel.",
-      need_sql: "Rode sql/admin_read.sql no Supabase (SQL Editor)."
+      need_sql: "Rode no SQL Editor, nesta ordem: sql/dossiers.sql, sql/sessions.sql, sql/app_state.sql, sql/admin_read.sql, sql/anonymous_auth.sql e sql/profile_id.sql."
     };
     return map[data.error] || data.hint || data.error || "Erro";
   }
