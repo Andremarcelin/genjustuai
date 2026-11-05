@@ -1,4 +1,4 @@
-import { supabaseRest } from "../lib/supabase-rest.mjs";
+import { supabaseRest } from "../lib/supabase-rest.cjs";
 
 const PROFILE_IDS = new Set(["Zen", "Cyber", "Excentrico", "Acolhedor"]);
 

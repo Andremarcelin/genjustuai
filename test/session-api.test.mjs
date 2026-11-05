@@ -1,6 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import sessionHandler, { sanitizeProfileId } from "../api/session.js";
 import zcea from "../js/zcea-profile.js";
 import adminHandler from "../api/admin/session.js";
@@ -281,6 +284,26 @@ test("admin page loads the session UI without a PIN field", () => {
   assert.doesNotMatch(html, /x-admin-secret/);
   assert.doesNotMatch(html, /ADMIN_SECRET/);
   assert.doesNotMatch(html, /genjutsu_admin/);
+});
+
+test("session handlers load a CommonJS helper when Vercel disables require(esm)", () => {
+  const root = new URL("..", import.meta.url);
+  const session = fs.readFileSync(new URL("../api/session.js", import.meta.url), "utf8");
+  const admin = fs.readFileSync(new URL("../api/admin/session.js", import.meta.url), "utf8");
+  const helperPath = path.join(fileURLToPath(root), "lib", "supabase-rest.cjs");
+  assert.match(session, /supabase-rest\.cjs/);
+  assert.match(admin, /supabase-rest\.cjs/);
+  assert.doesNotMatch(session, /\.mjs["']/);
+  assert.doesNotMatch(admin, /\.mjs["']/);
+  assert.equal(fs.existsSync(new URL("../lib/supabase-rest.mjs", import.meta.url)), false);
+
+  const probe = spawnSync(process.execPath, [
+    "--no-experimental-require-module",
+    "-e",
+    "const h = require(process.argv[1]); if (typeof h.supabaseRest !== 'function' || typeof h.readSupabaseConfig !== 'function') process.exit(2);",
+    helperPath,
+  ], { encoding: "utf8" });
+  assert.equal(probe.status, 0, probe.stderr);
 });
 
 test("server allowlist matches the quiz profile ids", () => {
