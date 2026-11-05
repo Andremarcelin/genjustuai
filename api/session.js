@@ -28,13 +28,27 @@ function publicError(result) {
   return "supabase_unreachable";
 }
 
+const ARCHETYPE_ALIAS = {
+  Zen: "Zen",
+  Cyber: "Cyber",
+  Excentrico: "Excentrico",
+  "Excêntrico": "Excentrico",
+  Acolhedor: "Acolhedor",
+};
+
+export function profileIdFromRow(row) {
+  const direct = sanitizeProfileId(row?.profile_id);
+  if (direct) return direct;
+  return sanitizeProfileId(ARCHETYPE_ALIAS[String(row?.archetype || "").trim()]);
+}
+
 function toPublicSummary(row) {
   return {
     session_code: row.session_code,
     display_name: row.display_name ?? null,
     personality_text: row.personality_text ?? null,
     archetype: row.archetype ?? null,
-    profile_id: sanitizeProfileId(row.profile_id),
+    profile_id: profileIdFromRow(row),
   };
 }
 

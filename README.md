@@ -20,6 +20,8 @@ O perfil do Quest é ZCEA, não as casas de marketing (Acolhedora / Elétrica / 
 | agitado | ameno | Cyber | Cyber | C |
 | agitado | quente | Excentrico | Excêntrico | E |
 
+O resumo que o Quest lê (`session_summaries`) só nasce quando esse par fecha um `profile_id`. Login sem as duas respostas não grava `Perfil em formação` no lugar do perfil. Quem já tinha `preferencias` sem `profile_id` é preenchido por [`sql/backfill_profile_id.sql`](sql/backfill_profile_id.sql).
+
 Documento mestre acadêmico (CDD): [docs/GenJutsu_AI_CDD_Completo.md](docs/GenJutsu_AI_CDD_Completo.md). Gap vs este repo: [docs/architecture/gap-cdd-vs-repo.md](docs/architecture/gap-cdd-vs-repo.md).
 
 ## 1. Novo projeto Supabase
@@ -32,7 +34,8 @@ Documento mestre acadêmico (CDD): [docs/GenJutsu_AI_CDD_Completo.md](docs/GenJu
    4. [`sql/admin_read.sql`](sql/admin_read.sql)
    5. [`sql/anonymous_auth.sql`](sql/anonymous_auth.sql) — reafirma grants para o papel `authenticated`. Não concede `genjutsu_ensure_session()` ao papel `anon` da chave pública.
    6. [`sql/profile_id.sql`](sql/profile_id.sql) — coluna `profile_id` em `dossiers` e `session_summaries` (Zen, Cyber, Excentrico, Acolhedor)
-   7. [`sql/freeze_session_code.sql`](sql/freeze_session_code.sql) — só se o código de sessão já existia antes do trigger
+   7. [`sql/backfill_profile_id.sql`](sql/backfill_profile_id.sql) — só se já existem respostas sem `profile_id`
+   8. [`sql/freeze_session_code.sql`](sql/freeze_session_code.sql) — só se o código de sessão já existia antes do trigger
 3. **Authentication → URL configuration**
    - Site URL: `https://SEU-PROJETO.vercel.app`
    - Redirect URLs: `https://SEU-PROJETO.vercel.app/**` e `https://SEU-REF.supabase.co/auth/v1/callback`

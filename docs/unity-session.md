@@ -60,7 +60,15 @@ Erros, sempre JSON `{ "error": "..." }` e sem URL, chave ou corpo do Supabase:
 | agitado | ameno | Cyber | Cyber |
 | agitado | quente | Excentrico | Excêntrico |
 
-Implementação: `js/zcea-profile.js`. O visitante grava `profile_id` em `dossiers`, em `dossier_data.preferencias` e em `session_summaries` sem login Google.
+Implementação: `js/zcea-profile.js`. O visitante grava `profile_id` em `dossiers`, em `dossier_data.preferencias` e em `session_summaries` sem login Google. O resumo público só é gravado quando o par de respostas fecha um desses quatro ids. Entrar com Google, sem responder o questionário, não publica `Perfil em formação` nem apaga um quiz já salvo.
+
+`POST /api/admin/session` (o botão **Iniciar sessão no Quest com este código**) devolve o mesmo par que o Quest lê:
+
+```json
+{ "current_session_code": "AB3K7Q", "display_name": "Lina", "profile_id": "Zen" }
+```
+
+`profile_id` vem `null` se essa pessoa ainda não salvou o questionário. A lista de `/admin` mostra o id ao lado do nome.
 
 ## SessionGate.cs
 
