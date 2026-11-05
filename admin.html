@@ -13,9 +13,7 @@
 <div class="admin-wrap">
   <p class="eyebrow">GenJutsu AI</p>
   <h1>Sessão do Quest</h1>
-  <p class="muted">O Quest em <code>GET /api/session</code> carrega a pessoa escolhida. Visitante aparece sem e-mail.</p>
-  <label class="muted" id="pin-label" for="secret">PIN (padrão: genjutsu)</label>
-  <input type="text" id="secret" autocomplete="off" spellcheck="false" placeholder="genjutsu">
+  <p class="muted">O Quest em <code>GET /api/session</code> carrega a pessoa escolhida. Visitante aparece sem e-mail. Esta página abre sem PIN.</p>
   <button class="secondary" id="load" type="button">Atualizar lista</button>
   <div class="pick" id="pick">
     <div class="muted">Selecionado para o Quest</div>
@@ -35,7 +33,6 @@
 </div>
 <script>
   var $ = function (id) { return document.getElementById(id); };
-  var PIN = "genjutsu";
   var selected = { name: "", code: "" };
   function esc(value) {
     return String(value || "").replace(/[&<>"']/g, function (ch) {
@@ -43,18 +40,10 @@
     });
   }
   function headers() {
-    var secret = ($("secret").value.trim() || PIN);
-    try { localStorage.setItem("genjutsu_admin", secret); } catch (e) {}
-    return {
-      "Content-Type": "application/json",
-      Authorization: "Bearer " + secret,
-      "x-admin-secret": secret
-    };
+    return { "Content-Type": "application/json" };
   }
   function explain(data) {
     var map = {
-      bad_password: "PIN errado. Tente genjutsu, ou o valor de ADMIN_SECRET se você criou um.",
-      unauthorized: "PIN errado. Tente genjutsu.",
       missing_read_key: "Falta a chave de leitura. Na Vercel: SUPABASE_ANON_KEY (anon / publishable) e Redeploy.",
       missing_config: "Falta SUPABASE_URL ou SUPABASE_ANON_KEY na Vercel. Redeploy.",
       supabase_unreachable: "O Supabase não respondeu. Confira a URL do projeto.",
@@ -134,7 +123,6 @@
       ? "Quest iniciado com " + selected.name + " · " + data.current_session_code
       : explain(data), !res.ok);
   };
-  try { $("secret").value = localStorage.getItem("genjutsu_admin") || PIN; } catch (e) { $("secret").value = PIN; }
   $("load").onclick = function () { load().catch(function () {}); };
   $("manual").addEventListener("input", function () {
     $("manual").value = $("manual").value.toUpperCase();

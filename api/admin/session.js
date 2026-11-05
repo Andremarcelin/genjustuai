@@ -1,36 +1,13 @@
 import { readSupabaseConfig, supabaseRest } from "../../lib/supabase-rest.mjs";
 
 const CODE_RE = /^[A-HJ-NP-Z2-9]{6}$/i;
-const DEFAULT_PIN = "genjutsu";
 
-function envSecret() {
-  return String(process.env.ADMIN_SECRET || "").trim().replace(/^["']|["']$/g, "") || DEFAULT_PIN;
-}
-
-function cookieSecret(req) {
-  const raw = req.headers.cookie || "";
-  const m = raw.match(/(?:^|;\s*)gj_admin=([^;]+)/);
-  return m ? decodeURIComponent(m[1]) : "";
-}
-
-function requestSecret(req) {
-  const header = req.headers.authorization || "";
-  const bearer = header.startsWith("Bearer ") ? header.slice(7) : "";
-  const custom = req.headers["x-admin-secret"];
-  return String(bearer || custom || cookieSecret(req) || "").trim();
-}
-
-function authError(req) {
-  if (requestSecret(req) !== envSecret()) return "bad_password";
-  return null;
-}
-
-function grantCookie(res, secret) {
-  res.setHeader(
-    "Set-Cookie",
-    `gj_admin=${encodeURIComponent(secret)}; Path=/; Max-Age=2592000; SameSite=Lax; Secure; HttpOnly`
-  );
-}
+// MVP: /admin is intentionally open. ADMIN_SECRET is not read, and this
+// handler does not require a PIN, Authorization, x-admin-secret, or the
+// gj_admin cookie. To re-lock, compare those values with ADMIN_SECRET
+// (fallback "genjutsu" when the env var is empty), answer 401
+// { error: "bad_password" } on mismatch, set the HttpOnly gj_admin cookie
+// only after a match, and put the PIN field back in admin.html.
 
 function rest(path, options = {}) {
   return supabaseRest(path, {
@@ -90,16 +67,6 @@ async function listRecent() {
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
   try {
-    const denied = authError(req);
-    if (denied) {
-      res.status(401).json({
-        error: denied,
-        hint: "PIN padrão: genjutsu.",
-      });
-      return;
-    }
-    grantCookie(res, envSecret());
-
     const cfg = readSupabaseConfig(process.env, { allowServiceRole: true });
     if (!cfg.supabaseUrl || !cfg.key) {
       res.status(503).json({

@@ -66,7 +66,8 @@ Documento mestre acadêmico (CDD): [docs/GenJutsu_AI_CDD_Completo.md](docs/GenJu
 3. Environment variables:
    - `SUPABASE_URL`
    - `SUPABASE_ANON_KEY` (chave **anon / publishable** de leitura — não é a secret)
-   - `ADMIN_SECRET` (opcional; senha de `/admin`; se vazio, o PIN é `genjutsu`)
+
+`ADMIN_SECRET` não é lida neste MVP. `/admin` e `GET`/`POST /api/admin/session` abrem sem PIN. A variável pode sair da Vercel. Para travar de novo, volte a exigir o segredo em `api/admin/session.js` e recoloque o campo de PIN em `admin.html`.
 4. Deploy. A rota `/api/config` entrega essas variáveis ao site.
 5. Depois do primeiro URL, atualize Site URL no Supabase, origins no Google e, se quiser, os links em `privacy.html` / `terms.html`.
 
