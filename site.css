@@ -260,6 +260,23 @@ button, input, select { font: inherit; }
   text-shadow: var(--glow);
 }
 
+.summary-sheet {
+  max-width: 440px;
+  margin: 0 auto;
+}
+
+.page-summary .parchment-name {
+  font-family: "Libre Baskerville", Palatino, "Times New Roman", serif;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.page-summary .session-record a {
+  color: #6b2a16;
+  font-weight: 700;
+}
+
 .summary-card { text-align: center; }
 
 .summary-card .portrait {
@@ -293,6 +310,11 @@ button, input, select { font: inherit; }
 }
 
 .guest-flag { color: var(--accent); box-shadow: var(--glow-soft); }
+
+.guest-flag[hidden],
+.guest-save-note[hidden] {
+  display: none !important;
+}
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }

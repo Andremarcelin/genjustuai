@@ -25,8 +25,8 @@ O headset **não digita código**. Um admin escolhe a sessão atual em `/admin`.
 ```json
 {
   "session_code": "AB3K7Q",
-  "display_name": "Visitante AB3K7Q",
-  "personality_text": "Visitante AB3K7Q está no perfil Zen (Z). Visitante AB3K7Q prefere ambiente calmo e frio.",
+  "display_name": "Lina",
+  "personality_text": "Lina, o dia abre em água parada. A casa pede silêncio e frescor: respire devagar, que o que é seu chega sem alarde. Este cartão é só o resumo; o dossiê completo fica na conta.",
   "archetype": "Zen",
   "profile_id": "Zen"
 }
