@@ -203,6 +203,25 @@ test("a guest without a name does not open an anonymous session", async () => {
   assert.equal(G.normalizeVisitorName("   "), "");
 });
 
+test("a later sync keeps a quiz that was already stored", () => {
+  const stored = {
+    fonte: "google",
+    calendar: [{ titulo: "antigo" }],
+    preferencias: { clima_ambiente: "agitado", clima_tempo: "frio", profile_id: "Cyber" }
+  };
+  const merged = G.mergeStoredDossier(stored, { fonte: "google", calendar: [], youtube: [] });
+  assert.equal(merged.preferencias.profile_id, "Cyber");
+  assert.equal(merged.preferencias.clima_ambiente, "agitado");
+  assert.equal(merged.preferencias.clima_tempo, "frio");
+  assert.deepEqual(merged.calendar, []);
+
+  const replaced = G.mergeStoredDossier(stored, {
+    preferencias: { clima_ambiente: "tranquilo", clima_tempo: "quente", profile_id: "Acolhedor" }
+  });
+  assert.equal(replaced.preferencias.profile_id, "Acolhedor");
+  assert.equal(replaced.calendar[0].titulo, "antigo");
+});
+
 test("a missing profile_id column still stores the session code", async () => {
   const auth = authWith(null, guestUser());
   const missing = { code: "PGRST204", message: "Could not find the 'profile_id' column of 'session_summaries' in the schema cache" };
@@ -241,6 +260,8 @@ test("the page copy tells the visitor they are saving without an account", () =>
   assert.doesNotMatch(index, /house-card|data-house|Escolha a casa|Escolha o dojo/);
   assert.match(portal, /signInWithOAuth/);
   assert.match(portal, /saveWithoutLogin/);
+  assert.match(portal, /loadStoredDossier/);
+  assert.match(portal, /if \(!persona\.profile_id\) return;/);
   assert.doesNotMatch(portal, /Sessão expirada/);
   assert.doesNotMatch(portal, /P\.HOUSES/);
   assert.match(anon, /authenticated/);

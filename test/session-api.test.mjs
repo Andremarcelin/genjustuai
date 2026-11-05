@@ -4,7 +4,7 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import sessionHandler, { sanitizeProfileId } from "../api/session.js";
+import sessionHandler, { profileIdFromRow, sanitizeProfileId } from "../api/session.js";
 import zcea from "../js/zcea-profile.js";
 import adminHandler from "../api/admin/session.js";
 
@@ -118,6 +118,24 @@ test("summary JSON includes a sanitized profile_id and keeps archetype", async (
     assert.equal(res.body.profile_id, "Excentrico");
     assert.equal(res.body.archetype, "Excêntrico");
     assert.equal(res.body.session_code, "AB3K7Q");
+  });
+});
+
+test("a readable archetype fills profile_id when the column is empty", async () => {
+  global.fetch = async () => jsonResponse([{
+    session_code: "AB3K7Q",
+    display_name: "Lina",
+    personality_text: "frase",
+    archetype: "Excêntrico",
+    profile_id: null,
+  }]);
+  await withEnv({ SUPABASE_URL: "https://example.supabase.co", SUPABASE_ANON_KEY: ANON }, async () => {
+    const res = mockRes();
+    await sessionHandler({ method: "GET", query: { code: "AB3K7Q" }, headers: {} }, res);
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.body.display_name, "Lina");
+    assert.equal(res.body.profile_id, "Excentrico");
+    assert.equal(res.body.archetype, "Excêntrico");
   });
 });
 
@@ -262,7 +280,17 @@ test("admin is open without a PIN even when ADMIN_SECRET is set", async () => {
     assert.equal(raw.includes(ANON), false);
     assert.equal(raw.includes("bad_password"), false);
 
-    global.fetch = async () => jsonResponse("AB3K7Q");
+    global.fetch = async (url) => {
+      const target = String(url);
+      if (target.includes("session_summaries")) {
+        return jsonResponse([{
+          session_code: "AB3K7Q",
+          display_name: "Lina",
+          profile_id: "Zen",
+        }]);
+      }
+      return jsonResponse("AB3K7Q");
+    };
     const post = mockRes();
     await adminHandler({
       method: "POST",
@@ -271,7 +299,39 @@ test("admin is open without a PIN even when ADMIN_SECRET is set", async () => {
     }, post);
     assert.equal(post.statusCode, 200);
     assert.equal(post.body.current_session_code, "AB3K7Q");
+    assert.equal(post.body.display_name, "Lina");
+    assert.equal(post.body.profile_id, "Zen");
     assert.equal(post.headers["Set-Cookie"], undefined);
+  });
+});
+
+test("admin list attaches the Quest profile_id from the public summary", async () => {
+  global.fetch = async (url) => {
+    const target = String(url);
+    if (target.includes("genjutsu_recent_signups")) {
+      return jsonResponse([{
+        session_code: "AB3K7Q",
+        display_name: "Lina",
+        email: "",
+        updated_at: "2026-11-05T00:00:00Z",
+      }]);
+    }
+    if (target.includes("session_summaries")) {
+      return jsonResponse([{
+        session_code: "AB3K7Q",
+        display_name: "Lina",
+        profile_id: "Excentrico",
+      }]);
+    }
+    if (target.includes("app_state")) return jsonResponse([{ current_session_code: null }]);
+    return jsonResponse([]);
+  };
+  await withEnv({ SUPABASE_URL: "https://example.supabase.co", SUPABASE_ANON_KEY: ANON }, async () => {
+    const res = mockRes();
+    await adminHandler({ method: "GET", headers: {} }, res);
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.body.recent[0].display_name, "Lina");
+    assert.equal(res.body.recent[0].profile_id, "Excentrico");
   });
 });
 
@@ -280,6 +340,8 @@ test("admin page loads the session UI without a PIN field", () => {
   assert.match(html, /\/api\/admin\/session/);
   assert.match(html, /Últimos cadastros/);
   assert.match(html, /Iniciar sessão no Quest com este código/);
+  assert.match(html, /id="pick-profile"/);
+  assert.match(html, /Perfil do Quest/);
   assert.doesNotMatch(html, /id="secret"/);
   assert.doesNotMatch(html, /x-admin-secret/);
   assert.doesNotMatch(html, /ADMIN_SECRET/);
@@ -310,6 +372,10 @@ test("server allowlist matches the quiz profile ids", () => {
   for (const id of zcea.PROFILE_IDS) assert.equal(sanitizeProfileId(id), id);
   assert.equal(sanitizeProfileId("Excêntrico"), null);
   assert.equal(sanitizeProfileId("Ritmo ativo"), null);
+  assert.equal(profileIdFromRow({ profile_id: null, archetype: "Excêntrico" }), "Excentrico");
+  assert.equal(profileIdFromRow({ profile_id: null, archetype: "Perfil em formação" }), null);
+  assert.equal(profileIdFromRow({ profile_id: null, archetype: "Ritmo recolhido" }), null);
+  assert.equal(profileIdFromRow({ profile_id: "Zen", archetype: "Perfil em formação" }), "Zen");
 });
 
 test("site still signs in with Google and persists profile_id", () => {

@@ -85,6 +85,21 @@
     };
   }
 
+  // O login não pode apagar um quiz já gravado. A resposta nova só substitui
+  // o par clima_ambiente + clima_tempo quando as duas vierem preenchidas.
+  function mergeStoredDossier(stored, incoming) {
+    var base = stored && typeof stored === "object" && !Array.isArray(stored) ? stored : {};
+    var next = incoming && typeof incoming === "object" && !Array.isArray(incoming) ? incoming : {};
+    var merged = Object.assign({}, base, next);
+    var storedPref = base.preferencias && typeof base.preferencias === "object" ? base.preferencias : null;
+    var nextPref = next.preferencias && typeof next.preferencias === "object" ? next.preferencias : null;
+    var nextComplete = !!(nextPref && nextPref.clima_ambiente && nextPref.clima_tempo);
+    if (storedPref && !nextComplete) {
+      merged.preferencias = Object.assign({}, storedPref, nextPref || {});
+    }
+    return merged;
+  }
+
   function columnMissing(error) {
     var code = (error && error.code) || "";
     if (code === "23514") return false;
@@ -243,6 +258,7 @@
     ensureUser: ensureUser,
     normalizeVisitorName: normalizeVisitorName,
     selection: selection,
+    mergeStoredDossier: mergeStoredDossier,
     columnMissing: columnMissing,
     savedMessage: savedMessage,
     saveWithoutLogin: saveWithoutLogin
