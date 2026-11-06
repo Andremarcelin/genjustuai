@@ -114,6 +114,7 @@ test("save without a session signs in anonymously and writes the ZCEA profile", 
   assert.equal(summary.profile_id, "Excentrico");
   assert.equal(summary.archetype, "Excêntrico");
   assert.equal(summary.display_name, "Lina");
+  assert.equal(summary.status, "ready");
   assert.match(summary.personality_text, /Lina/);
   assert.match(summary.personality_text, /gesto ousado/);
   assert.doesNotMatch(summary.personality_text, /agenda|YouTube|tarefa|oculto/i);
@@ -132,6 +133,28 @@ test("save without a session signs in anonymously and writes the ZCEA profile", 
   assert.match(G.savedMessage(CODE, saved.profile, { guest: true }), /Salvo como visitante, sem conta/);
   assert.match(G.savedMessage(CODE, saved.profile, { guest: true }), /Perfil do Quest: E · Excêntrico/);
   assert.match(G.savedMessage(CODE, saved.profile, { guest: true }), new RegExp(CODE));
+});
+
+test("two saves with the same profile keep different session codes", async () => {
+  const codes = ["AAAAAA", "BBBBBB"];
+  async function saveOnce(code) {
+    const deps = depsFor(authWith(null, guestUser()), {
+      visitorName: code === "AAAAAA" ? "Lina" : "Nico",
+      ensure: function () { return code; },
+    });
+    deps.vibe = "tranquilo";
+    deps.tempo = "frio";
+    return { saved: await G.saveWithoutLogin(deps), deps };
+  }
+  const first = await saveOnce("AAAAAA");
+  const second = await saveOnce("BBBBBB");
+  assert.equal(first.saved.profile.profile_id, "Zen");
+  assert.equal(second.saved.profile.profile_id, "Zen");
+  assert.equal(first.deps.writes.summary[0].session_code, "AAAAAA");
+  assert.equal(second.deps.writes.summary[0].session_code, "BBBBBB");
+  assert.equal(first.deps.writes.summary[0].status, "ready");
+  assert.equal(second.deps.writes.summary[0].status, "ready");
+  assert.notEqual(first.saved.sessionCode, second.saved.sessionCode);
 });
 
 test("an existing Google session is reused and anonymous sign-in is not called", async () => {
@@ -233,6 +256,8 @@ test("a missing profile_id column still stores the session code", async () => {
   assert.equal(deps.writes.summary.length, 2);
   assert.equal(Object.hasOwn(deps.writes.summary[1], "profile_id"), false);
   assert.equal(deps.writes.summary[1].session_code, CODE);
+  assert.equal(deps.writes.summary[1].status, "ready");
+  assert.equal(Object.hasOwn(deps.writes.summary[0], "status"), true);
   assert.match(G.savedMessage(CODE, saved.profile, { guest: true, profilePendingSql: true }), /sql\/profile_id\.sql/);
 });
 
@@ -262,6 +287,10 @@ test("the page copy tells the visitor they are saving without an account", () =>
   assert.match(portal, /saveWithoutLogin/);
   assert.match(portal, /loadStoredDossier/);
   assert.match(portal, /if \(!persona\.profile_id\) return;/);
+  assert.match(portal, /genjutsu_allocate_session_code/);
+  assert.match(portal, /ensureSession:\s*allocateSessionCode/);
+  assert.match(portal, /from\("session_summaries"\)\.insert\(row\)/);
+  assert.doesNotMatch(portal, /onConflict:\s*"profile_id"/);
   assert.doesNotMatch(portal, /Sessão expirada/);
   assert.doesNotMatch(portal, /P\.HOUSES/);
   assert.match(anon, /authenticated/);

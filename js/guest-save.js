@@ -104,7 +104,13 @@
     var code = (error && error.code) || "";
     if (code === "23514") return false;
     var msg = (error && error.message) || "";
-    return code === "PGRST204" || code === "42703" || (/profile_id/.test(msg) && /schema cache|does not exist|could not find/i.test(msg));
+    return code === "PGRST204" || code === "42703" || (/profile_id|status|ended_at/.test(msg) && /schema cache|does not exist|could not find/i.test(msg));
+  }
+
+  function namedMissingColumn(error) {
+    var msg = (error && error.message) || "";
+    var match = msg.match(/'([A-Za-z_][A-Za-z0-9_]*)'/);
+    return match ? match[1] : "";
   }
 
   function savedMessage(sessionCode, profile, options) {
@@ -123,30 +129,41 @@
   }
 
   function sqlFailure() {
-    return "Não foi possível gerar o código da sessão. No SQL Editor, rode nesta ordem: sql/dossiers.sql, sql/sessions.sql, sql/app_state.sql, sql/admin_read.sql, sql/anonymous_auth.sql e sql/profile_id.sql. Em Authentication → Providers, ative Anonymous sign-ins.";
+    return "Não foi possível gerar o código da sessão. No SQL Editor, rode nesta ordem: sql/dossiers.sql, sql/sessions.sql, sql/app_state.sql, sql/admin_read.sql, sql/anonymous_auth.sql, sql/profile_id.sql e sql/session_lifecycle.sql. Em Authentication → Providers, ative Anonymous sign-ins.";
   }
 
   async function writeRow(write, row) {
-    var result = await write(row);
-    if (result && result.error && columnMissing(result.error) && Object.prototype.hasOwnProperty.call(row, "profile_id")) {
-      var copy = {};
-      Object.keys(row).forEach(function (key) {
-        if (key !== "profile_id") copy[key] = row[key];
-      });
-      var retry = await write(copy);
-      if (retry && retry.error) {
-        var retryErr = new Error(sqlFailure());
-        retryErr.cause = retry.error;
-        throw retryErr;
+    var current = Object.assign({}, row);
+    var strippedProfile = false;
+    var guard = 0;
+    while (guard < 6) {
+      guard += 1;
+      var result = await write(current);
+      if (!result || !result.error) return { profilePendingSql: strippedProfile };
+      if (!columnMissing(result.error)) {
+        var err = new Error(sqlFailure());
+        err.cause = result.error;
+        throw err;
       }
-      return { profilePendingSql: true };
+      var drop = namedMissingColumn(result.error);
+      if (!drop || !Object.prototype.hasOwnProperty.call(current, drop)) {
+        if (Object.prototype.hasOwnProperty.call(current, "profile_id")) drop = "profile_id";
+        else if (Object.prototype.hasOwnProperty.call(current, "status")) drop = "status";
+        else if (Object.prototype.hasOwnProperty.call(current, "ended_at")) drop = "ended_at";
+        else {
+          var unknown = new Error(sqlFailure());
+          unknown.cause = result.error;
+          throw unknown;
+        }
+      }
+      if (drop === "profile_id") strippedProfile = true;
+      var copy = {};
+      Object.keys(current).forEach(function (key) {
+        if (key !== drop) copy[key] = current[key];
+      });
+      current = copy;
     }
-    if (result && result.error) {
-      var err = new Error(sqlFailure());
-      err.cause = result.error;
-      throw err;
-    }
-    return { profilePendingSql: false };
+    throw new Error(sqlFailure());
   }
 
   async function saveWithoutLogin(deps) {
@@ -211,6 +228,7 @@
       personality_text: persona.text,
       archetype: persona.archetype,
       profile_id: profileId,
+      status: "ready",
       updated_at: now
     };
 

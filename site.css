@@ -245,10 +245,13 @@ button, input, select { font: inherit; }
   box-shadow: var(--glow-soft);
 }
 
-.page-admin .row.on {
+.page-admin .row.on,
+.page-admin .row.live {
   border-color: var(--accent);
   box-shadow: var(--glow);
 }
+
+.page-admin #end { margin-top: 8px; }
 
 .page-admin .nm { font-weight: 600; }
 
