@@ -78,6 +78,8 @@ $$;
 revoke all on function public.genjutsu_recent_signups() from public;
 grant execute on function public.genjutsu_recent_signups() to anon, authenticated;
 
+-- sql/session_lifecycle.sql regrava esta função e acrescenta status/ended_at.
+-- Se este arquivo for rodado de novo, a versão abaixo continua válida com ou sem a coluna.
 create or replace function public.genjutsu_set_current_session(p_code text)
 returns text
 language plpgsql
@@ -90,6 +92,27 @@ begin
   if code is null or code !~ '^[A-HJ-NP-Z2-9]{6}$' then
     raise exception 'invalid_code';
   end if;
+
+  if exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'session_summaries'
+      and column_name = 'status'
+  ) then
+    update public.session_summaries
+    set status = 'ready',
+        updated_at = now()
+    where status = 'active'
+      and session_code is distinct from code;
+
+    update public.session_summaries
+    set status = 'active',
+        ended_at = null,
+        updated_at = now()
+    where session_code = code;
+  end if;
+
   insert into public.app_state (id, current_session_code, updated_at)
   values (1, code, now())
   on conflict (id) do update

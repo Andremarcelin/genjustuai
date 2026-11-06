@@ -1,21 +1,17 @@
--- Rode se sessions.sql já foi aplicado antes. Impede mudar session_code depois de definido.
+-- Obsoleto como trava. Mantido para quem já rodou a versão que impedia mudar session_code.
+-- Rode sql/session_lifecycle.sql em seguida: cada visita precisa do próprio código.
+-- Vários visitantes podem ter o mesmo profile_id. O código é que distingue a sessão.
+
+drop trigger if exists trg_freeze_session_code on public.dossiers;
 
 create or replace function public.genjutsu_freeze_session_code()
 returns trigger
 language plpgsql
 as $$
 begin
-  if old.session_code is not null
-     and length(trim(old.session_code)) > 0
-     and new.session_code is distinct from old.session_code then
-    new.session_code := old.session_code;
-  end if;
   return new;
 end;
 $$;
 
-drop trigger if exists trg_freeze_session_code on public.dossiers;
-create trigger trg_freeze_session_code
-before update on public.dossiers
-for each row
-execute function public.genjutsu_freeze_session_code();
+comment on function public.genjutsu_freeze_session_code() is
+  'Não trava mais session_code. A sessão de cada visita vive em session_summaries.';

@@ -35,7 +35,8 @@ Documento mestre acadêmico (CDD): [docs/GenJutsu_AI_CDD_Completo.md](docs/GenJu
    5. [`sql/anonymous_auth.sql`](sql/anonymous_auth.sql) — reafirma grants para o papel `authenticated`. Não concede `genjutsu_ensure_session()` ao papel `anon` da chave pública.
    6. [`sql/profile_id.sql`](sql/profile_id.sql) — coluna `profile_id` em `dossiers` e `session_summaries` (Zen, Cyber, Excentrico, Acolhedor)
    7. [`sql/backfill_profile_id.sql`](sql/backfill_profile_id.sql) — só se já existem respostas sem `profile_id`
-   8. [`sql/freeze_session_code.sql`](sql/freeze_session_code.sql) — só se o código de sessão já existia antes do trigger
+   8. [`sql/freeze_session_code.sql`](sql/freeze_session_code.sql) — solta o código antigo, se o trigger que travava `session_code` já existia
+   9. [`sql/session_lifecycle.sql`](sql/session_lifecycle.sql) — `status` (`ready` / `active` / `ended`), `ended_at`, um código novo por visita e uma única sessão ativa. **Precisa rodar no Supabase ao vivo** para o botão Finalizar sessão.
 3. **Authentication → URL configuration**
    - Site URL: `https://SEU-PROJETO.vercel.app`
    - Redirect URLs: `https://SEU-PROJETO.vercel.app/**` e `https://SEU-REF.supabase.co/auth/v1/callback`
@@ -90,8 +91,9 @@ Documento mestre acadêmico (CDD): [docs/GenJutsu_AI_CDD_Completo.md](docs/GenJu
 - `sql/anonymous_auth.sql` — grants reafirmados para o papel `authenticated` (inclui anônimo)
 - `sql/profile_id.sql` — coluna ZCEA em `dossiers` e `session_summaries`
 - `summary.html` — página pública `/s/CODIGO`
-- `admin.html` — escolha da sessão do Quest
-- `api/session.js` — JSON para o Unity/Quest (`?code=`)
+- `admin.html` — lista todas as sessões e inicia ou finaliza a ativa do Quest
+- `api/session.js` — JSON para o Unity/Quest (`?code=`). Sem sessão ativa: `200 { "session": null }`
+- `sql/session_lifecycle.sql` — status, encerramento e várias sessões com o mesmo `profile_id`
 - [docs/unity-session.md](docs/unity-session.md) — handshake Quest 3S
 
 O resumo do visitante descreve só clima e casa. A frase “N evento(s) de agenda…” só entra quando a fonte do dossiê é Google.
@@ -106,4 +108,4 @@ O resumo do visitante descreve só clima e casa. A frase “N evento(s) de agend
 2. **Continuar sem conta**. Não entre com Google.
 3. Escreva um nome. **Aceso e em movimento** + **Aconchego** (valores `agitado` + `quente`). Não há lista de casas.
 4. **Salvar sem conta e gerar o código**. A tela final abre um pergaminho com a frase do perfil Excêntrico e, abaixo, os registros salvos (nome, respostas, `profile_id` `Excentrico`, código). O QR continua na mesma tela.
-5. `GET /api/session?code=CODIGO` devolve `session_code`, `display_name` (o nome escrito), `personality_text` (a frase), `archetype` `Excêntrico` e `profile_id` `Excentrico`.
+5. `GET /api/session?code=CODIGO` devolve `{ "session": { "id", "session_code", "display_name", "personality_text", "archetype": "Excêntrico", "profile_id": "Excentrico", "status" } }`. Sem sessão ativa, `GET /api/session` devolve `200 { "session": null }`.

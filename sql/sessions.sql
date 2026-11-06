@@ -132,22 +132,6 @@ $$;
 revoke all on function public.genjutsu_ensure_session() from public;
 grant execute on function public.genjutsu_ensure_session() to authenticated;
 
-create or replace function public.genjutsu_freeze_session_code()
-returns trigger
-language plpgsql
-as $$
-begin
-  if old.session_code is not null
-     and length(trim(old.session_code)) > 0
-     and new.session_code is distinct from old.session_code then
-    new.session_code := old.session_code;
-  end if;
-  return new;
-end;
-$$;
-
+-- O código do dossier pode mudar: cada visita gera outra linha em session_summaries.
+-- sql/session_lifecycle.sql remove o trigger que travava session_code.
 drop trigger if exists trg_freeze_session_code on public.dossiers;
-create trigger trg_freeze_session_code
-before update on public.dossiers
-for each row
-execute function public.genjutsu_freeze_session_code();

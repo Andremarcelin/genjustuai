@@ -1,14 +1,14 @@
 import { supabaseRest } from "../lib/supabase-rest.cjs";
 
 const PROFILE_IDS = new Set(["Zen", "Cyber", "Excentrico", "Acolhedor"]);
+const SESSION_STATUSES = new Set(["ready", "active", "ended"]);
 
 export function sanitizeProfileId(value) {
   return PROFILE_IDS.has(value) ? value : null;
 }
 
 const CODE_RE = /^[A-HJ-NP-Z2-9]{6}$/i;
-const SUMMARY_WITH_PROFILE = "session_code,display_name,personality_text,archetype,profile_id";
-const SUMMARY_LEGACY = "session_code,display_name,personality_text,archetype";
+const SUMMARY_FIELDS = ["session_code", "display_name", "personality_text", "archetype", "profile_id", "status"];
 
 function cors(res) {
   res.setHeader("Cache-Control", "no-store, max-age=0");
@@ -28,6 +28,10 @@ function publicError(result) {
   return "supabase_unreachable";
 }
 
+function isMissingColumn(result) {
+  return !result.ok && result.error === "schema" && (result.code === "PGRST204" || result.code === "42703");
+}
+
 const ARCHETYPE_ALIAS = {
   Zen: "Zen",
   Cyber: "Cyber",
@@ -42,25 +46,46 @@ export function profileIdFromRow(row) {
   return sanitizeProfileId(ARCHETYPE_ALIAS[String(row?.archetype || "").trim()]);
 }
 
-function toPublicSummary(row) {
+export function toPublicSession(row, fallbackStatus) {
+  const code = String(row?.session_code || "").toUpperCase();
+  const raw = String(row?.status || "").trim().toLowerCase();
+  const status = SESSION_STATUSES.has(raw) ? raw : (fallbackStatus || "ready");
   return {
-    session_code: row.session_code,
-    display_name: row.display_name ?? null,
-    personality_text: row.personality_text ?? null,
-    archetype: row.archetype ?? null,
+    id: code,
+    session_code: code,
+    display_name: row?.display_name ?? null,
+    personality_text: row?.personality_text ?? null,
+    archetype: row?.archetype ?? null,
     profile_id: profileIdFromRow(row),
+    status,
   };
 }
 
-async function summaryFor(code) {
-  let result = await supabaseRest(summaryQuery(SUMMARY_WITH_PROFILE, code));
-  if (!result.ok && result.error === "schema" && (result.code === "PGRST204" || result.code === "42703")) {
-    result = await supabaseRest(summaryQuery(SUMMARY_LEGACY, code));
+async function summaryFor(code, fallbackStatus) {
+  const fields = SUMMARY_FIELDS.slice();
+  while (fields.length >= 4) {
+    const result = await supabaseRest(summaryQuery(fields.join(","), code));
+    if (result.ok) {
+      const row = Array.isArray(result.json) ? result.json[0] : null;
+      if (!row) return { error: "not_found", status: 404 };
+      return { data: toPublicSession(row, fallbackStatus) };
+    }
+    if (!isMissingColumn(result)) return { error: publicError(result), status: result.status || 503 };
+    if (fields.includes("status")) {
+      fields.splice(fields.indexOf("status"), 1);
+      continue;
+    }
+    if (fields.includes("profile_id")) {
+      fields.splice(fields.indexOf("profile_id"), 1);
+      continue;
+    }
+    return { error: publicError(result), status: result.status || 503 };
   }
-  if (!result.ok) return { error: publicError(result), status: result.status || 503 };
-  const row = Array.isArray(result.json) ? result.json[0] : null;
-  if (!row) return { error: "not_found", status: 404 };
-  return { data: toPublicSummary(row) };
+  return { error: "supabase_unreachable", status: 503 };
+}
+
+function sendNoSession(res) {
+  res.status(200).json({ session: null });
 }
 
 export default async function handler(req, res) {
@@ -76,7 +101,8 @@ export default async function handler(req, res) {
 
   try {
     let code = String(req.query?.code || "").trim().toUpperCase();
-    if (!code) {
+    const polling = !code;
+    if (polling) {
       const state = await supabaseRest("app_state?id=eq.1&select=current_session_code");
       if (!state.ok) {
         sendError(res, state.status || 503, publicError(state));
@@ -85,7 +111,7 @@ export default async function handler(req, res) {
       const row = Array.isArray(state.json) ? state.json[0] : null;
       code = row?.current_session_code ? String(row.current_session_code).toUpperCase() : "";
       if (!code) {
-        sendError(res, 404, "no_current_session");
+        sendNoSession(res);
         return;
       }
     }
@@ -95,12 +121,21 @@ export default async function handler(req, res) {
       return;
     }
 
-    const found = await summaryFor(code);
+    const found = await summaryFor(code, polling ? "active" : "ready");
+    if (found.error === "not_found" && polling) {
+      sendNoSession(res);
+      return;
+    }
     if (found.error) {
       sendError(res, found.status, found.error);
       return;
     }
-    res.status(200).json(found.data);
+    if (polling && found.data.status === "ended") {
+      sendNoSession(res);
+      return;
+    }
+    if (polling) found.data.status = "active";
+    res.status(200).json({ session: found.data });
   } catch {
     if (!res.headersSent) sendError(res, 503, "supabase_unreachable");
   }
