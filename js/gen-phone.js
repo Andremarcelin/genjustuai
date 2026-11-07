@@ -1,4 +1,15 @@
 import { pickPtBrMaleVoice, SPEECH_FALLBACK_PITCH } from "./gen-voice.js";
+import {
+  MIN_BLOB_BYTES,
+  MIN_PCM_SAMPLES,
+  audioUploadName,
+  countPcmSamples,
+  nextLiveRetryMs,
+  pcm16ToWav,
+  pcmLevel,
+  routePcm,
+  takeBuffered,
+} from "./gen-mic.js";
 
 (function () {
   var $ = function (id) { return document.getElementById(id); };
@@ -30,6 +41,22 @@ import { pickPtBrMaleVoice, SPEECH_FALLBACK_PITCH } from "./gen-voice.js";
   var activeSources = [];
   var holdId = 0;
   var liveVoice = "Charon";
+  var captureCtx = null;
+  var micOpen = null;
+  var graphReady = false;
+  var muteNode = null;
+  var sourceNode = null;
+  var listening = false;
+  var listenReason = null;
+  var pointerDown = false;
+  var usingRecorder = false;
+  var pending = [];
+  var retryTimer = null;
+  var retryAttempt = 0;
+  var sawSession = false;
+  var levelEl = $("mic-level");
+  var helpEl = $("mic-help");
+  var toggleBtn = $("ptt-toggle");
 
   function setStatus(kind, text) {
     statusEl.className = "gen-status is-" + kind;
@@ -40,7 +67,21 @@ import { pickPtBrMaleVoice, SPEECH_FALLBACK_PITCH } from "./gen-voice.js";
     holding = on;
     ptt.setAttribute("aria-pressed", on ? "true" : "false");
     pttLabel.textContent = on ? "Ouvindo…" : "Segure para falar";
-    if (on) setStatus(mode === "fallback" ? "fallback" : "listen", on && mode === "fallback" ? "Gravando pelo navegador" : "Ouvindo");
+  }
+
+  function showHelp(text) {
+    if (!helpEl) return;
+    helpEl.hidden = !text;
+    helpEl.textContent = text || "";
+  }
+
+  function micDeniedMessage() {
+    return "Microfone bloqueado. No celular, toque no cadeado ao lado do endereço, permita o microfone e segure o botão de novo.";
+  }
+
+  function isDenied(err) {
+    var name = err && err.name;
+    return name === "NotAllowedError" || name === "PermissionDeniedError" || name === "SecurityError";
   }
 
   function bytesToBase64(buffer) {
@@ -68,6 +109,15 @@ import { pickPtBrMaleVoice, SPEECH_FALLBACK_PITCH } from "./gen-voice.js";
     }
     if (audioCtx.state === "suspended") audioCtx.resume();
     return audioCtx;
+  }
+
+  function captureContext() {
+    if (!captureCtx) {
+      var Ctor = window.AudioContext || window.webkitAudioContext;
+      captureCtx = new Ctor();
+    }
+    if (captureCtx.state === "suspended") captureCtx.resume();
+    return captureCtx;
   }
 
   function stopPlayback() {
@@ -189,7 +239,13 @@ import { pickPtBrMaleVoice, SPEECH_FALLBACK_PITCH } from "./gen-voice.js";
     if (msg.setupComplete || msg.setup_complete) {
       setupReady = true;
       mode = "live";
-      setStatus("live", "Ao vivo");
+      retryAttempt = 0;
+      if (retryTimer) {
+        clearTimeout(retryTimer);
+        retryTimer = null;
+      }
+      flushPending();
+      if (!listening) setStatus("live", "Ao vivo");
       return;
     }
     if (msg.toolCall || msg.tool_call) {
@@ -285,13 +341,17 @@ import { pickPtBrMaleVoice, SPEECH_FALLBACK_PITCH } from "./gen-voice.js";
         resolve(false);
       };
       ws.onclose = function () {
+        var wasLive = mode === "live";
         setupReady = false;
-        if (mode === "live") setStatus("fallback", "A voz ao vivo caiu. Vale o navegador.");
-        mode = mode === "live" ? "fallback" : mode;
+        if (wasLive) {
+          mode = "fallback";
+          if (!listening) setStatus("fallback", "A voz ao vivo caiu. Vale o navegador.");
+          scheduleLiveRetry();
+        }
         if (!settled) {
           settled = true;
           clearTimeout(timer);
-          mode = "fallback";
+          if (!wasLive) mode = "fallback";
           resolve(false);
         }
       };
@@ -314,64 +374,148 @@ import { pickPtBrMaleVoice, SPEECH_FALLBACK_PITCH } from "./gen-voice.js";
     return out;
   }
 
+  function scheduleLiveRetry() {
+    if (retryTimer || !sessionOn) return;
+    var delay = nextLiveRetryMs(retryAttempt);
+    retryAttempt += 1;
+    retryTimer = setTimeout(function () {
+      retryTimer = null;
+      if (!sessionOn) return;
+      ensureLive();
+    }, delay);
+  }
+
+  function markLiveDown(statusText) {
+    mode = "fallback";
+    setupReady = false;
+    if (!listening && statusText) setStatus("fallback", statusText);
+    scheduleLiveRetry();
+  }
+
   async function ensureLive() {
-    if (mode === "fallback") return false;
     if (mode === "live" && socket && socket.readyState === WebSocket.OPEN && setupReady) return true;
     if (opening) return opening;
     opening = (async function () {
-      setStatus("connect", "Conectando a voz ao vivo…");
+      if (!listening) setStatus("connect", "Conectando…");
       var res;
       try { res = await fetch("/api/gen/voice-session", { method: "POST" }); }
-      catch (err) { mode = "fallback"; return false; }
+      catch (err) {
+        markLiveDown("Voz ao vivo indisponível. Usando o navegador.");
+        return false;
+      }
       if (!res.ok) {
-        mode = "fallback";
-        if (res.status === 409) setStatus("idle", "Nenhuma sessão ativa no Quest");
-        else setStatus("fallback", "Voz ao vivo indisponível. Usando o navegador.");
+        if (res.status === 409) {
+          mode = "pending";
+          if (!listening) setStatus("idle", "Nenhuma sessão ativa no Quest");
+          return false;
+        }
+        markLiveDown(res.status === 429
+          ? "Conectando…"
+          : "Voz ao vivo indisponível. Usando o navegador.");
         return false;
       }
       var data = await res.json();
       if (data.voiceName) liveVoice = data.voiceName;
       var ok = await openSocket(data);
-      if (!ok) setStatus("fallback", "Voz ao vivo indisponível. Usando o navegador.");
+      if (!ok) markLiveDown("Voz ao vivo indisponível. Usando o navegador.");
+      else retryAttempt = 0;
       return ok;
     })();
     try { return await opening; }
     finally { opening = null; }
   }
 
-  function stopMic(sendEnd) {
+  function canSendLive() {
+    return mode === "live" && socket && socket.readyState === WebSocket.OPEN && setupReady;
+  }
+
+  function sendPcm(buffer) {
+    if (!canSendLive()) return false;
+    socket.send(JSON.stringify({
+      realtimeInput: {
+        audio: { mimeType: "audio/pcm;rate=16000", data: bytesToBase64(buffer) },
+      },
+    }));
+    return true;
+  }
+
+  function flushPending() {
+    if (!canSendLive()) return;
+    takeBuffered(pending).forEach(sendPcm);
+  }
+
+  function onPcm(buffer) {
+    if (listening && levelEl) levelEl.style.width = Math.round(pcmLevel(buffer) * 100) + "%";
+    var decision = routePcm({ armed: listening, liveReady: canSendLive(), queue: pending }, buffer);
+    if (decision.action === "send") decision.chunks.forEach(sendPcm);
+  }
+
+  function ensureMic() {
+    if (micStream && micStream.getAudioTracks().some(function (track) { return track.readyState === "live"; })) {
+      return Promise.resolve(micStream);
+    }
+    if (micOpen) return micOpen;
+    micOpen = navigator.mediaDevices.getUserMedia({
+      audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true },
+    }).then(function (stream) {
+      micStream = stream;
+      showHelp("");
+      return stream;
+    }).catch(function (err) {
+      micOpen = null;
+      throw err;
+    });
+    return micOpen;
+  }
+
+  function releaseMic() {
     if (micStream) micStream.getTracks().forEach(function (track) { track.stop(); });
     micStream = null;
+    micOpen = null;
+    graphReady = false;
     if (workletNode) {
-      try { workletNode.disconnect(); } catch (err) { /* node already gone */ }
+      try { workletNode.disconnect(); } catch (err) { /* already gone */ }
       workletNode = null;
     }
-    if (sendEnd && socket && socket.readyState === WebSocket.OPEN) {
-      socket.send(JSON.stringify({ realtimeInput: { audioStreamEnd: true } }));
+    if (sourceNode) {
+      try { sourceNode.disconnect(); } catch (err) { /* already gone */ }
+      sourceNode = null;
+    }
+    if (muteNode) {
+      try { muteNode.disconnect(); } catch (err) { /* already gone */ }
+      muteNode = null;
     }
   }
 
-  async function startMic() {
-    var ctx = context();
+  async function ensureGraph(stream) {
+    var ctx = captureContext();
     if (!ctx.audioWorklet) throw new Error("no-worklet");
     if (!workletReady) {
       await ctx.audioWorklet.addModule("/js/gen-audio-worklet.js");
       workletReady = true;
     }
-    micStream = await navigator.mediaDevices.getUserMedia({
-      audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true },
-    });
-    var source = ctx.createMediaStreamSource(micStream);
+    if (graphReady && workletNode) return;
+    sourceNode = ctx.createMediaStreamSource(stream);
     workletNode = new AudioWorkletNode(ctx, "pcm-capture");
-    workletNode.port.onmessage = function (event) {
-      if (!holding || !socket || socket.readyState !== WebSocket.OPEN || !setupReady) return;
-      socket.send(JSON.stringify({
-        realtimeInput: {
-          audio: { mimeType: "audio/pcm;rate=16000", data: bytesToBase64(event.data) },
-        },
-      }));
-    };
-    source.connect(workletNode);
+    workletNode.port.onmessage = function (event) { onPcm(event.data); };
+    muteNode = ctx.createGain();
+    muteNode.gain.value = 0;
+    sourceNode.connect(workletNode);
+    workletNode.connect(muteNode);
+    muteNode.connect(ctx.destination);
+    graphReady = true;
+  }
+
+  function paintDenied() {
+    listening = false;
+    listenReason = null;
+    setPressed(false);
+    if (toggleBtn) {
+      toggleBtn.setAttribute("aria-pressed", "false");
+      toggleBtn.textContent = "Toque para falar";
+    }
+    showHelp(micDeniedMessage());
+    setStatus("error", "Microfone bloqueado");
   }
 
   function pickMime() {
@@ -384,7 +528,8 @@ import { pickPtBrMaleVoice, SPEECH_FALLBACK_PITCH } from "./gen-voice.js";
   }
 
   async function startRecorder() {
-    micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    if (!micStream) micStream = await ensureMic();
+    if (recorder && recorder.state === "recording") return;
     var mime = pickMime();
     chunks = [];
     recorder = new MediaRecorder(micStream, mime ? { mimeType: mime } : undefined);
@@ -392,6 +537,7 @@ import { pickPtBrMaleVoice, SPEECH_FALLBACK_PITCH } from "./gen-voice.js";
       if (event.data && event.data.size) chunks.push(event.data);
     };
     recorder.start();
+    usingRecorder = true;
   }
 
   function stopRecorder() {
@@ -402,90 +548,163 @@ import { pickPtBrMaleVoice, SPEECH_FALLBACK_PITCH } from "./gen-voice.js";
       }
       recorder.onstop = function () {
         var blob = new Blob(chunks, { type: recorder.mimeType || "audio/webm" });
-        if (micStream) micStream.getTracks().forEach(function (track) { track.stop(); });
-        micStream = null;
         recorder = null;
+        usingRecorder = false;
         resolve(blob);
       };
-      recorder.stop();
+      try { recorder.stop(); }
+      catch (err) {
+        recorder = null;
+        usingRecorder = false;
+        resolve(null);
+      }
     });
   }
 
-  function releaseCapture() {
-    stopMic(false);
-    if (recorder && recorder.state !== "inactive") {
-      recorder.onstop = function () {
-        if (micStream) micStream.getTracks().forEach(function (track) { track.stop(); });
-        micStream = null;
-        recorder = null;
-      };
-      try { recorder.stop(); } catch (err) { recorder = null; }
-    }
+  function waitForLive(ms) {
+    if (canSendLive()) return Promise.resolve(true);
+    return new Promise(function (resolve) {
+      var started = Date.now();
+      var timer = setInterval(function () {
+        if (canSendLive() || Date.now() - started >= ms) {
+          clearInterval(timer);
+          resolve(canSendLive());
+        }
+      }, 50);
+    });
   }
 
-  async function beginHold() {
-    if (!sessionOn || busy || holding) return;
-    var id = ++holdId;
-    setPressed(true);
-    try { context(); } catch (err) { /* resume on the gesture anyway */ }
-    var live = false;
-    try { live = await ensureLive(); }
-    catch (err) { live = false; }
-    if (id !== holdId) return;
-    try {
-      if (live) await startMic();
-      else await startRecorder();
-    } catch (err) {
-      if (id === holdId) {
-        setPressed(false);
-        setStatus("error", "O microfone não abriu");
+  async function finishUtterance() {
+    setStatus("think", "Pensando…");
+    if (usingRecorder) {
+      busy = true;
+      var blob = await stopRecorder();
+      if (!blob || blob.size < MIN_BLOB_BYTES) {
+        busy = false;
+        setStatus("ready", "Segure um pouco mais para eu ouvir.");
+        return;
       }
-      return;
-    }
-    if (id !== holdId) releaseCapture();
-  }
-
-  async function endHold() {
-    if (!holding) return;
-    var wasLive = mode === "live" && socket && socket.readyState === WebSocket.OPEN;
-    holdId += 1;
-    setPressed(false);
-    if (wasLive) {
-      stopMic(true);
-      setStatus("live", "Ao vivo");
-      return;
-    }
-    if (!recorder || recorder.state === "inactive") return;
-    busy = true;
-    var blob = await stopRecorder();
-    if (!blob || !blob.size) {
+      var form = new FormData();
+      form.append("audio", blob, audioUploadName(blob.type));
+      await postChat(form, true);
       busy = false;
       return;
     }
-    var form = new FormData();
-    form.append("audio", blob, "fala.webm");
-    await postChat(form, true);
+    var live = await waitForLive(1500);
+    if (live) {
+      flushPending();
+      if (canSendLive()) {
+        socket.send(JSON.stringify({ realtimeInput: { audioStreamEnd: true } }));
+      }
+      return;
+    }
+    var buffered = takeBuffered(pending);
+    if (countPcmSamples(buffered) < MIN_PCM_SAMPLES) {
+      setStatus("ready", "Segure um pouco mais para eu ouvir.");
+      return;
+    }
+    busy = true;
+    var wav = pcm16ToWav(buffered);
+    var wavForm = new FormData();
+    wavForm.append("audio", new Blob([wav], { type: "audio/wav" }), "fala.wav");
+    await postChat(wavForm, true);
     busy = false;
   }
 
+  function startListening(reason, micPromise) {
+    if (!sessionOn || busy) return;
+    listening = true;
+    listenReason = reason;
+    setPressed(true);
+    setStatus("listen", "Ouvindo…");
+    showHelp("");
+    ensureLive();
+    micPromise.then(function (stream) {
+      if (!listening) return null;
+      return ensureGraph(stream);
+    }).catch(function (err) {
+      if (!listening && !isDenied(err)) return;
+      if (isDenied(err)) {
+        paintDenied();
+        return;
+      }
+      if (err && err.message === "no-worklet" && micStream) {
+        startRecorder().catch(function () { paintDenied(); });
+        return;
+      }
+      listening = false;
+      listenReason = null;
+      setPressed(false);
+      setStatus("error", "O microfone não abriu");
+    });
+  }
+
+  function stopListening(reason) {
+    if (!listening) return;
+    if (reason && listenReason && reason !== listenReason) return;
+    listening = false;
+    listenReason = null;
+    pointerDown = false;
+    setPressed(false);
+    if (levelEl) levelEl.style.width = "0%";
+    if (toggleBtn) {
+      toggleBtn.setAttribute("aria-pressed", "false");
+      toggleBtn.textContent = "Toque para falar";
+    }
+    finishUtterance();
+  }
+
   ptt.addEventListener("pointerdown", function (event) {
+    if (!sessionOn || listenReason === "toggle") return;
     event.preventDefault();
-    ptt.setPointerCapture(event.pointerId);
-    beginHold();
+    try { ptt.setPointerCapture(event.pointerId); } catch (err) { /* pointer already gone */ }
+    pointerDown = true;
+    try { captureContext(); context(); } catch (err) { /* resume on the next gesture */ }
+    startListening("hold", ensureMic());
   });
-  ptt.addEventListener("pointerup", endHold);
-  ptt.addEventListener("pointercancel", endHold);
+  ptt.addEventListener("pointerup", function () {
+    pointerDown = false;
+    if (listenReason === "hold") stopListening("hold");
+  });
+  ptt.addEventListener("pointercancel", function () {
+    pointerDown = false;
+    if (listenReason !== "hold") return;
+    if (micStream) stopListening("hold");
+    else {
+      listening = false;
+      listenReason = null;
+      setPressed(false);
+      setStatus("connect", "Conectando…");
+    }
+  });
   ptt.addEventListener("contextmenu", function (event) { event.preventDefault(); });
+  if (toggleBtn) {
+    toggleBtn.addEventListener("click", function () {
+      if (!sessionOn) return;
+      try { captureContext(); context(); } catch (err) { /* still try the mic */ }
+      if (listenReason === "toggle") {
+        stopListening("toggle");
+        return;
+      }
+      toggleBtn.setAttribute("aria-pressed", "true");
+      toggleBtn.textContent = "Toque para parar";
+      startListening("toggle", ensureMic());
+    });
+  }
 
   document.addEventListener("keydown", function (event) {
     if (event.code !== "Space" || event.repeat) return;
     if (document.activeElement === input) return;
     event.preventDefault();
-    beginHold();
+    if (!sessionOn || listenReason === "toggle") return;
+    pointerDown = true;
+    try { captureContext(); context(); } catch (err) { /* keyboard gesture still resumes later */ }
+    startListening("hold", ensureMic());
   });
   document.addEventListener("keyup", function (event) {
     if (event.code !== "Space" || document.activeElement === input) return;
-    endHold();
+    pointerDown = false;
+    if (listenReason === "hold") stopListening("hold");
   });
 
   form.addEventListener("submit", async function (event) {
@@ -518,16 +737,29 @@ import { pickPtBrMaleVoice, SPEECH_FALLBACK_PITCH } from "./gen-voice.js";
       sessionOn = false;
     }
     ptt.disabled = !sessionOn;
+    if (toggleBtn) toggleBtn.disabled = !sessionOn;
     $("gen-send").disabled = !sessionOn;
     input.disabled = !sessionOn;
     if (!sessionOn) {
+      sawSession = false;
       closeSocket();
+      if (retryTimer) {
+        clearTimeout(retryTimer);
+        retryTimer = null;
+      }
+      listening = false;
+      listenReason = null;
+      releaseMic();
       mode = "pending";
       setStatus("idle", "Nenhuma sessão ativa no Quest");
       paintHouse(null);
       return;
     }
-    if (statusEl.classList.contains("is-idle") || mode === "pending") {
+    if (!sawSession) {
+      sawSession = true;
+      ensureLive();
+    }
+    if (!listening && (statusEl.classList.contains("is-idle") || mode === "pending")) {
       setStatus("ready", "Sessão ativa. Segure para falar.");
     }
     try {

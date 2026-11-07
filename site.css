@@ -479,6 +479,28 @@ button, input, select { font: inherit; }
   white-space: nowrap;
 }
 
+.mic-meter {
+  height: 8px;
+  border-radius: 999px;
+  background: #111;
+  border: 1px solid var(--line-soft);
+  overflow: hidden;
+}
+
+.mic-meter span {
+  display: block;
+  height: 100%;
+  width: 0%;
+  background: var(--accent);
+  box-shadow: var(--glow);
+}
+
+.ptt, .ptt-toggle {
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
 .ptt {
   width: 100%;
   min-height: 112px;
@@ -492,9 +514,27 @@ button, input, select { font: inherit; }
   font-size: 18px;
   box-shadow: var(--glow);
   cursor: pointer;
-  touch-action: none;
-  user-select: none;
 }
+
+.ptt-toggle {
+  width: 100%;
+  min-height: var(--touch);
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--text);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.ptt-toggle[aria-pressed="true"] {
+  border-color: var(--accent);
+  box-shadow: var(--glow);
+}
+
+.mic-help { text-align: center; margin: 0; color: var(--danger); }
 
 .ptt[aria-pressed="true"] {
   background: radial-gradient(circle at 50% 40%, rgba(255, 26, 26, 0.7), rgba(80, 0, 0, 0.9) 62%);
