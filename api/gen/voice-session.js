@@ -1,6 +1,8 @@
 import { loadActiveSession } from "../session.js";
 import { IP_LIMIT, IP_WINDOW_MS, VOICE_TOKEN_LIMIT, VOICE_TOKEN_WINDOW_MS } from "../../lib/gen/constants.js";
-import { initApi, requireActiveSession } from "../../lib/gen/http.js";
+import { executeHouseTool } from "../../lib/gen/executor.js";
+import { infraFromStore, initApi, requireActiveSession } from "../../lib/gen/http.js";
+import { createSupabaseHouseStore } from "../../lib/gen/house-store.js";
 import { createLiveToken } from "../../lib/gen/providers.js";
 import { clientIp, createRateLimiter } from "../../lib/gen/rate-limit.js";
 
@@ -13,6 +15,7 @@ export function createVoiceHandler(deps = {}) {
   const env = deps.env || process.env;
   const sessionLimiter = deps.limiter || sharedSessionLimiter;
   const ipLimiter = deps.ipLimiter || sharedIpLimiter;
+  const store = deps.store || createSupabaseHouseStore();
   const now = deps.now || (() => Date.now());
 
   return async function handler(req, res) {
@@ -25,10 +28,24 @@ export function createVoiceHandler(deps = {}) {
         res.status(429).json({ error: "rate_limited" });
         return;
       }
+      const current = await executeHouseTool({
+        sessionId: session.id,
+        tool: "get_house_state",
+        args: {},
+        store,
+        limiter: { allow: () => true },
+        now: stamp,
+      });
+      if (current.error) {
+        const infra = infraFromStore(current);
+        res.status(infra.status).json(infra.body);
+        return;
+      }
       const token = await createLiveToken({
         fetchImpl,
         env,
         session,
+        state: current.state,
         now: stamp,
       });
       if (token.error === "missing_config") {

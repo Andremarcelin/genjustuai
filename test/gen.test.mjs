@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import { supabaseRest } from "../lib/supabase-rest.cjs";
 import { DEFAULT_AMBIENCE, DEFAULT_LIGHTS, STATE_KEYS, defaultHouseState } from "../lib/gen/defaults.js";
-import { buildSystemInstruction } from "../lib/gen/persona.js";
+import { buildSystemInstruction, chooseReply, fallbackReply } from "../lib/gen/persona.js";
 import { TOOLS, toGeminiDeclarations, toGroqTools, validateToolCall } from "../lib/gen/tools.js";
 import { createMemoryHouseStore } from "../lib/gen/house-store.js";
 import { createSupabaseHouseStore } from "../lib/gen/house-store.js";
@@ -89,6 +89,22 @@ test("persona uses the name and profile and does not reveal the quiz", () => {
   assert.doesNotMatch(text, /clima_/);
   assert.match(buildSystemInstruction({ display_name: "A\nB", profile_id: "Excentrico" }), /se chama A B\./);
   assert.match(buildSystemInstruction({ profile_id: "Excentrico" }), /Excêntrico/);
+  assert.match(text, /Não peça para repetir/);
+  const withHouse = buildSystemInstruction(SESSION, {
+    mode: "hub",
+    dojo: null,
+    lights: {
+      main: { intensity: 0.8, color: "#FFAA00" },
+      lanterns: { intensity: 0.2, color: "#FF1A1A" },
+    },
+    ambience: { preset: "bamboo", volume: 0.3 },
+  });
+  assert.match(withHouse, /#FFAA00/);
+  assert.match(withHouse, /intensidade 0\.8/);
+  assert.match(withHouse, /bamboo volume 0\.3/);
+  assert.match(withHouse, /já está assim/);
+  assert.doesNotMatch(withHouse, /SEGREDO_DO_QUIZ/);
+  assert.doesNotMatch(withHouse, /tranquilo/);
 });
 
 test("tool schemas reject unknown fields and out-of-range values", () => {
@@ -241,6 +257,7 @@ test("voice session mints a Gemini ephemeral token and hides the API key", async
   let calls = 0;
   const handler = createVoiceHandler({
     loadSession: activeSession(),
+    store: createMemoryHouseStore(),
     env: { GEMINI_API_KEY: secret },
     limiter: limiter(4),
     ipLimiter: limiter(10),
@@ -266,6 +283,8 @@ test("voice session mints a Gemini ephemeral token and hides the API key", async
   assert.match(res.body.wsUrl, /access_token=ephemeral-token-1/);
   assert.equal(res.body.tools.length, 4);
   assert.match(res.body.systemInstruction, /Lina/);
+  assert.match(res.body.systemInstruction, /Não peça para repetir/);
+  assert.match(res.body.systemInstruction, /Estado atual da casa/);
   assert.doesNotMatch(res.body.systemInstruction, /SEGREDO_DO_QUIZ/);
   assert.equal(JSON.stringify(res.body).includes(secret), false);
 
@@ -282,6 +301,7 @@ test("voice session mints a Gemini ephemeral token and hides the API key", async
   let called = false;
   const bare = createVoiceHandler({
     loadSession: activeSession(),
+    store: createMemoryHouseStore(),
     env: {},
     limiter: limiter(),
     ipLimiter: limiter(),
@@ -372,6 +392,110 @@ test("Groq chat transcribes, runs the tool, and returns text only", async () => 
   assert.equal(res.body.state.version, 1);
   assert.equal(JSON.stringify(res.body).includes(secret), false);
   assert.equal(seen.some((call) => String(call.url).includes("generativelanguage")), false);
+});
+
+const WARM_BAMBOO = {
+  session_id: "AB3K7Q",
+  version: 4,
+  mode: "hub",
+  dojo: null,
+  lights: {
+    main: { intensity: 0.8, color: "#FFAA00" },
+    lanterns: { intensity: 0.2, color: "#FF1A1A" },
+  },
+  ambience: { preset: "bamboo", volume: 0.3 },
+  updated_at: "2026-11-06T23:40:00.000Z",
+};
+
+async function seedHouse(store, state) {
+  const saved = await store.save(state, 0);
+  assert.equal(saved.conflict, undefined);
+  return saved.state;
+}
+
+test("a clear repeat of the current house does not ask to repeat", async () => {
+  assert.equal(fallbackReply([], { transcript: "??" }), "Pode repetir?");
+  assert.equal(
+    fallbackReply([], { transcript: "deixa a luz bem quente e coloca som de bambu", state: WARM_BAMBOO }),
+    "Já tá quentinha e com bambu tocando 😉",
+  );
+  assert.equal(fallbackReply(
+    [{ tool: "set_lights", status: "accepted" }],
+    { transcript: "deixa a luz bem quente", state: WARM_BAMBOO },
+  ), "A casa atualizou.");
+  assert.equal(chooseReply({
+    modelText: "Já tá quentinha e com bambu tocando 😉",
+    actions: [],
+    transcript: "deixa a luz bem quente e coloca som de bambu",
+    state: WARM_BAMBOO,
+  }), "Já tá quentinha e com bambu tocando 😉");
+
+  const secret = "groq-secret-do-not-leak";
+  const store = createMemoryHouseStore();
+  await seedHouse(store, WARM_BAMBOO);
+  const replies = ["", "Pode repetir?", "Já tá quentinha e com bambu tocando 😉"];
+  for (const modelText of replies) {
+    let system = "";
+    const handler = createChatHandler({
+      loadSession: activeSession(),
+      env: { GROQ_API_KEY: secret },
+      store,
+      chatLimiter: limiter(),
+      ipLimiter: limiter(),
+      commandLimiter: limiter(),
+      now: () => Date.parse("2026-11-06T23:50:00.000Z"),
+      fetchImpl: async (url, opts) => {
+        const body = JSON.parse(opts.body);
+        system = body.messages[0].content;
+        assert.equal(body.model, GROQ_CHAT_MODEL);
+        return new Response(JSON.stringify({
+          choices: [{ message: { role: "assistant", content: modelText, tool_calls: [] } }],
+        }), { status: 200 });
+      },
+    });
+    const res = mockRes();
+    await handler({
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: { text: "deixa a luz bem quente e coloca som de bambu" },
+    }, res);
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.body.actions.length, 0);
+    assert.equal(res.body.state.version, 4);
+    assert.equal(res.body.state.lights.main.color, "#FFAA00");
+    assert.equal(res.body.state.ambience.preset, "bamboo");
+    assert.notEqual(res.body.reply_text.trim(), "");
+    assert.doesNotMatch(res.body.reply_text, /pode repetir/i);
+    assert.match(res.body.reply_text, /bambu/i);
+    assert.match(system, /#FFAA00/);
+    assert.match(system, /bamboo volume 0\.3/);
+    assert.match(system, /Não peça para repetir/);
+    assert.doesNotMatch(system, /SEGREDO_DO_QUIZ/);
+    assert.equal(JSON.stringify(res.body).includes(secret), false);
+  }
+
+  const voiceStore = createMemoryHouseStore();
+  await seedHouse(voiceStore, WARM_BAMBOO);
+  let locked = "";
+  const voice = createVoiceHandler({
+    loadSession: activeSession(),
+    store: voiceStore,
+    env: { GEMINI_API_KEY: "gemini-secret-do-not-leak" },
+    limiter: limiter(),
+    ipLimiter: limiter(),
+    fetchImpl: async (_url, opts) => {
+      locked = JSON.parse(opts.body).bidiGenerateContentSetup.systemInstruction.parts[0].text;
+      return new Response(JSON.stringify({ name: "ephemeral-token-2" }), { status: 200 });
+    },
+  });
+  const live = mockRes();
+  await voice({ method: "POST", headers: {}, body: {} }, live);
+  assert.equal(live.statusCode, 200);
+  assert.match(live.body.systemInstruction, /#FFAA00/);
+  assert.match(live.body.systemInstruction, /bamboo volume 0\.3/);
+  assert.match(live.body.systemInstruction, /Não peça para repetir/);
+  assert.equal(locked, live.body.systemInstruction);
+  assert.equal(JSON.stringify(live.body).includes("gemini-secret-do-not-leak"), false);
 });
 
 test("chat JSON path and missing session do not call Groq", async () => {
