@@ -73,6 +73,7 @@ Documento mestre acadêmico (CDD): [docs/GenJutsu_AI_CDD_Completo.md](docs/GenJu
    - `SUPABASE_ANON_KEY` (chave **anon / publishable** de leitura — não é a secret)
    - `SUPABASE_SERVICE_ROLE` (só no servidor; a Gen grava `house_state` com ela)
    - `GEMINI_API_KEY` (Gemini Live, free tier, só no servidor)
+   - `GEN_VOICE_NAME` (opcional; voz masculina do Live, padrão `Charon`)
    - `GROQ_API_KEY` (Whisper turbo + `openai/gpt-oss-20b`, free tier, só no servidor)
 
 `ADMIN_SECRET` não é lida neste MVP. `/admin` e `GET`/`POST /api/admin/session` abrem sem PIN. A variável pode sair da Vercel. Para travar de novo, volte a exigir o segredo em `api/admin/session.js` e recoloque o campo de PIN em `admin.html`.

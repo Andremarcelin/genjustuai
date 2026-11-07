@@ -1,3 +1,5 @@
+import { pickPtBrMaleVoice, SPEECH_FALLBACK_PITCH } from "./gen-voice.js";
+
 (function () {
   var $ = function (id) { return document.getElementById(id); };
   var statusEl = $("gen-status");
@@ -27,6 +29,7 @@
   var chunks = [];
   var activeSources = [];
   var holdId = 0;
+  var liveVoice = "Charon";
 
   function setStatus(kind, text) {
     statusEl.className = "gen-status is-" + kind;
@@ -115,6 +118,9 @@
     if (!text || !window.speechSynthesis) return;
     var utter = new SpeechSynthesisUtterance(text);
     utter.lang = "pt-BR";
+    var voice = pickPtBrMaleVoice(window.speechSynthesis.getVoices());
+    if (voice) utter.voice = voice;
+    else utter.pitch = SPEECH_FALLBACK_PITCH;
     window.speechSynthesis.cancel();
     window.speechSynthesis.speak(utter);
   }
@@ -247,7 +253,7 @@
             generationConfig: {
               responseModalities: ["AUDIO"],
               speechConfig: {
-                voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } },
+                voiceConfig: { prebuiltVoiceConfig: { voiceName: data.voiceName || liveVoice } },
                 languageCode: "pt-BR",
               },
             },
@@ -259,14 +265,17 @@
         }));
       };
       ws.onmessage = function (event) {
-        var finish = function (text) { onSocketMessage(text); };
+        var finish = function (text) {
+          onSocketMessage(text);
+          if (!settled && setupReady) {
+            settled = true;
+            clearTimeout(timer);
+            resolve(true);
+          }
+        };
         if (typeof event.data === "string") finish(event.data);
+        else if (event.data instanceof ArrayBuffer) finish(new TextDecoder().decode(event.data));
         else if (event.data && event.data.text) event.data.text().then(finish);
-        if (!settled && setupReady) {
-          settled = true;
-          clearTimeout(timer);
-          resolve(true);
-        }
       };
       ws.onerror = function () {
         if (settled) return;
@@ -321,6 +330,7 @@
         return false;
       }
       var data = await res.json();
+      if (data.voiceName) liveVoice = data.voiceName;
       var ok = await openSocket(data);
       if (!ok) setStatus("fallback", "Voz ao vivo indisponível. Usando o navegador.");
       return ok;
