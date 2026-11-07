@@ -37,6 +37,7 @@ Documento mestre acadêmico (CDD): [docs/GenJutsu_AI_CDD_Completo.md](docs/GenJu
    7. [`sql/backfill_profile_id.sql`](sql/backfill_profile_id.sql) — só se já existem respostas sem `profile_id`
    8. [`sql/freeze_session_code.sql`](sql/freeze_session_code.sql) — solta o código antigo, se o trigger que travava `session_code` já existia
    9. [`sql/session_lifecycle.sql`](sql/session_lifecycle.sql) — `status` (`ready` / `active` / `ended`), `ended_at`, um código novo por visita e uma única sessão ativa. **Precisa rodar no Supabase ao vivo** para o botão Finalizar sessão.
+   10. [`sql/house_state.sql`](sql/house_state.sql) — estado da casa, log das ferramentas da Gen, RLS e o broadcast `house:<session_id>`. **Não roda sozinho**: cole no SQL Editor. Sem ele, luz e dojo respondem `502 need_sql`.
 3. **Authentication → URL configuration**
    - Site URL: `https://SEU-PROJETO.vercel.app`
    - Redirect URLs: `https://SEU-PROJETO.vercel.app/**` e `https://SEU-REF.supabase.co/auth/v1/callback`
@@ -70,6 +71,9 @@ Documento mestre acadêmico (CDD): [docs/GenJutsu_AI_CDD_Completo.md](docs/GenJu
 3. Environment variables:
    - `SUPABASE_URL`
    - `SUPABASE_ANON_KEY` (chave **anon / publishable** de leitura — não é a secret)
+   - `SUPABASE_SERVICE_ROLE` (só no servidor; a Gen grava `house_state` com ela)
+   - `GEMINI_API_KEY` (Gemini Live, free tier, só no servidor)
+   - `GROQ_API_KEY` (Whisper turbo + `openai/gpt-oss-20b`, free tier, só no servidor)
 
 `ADMIN_SECRET` não é lida neste MVP. `/admin` e `GET`/`POST /api/admin/session` abrem sem PIN. A variável pode sair da Vercel. Para travar de novo, volte a exigir o segredo em `api/admin/session.js` e recoloque o campo de PIN em `admin.html`.
 4. Deploy. A rota `/api/config` entrega essas variáveis ao site.
@@ -95,12 +99,16 @@ Documento mestre acadêmico (CDD): [docs/GenJutsu_AI_CDD_Completo.md](docs/GenJu
 - `api/session.js` — JSON para o Unity/Quest (`?code=`). Sem sessão ativa: `200 { "session": null }`
 - `sql/session_lifecycle.sql` — status, encerramento e várias sessões com o mesmo `profile_id`
 - [docs/unity-session.md](docs/unity-session.md) — handshake Quest 3S
+- [docs/gen-api.md](docs/gen-api.md) — contrato da Gen para o Unity: casa, comandos, voz e o canal realtime
+- `gen.html` — celular em `/gen`, push-to-talk
+- `js/house-state.js` — `HouseStateProvider` na landing
+- `sql/house_state.sql` — tabelas da casa; aplicar no SQL Editor, não pela API
 
 O resumo do visitante descreve só clima e casa. A frase “N evento(s) de agenda…” só entra quando a fonte do dossiê é Google.
 
 `node test/personality.test.js` confere o fallback `Visitante` + código, o nome escrito quando existe, o e-mail vazio e a ausência dessa frase.
 
-`node --test test/guest-save.test.js test/zcea-profile.test.js test/session-api.test.mjs` confere o save sem login (sessão anônima, `profile_id`, código de 6 caracteres) e o JSON de `GET /api/session`.
+`node --test test/guest-save.test.js test/zcea-profile.test.js test/session-api.test.mjs test/gen.test.mjs` confere o save sem login (sessão anônima, `profile_id`, código de 6 caracteres), o JSON de `GET /api/session` e as ferramentas da Gen com provedores simulados.
 
 ## Como verificar o visitante
 

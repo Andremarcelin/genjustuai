@@ -165,3 +165,7 @@ public class SessionGate : MonoBehaviour {
 ```
 
 Sem `service_role` e sem senha admin no APK. Chame `LoadCurrentSession` na tela inicial do dojo (Start / botão “Conectar”).
+
+## Gen e a casa
+
+Luzes, ambiência, cena visual e a voz da Gen estão em [gen-api.md](gen-api.md). `switch_dojo` muda só a cena. `profile_id` continua vindo de `GET /api/session`, que não muda de formato.
