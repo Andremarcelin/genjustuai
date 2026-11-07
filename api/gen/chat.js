@@ -5,6 +5,7 @@ import { executeHouseTool } from "../../lib/gen/executor.js";
 import { header, infraFromStore, initApi, readRequestBody, requireActiveSession } from "../../lib/gen/http.js";
 import { createSupabaseHouseStore } from "../../lib/gen/house-store.js";
 import { audioExtension, isAllowedAudio, parseMultipart } from "../../lib/gen/multipart.js";
+import { parseHouseIntent, plannedActions } from "../../lib/gen/intent.js";
 import { buildSystemInstruction, chooseReply } from "../../lib/gen/persona.js";
 import { completeChat, parseToolArguments, transcribeAudio, visibleReply } from "../../lib/gen/providers.js";
 import { clientIp, createRateLimiter } from "../../lib/gen/rate-limit.js";
@@ -151,6 +152,29 @@ export function createChatHandler(deps = {}) {
         const message = completion.message;
         const calls = Array.isArray(message.tool_calls) ? message.tool_calls : [];
         if (!calls.length) {
+          const intentActions = plannedActions(parseHouseIntent(transcript), state);
+          for (const plan of intentActions) {
+            const outcome = await executeHouseTool({
+              sessionId: session.id,
+              tool: plan.tool,
+              args: plan.args,
+              store,
+              limiter: commandLimiter,
+              now: stamp,
+            });
+            if (outcome.error) {
+              const infra = infraFromStore(outcome);
+              res.status(infra.status).json(infra.body);
+              return;
+            }
+            if (outcome.state) state = outcome.state;
+            actions.push({
+              tool: plan.tool,
+              args: plan.args,
+              status: outcome.status,
+              reason: outcome.reason || null,
+            });
+          }
           const reply = replyText(visibleReply(message.content), actions, transcript, state);
           res.status(200).json({ transcript, reply_text: reply, actions, state });
           return;

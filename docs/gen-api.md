@@ -218,7 +218,7 @@ Não há áudio na resposta. Quem quiser ouvir usa TTS no cliente (`speechSynthe
 
 Áudio vazio: `transcript` "" e `reply_text` "Não ouvi nada. Pode repetir?".
 
-Pedido claro que já está no estado atual: `actions` pode vir vazio e `reply_text` confirma, em pt-BR, que a casa já está assim. Nesse caso a resposta não é vazia nem "Pode repetir?". O mesmo vale para o `systemInstruction` do token ao vivo, que inclui o estado da casa.
+Pedido claro que já está no estado atual: `actions` pode vir vazio e `reply_text` confirma, em palavras, que a casa já está assim. Isso só acontece se cada aspecto pedido (família quente ou azul, brilho, preset) já bater. Se não bater e o modelo não chamar ferramenta, o servidor aplica a mudança (quente `#FFAA00`, azul `#00BFFF`, preset pelo nome) e a fala não traz código de cor. Transcrição vazia continua "Pode repetir?". O `systemInstruction` do token ao vivo inclui o estado em palavras e manda chamar a ferramenta quando o pedido diferir.
 
 ## Erros
 
