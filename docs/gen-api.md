@@ -218,6 +218,8 @@ Não há áudio na resposta. Quem quiser ouvir usa TTS no cliente (`speechSynthe
 
 Áudio vazio: `transcript` "" e `reply_text` "Não ouvi nada. Pode repetir?".
 
+Pedido claro que já está no estado atual: `actions` pode vir vazio e `reply_text` confirma, em pt-BR, que a casa já está assim. Nesse caso a resposta não é vazia nem "Pode repetir?". O mesmo vale para o `systemInstruction` do token ao vivo, que inclui o estado da casa.
+
 ## Erros
 
 JSON `{ "error": "..." }`. Sem URL, chave ou corpo do provedor.
