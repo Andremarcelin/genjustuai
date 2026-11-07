@@ -5,7 +5,7 @@ import { executeHouseTool } from "../../lib/gen/executor.js";
 import { header, infraFromStore, initApi, readRequestBody, requireActiveSession } from "../../lib/gen/http.js";
 import { createSupabaseHouseStore } from "../../lib/gen/house-store.js";
 import { audioExtension, isAllowedAudio, parseMultipart } from "../../lib/gen/multipart.js";
-import { buildSystemInstruction } from "../../lib/gen/persona.js";
+import { buildSystemInstruction, chooseReply } from "../../lib/gen/persona.js";
 import { completeChat, parseToolArguments, transcribeAudio, visibleReply } from "../../lib/gen/providers.js";
 import { clientIp, createRateLimiter } from "../../lib/gen/rate-limit.js";
 import { toGroqTools } from "../../lib/gen/tools.js";
@@ -14,12 +14,8 @@ const sharedChatLimiter = createRateLimiter({ limit: CHAT_LIMIT, windowMs: CHAT_
 const sharedIpLimiter = createRateLimiter({ limit: IP_LIMIT, windowMs: IP_WINDOW_MS });
 const sharedCommandLimiter = createRateLimiter({ limit: 20, windowMs: 60_000 });
 
-function fallbackReply(actions) {
-  const accepted = actions.some((action) => action.status === "accepted" && action.tool !== "get_house_state");
-  const rejected = actions.some((action) => action.status === "rejected");
-  if (accepted) return "A casa atualizou.";
-  if (rejected) return "Não consegui mudar a casa.";
-  return "Pode repetir?";
+function replyText(modelText, actions, transcript, state) {
+  return chooseReply({ modelText, actions, transcript, state });
 }
 
 async function readTurn(req) {
@@ -128,12 +124,12 @@ export function createChatHandler(deps = {}) {
         return;
       }
 
-      const messages = [
-        { role: "system", content: buildSystemInstruction(session) },
-        { role: "user", content: transcript },
-      ];
       const actions = [];
       let state = current.state || defaultHouseState(session.id);
+      const messages = [
+        { role: "system", content: buildSystemInstruction(session, state) },
+        { role: "user", content: transcript },
+      ];
       const tools = toGroqTools();
 
       for (let round = 0; round < 2; round += 1) {
@@ -155,7 +151,7 @@ export function createChatHandler(deps = {}) {
         const message = completion.message;
         const calls = Array.isArray(message.tool_calls) ? message.tool_calls : [];
         if (!calls.length) {
-          const reply = visibleReply(message.content) || fallbackReply(actions);
+          const reply = replyText(visibleReply(message.content), actions, transcript, state);
           res.status(200).json({ transcript, reply_text: reply, actions, state });
           return;
         }
@@ -208,7 +204,7 @@ export function createChatHandler(deps = {}) {
       if (finalTurn.error) {
         res.status(200).json({
           transcript,
-          reply_text: fallbackReply(actions),
+          reply_text: replyText("", actions, transcript, state),
           actions,
           state,
         });
@@ -216,7 +212,7 @@ export function createChatHandler(deps = {}) {
       }
       res.status(200).json({
         transcript,
-        reply_text: visibleReply(finalTurn.message?.content) || fallbackReply(actions),
+        reply_text: replyText(visibleReply(finalTurn.message?.content), actions, transcript, state),
         actions,
         state,
       });
