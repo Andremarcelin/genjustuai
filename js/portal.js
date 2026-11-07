@@ -196,9 +196,6 @@
       var session = result && result.data && result.data.session;
       if (session && session.user) showLoggedIn(session.user);
     });
-    $("config-source").textContent = source === "vercel"
-      ? "Supabase configurado via Vercel."
-      : "Supabase configurado nesta aba.";
   }
 
   async function requireClient() {
@@ -970,9 +967,12 @@
   });
 
   $("btn-close-config").addEventListener("click", showLanding);
-  $("btn-open-config").addEventListener("click", function () {
-    openConfigFallback("");
-  });
+  var openConfig = $("btn-open-config");
+  if (openConfig) {
+    openConfig.addEventListener("click", function () {
+      openConfigFallback("");
+    });
+  }
 
   configReady = (async function main() {
     var config = await loadConfig();
