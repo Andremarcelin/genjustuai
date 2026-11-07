@@ -29,7 +29,7 @@ Classes: Refúgio, Sintetizador, Laboratório, Jardim Vivo, Galeria, Núcleo Soc
 
 O JSON atual (`calendar`, `youtube`, `contacts`, `tasks`, `preferencias`) **não** é esse vetor. Precisa de mapeamento documentado ou questionário expandido.
 
-A demo do Quest neste repositório usa quatro perfis ZCEA (`Zen`, `Cyber`, `Excentrico`, `Acolhedor`) a partir de duas perguntas. Não são as 8 classes do CDD nem as casas de marketing Acolhedora / Elétrica / Ardente.
+A demo do Quest neste repositório usa quatro perfis ZCEA (`Zen`, `Cyber`, `Excentrico`, `Acolhedor`) a partir de três situações. Não são as 8 classes do CDD nem as casas de marketing Acolhedora / Elétrica / Ardente.
 
 ## Stack CDD vs código hoje
 

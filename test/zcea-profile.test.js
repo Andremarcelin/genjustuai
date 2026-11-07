@@ -3,10 +3,10 @@ const assert = require("node:assert/strict");
 const zcea = require("../js/zcea-profile.js");
 
 const CANON = [
-  ["agua", "madeira", "aceno", "Zen"],
-  ["pulso", "neon", "enigma", "Cyber"],
-  ["cor", "seda", "porta", "Excentrico"],
-  ["mesa", "bambu", "cha", "Acolhedor"],
+  ["ordem", "respira", "canto", "Zen"],
+  ["sistema", "modelo", "mapa", "Cyber"],
+  ["impulso", "atalho", "pista", "Excentrico"],
+  ["gente", "junto", "anel", "Acolhedor"],
 ];
 
 function allCombos() {
@@ -19,6 +19,23 @@ function allCombos() {
   }
   return out;
 }
+
+test("each option weights one profile more than the others", () => {
+  assert.equal(zcea.QUESTIONS.length, 3);
+  for (const question of zcea.QUESTIONS) {
+    assert.equal(question.options.length, 4);
+    const primaries = new Set();
+    for (const option of question.options) {
+      const top = [...zcea.PROFILE_IDS].sort((a, b) => option.scores[b] - option.scores[a])[0];
+      assert.equal(top, option.primary);
+      assert.ok(option.scores[option.primary] > 0);
+      primaries.add(option.primary);
+      assert.match(option.label, /^[a-zà-ú]/);
+      assert.doesNotMatch(option.label, /luz|madeira|neon|bambu|chá|seda/i);
+    }
+    assert.deepEqual([...primaries].sort(), [...zcea.PROFILE_IDS].sort());
+  }
+});
 
 test("three answers map to one profile, and every profile is reachable", () => {
   assert.equal(zcea.QUESTIONS.length, 3);
@@ -41,7 +58,7 @@ test("all 64 combinations resolve, with a balanced deterministic split", () => {
   assert.equal(combos.length, 64);
   for (const [a, b, c] of combos) {
     const first = zcea.resolve(a, b, c);
-    const second = zcea.resolve({ recarga: a, atmosfera: b, acolhida: c });
+    const second = zcea.resolve({ folga: a, problema: b, festa: c });
     assert.equal(first.profile_id, second.profile_id);
     assert.ok(zcea.PROFILE_IDS.includes(first.profile_id));
     counts[first.profile_id] += 1;
@@ -56,14 +73,14 @@ test("all 64 combinations resolve, with a balanced deterministic split", () => {
 test("ties break in a fixed order and incomplete answers stay empty", () => {
   assert.deepEqual(zcea.TIE_BREAK, ["Zen", "Acolhedor", "Cyber", "Excentrico"]);
   assert.equal(zcea.resolve("", "", "").profile_id, null);
-  assert.equal(zcea.resolve("agua", "madeira", "").profile_id, null);
-  assert.equal(zcea.resolve("agua", "nublado", "aceno").profile_id, null);
-  assert.equal(zcea.resolve("Agua", "madeira", "aceno").profile_id, null);
+  assert.equal(zcea.resolve("ordem", "respira", "").profile_id, null);
+  assert.equal(zcea.resolve("ordem", "nublado", "canto").profile_id, null);
+  assert.equal(zcea.resolve("Ordem", "respira", "canto").profile_id, null);
   assert.equal(zcea.sanitize("Ritmo recolhido"), null);
   assert.equal(zcea.sanitize("Excêntrico"), null);
   assert.equal(zcea.sanitize("Excentrico"), "Excentrico");
   assert.equal(zcea.label("nao-existe"), "");
-  const tied = zcea.resolve("agua", "neon", "porta");
+  const tied = zcea.resolve("ordem", "modelo", "pista");
   assert.equal(tied.tie, true);
-  assert.equal(zcea.resolve("agua", "neon", "porta").profile_id, tied.profile_id);
+  assert.equal(zcea.resolve({ folga: "ordem", problema: "modelo", festa: "pista" }).profile_id, tied.profile_id);
 });
