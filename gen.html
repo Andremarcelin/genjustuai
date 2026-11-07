@@ -44,10 +44,13 @@
     <button class="cta cta-google" id="gen-send" type="submit">Enviar</button>
   </form>
 
+  <div class="mic-meter" aria-hidden="true"><span id="mic-level"></span></div>
   <button class="ptt" id="ptt" type="button" aria-pressed="false">
     <span id="ptt-label">Segure para falar</span>
   </button>
-  <p class="fine gen-foot">O caminho principal é a voz ao vivo. Se ela cair, o celular transcreve e lê a resposta em português.</p>
+  <button class="ptt-toggle" id="ptt-toggle" type="button" aria-pressed="false">Toque para falar</button>
+  <p class="fine mic-help" id="mic-help" hidden></p>
+  <p class="fine gen-foot">O caminho principal é a voz ao vivo. Segure o botão, ou toque para ligar e desligar o microfone.</p>
 </main>
 <script type="module" src="/js/gen-phone.js"></script>
 </body>
