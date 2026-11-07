@@ -152,6 +152,7 @@ A Gen só pode dizer que a casa mudou depois de `status: "accepted"`.
   "expiresAt": "2026-11-06T23:55:00.000Z",
   "wsUrl": "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContentConstrained?access_token=<ephemeral>",
   "systemInstruction": "Você é Gen...",
+  "voiceName": "Charon",
   "tools": [
     {
       "name": "set_lights",
@@ -164,7 +165,7 @@ A Gen só pode dizer que a casa mudou depois de `status: "accepted"`.
 
 O token é o ephemeral token da Live API (`v1beta`, `uses: 1`). `expiresAt` é o fim da sessão (10 minutos). A conexão nova tem de abrir em até 60 segundos (`newSessionExpireTime`). Abra `wsUrl` como está. O mesmo segredo vai em `token`. Alternativa de header: `Authorization: Token <token>`. Não use a API key permanente.
 
-Modelo no setup: `models/gemini-3.8-live`. O token já trava setup, instrução, ferramentas e modalidade `AUDIO` (voz Aoede, `pt-BR`). A primeira mensagem do socket ainda é `setup`; se o servidor ignorar o setup do cliente, vale o que foi travado no token.
+Modelo no setup: `models/gemini-3.8-live`. O token já trava setup, instrução, ferramentas e modalidade `AUDIO`. A voz é `voiceName` (padrão `Charon`, ou `GEN_VOICE_NAME` no servidor), em `speechConfig.voiceConfig.prebuiltVoiceConfig.voiceName`, com `languageCode` `pt-BR`. A primeira mensagem do socket ainda é `setup` e deve repetir essa voz; se o servidor ignorar o setup do cliente, vale o que foi travado no token.
 
 Áudio de ida: PCM 16-bit little-endian, 16 kHz, mono, base64.
 
@@ -214,7 +215,7 @@ JSON `{ "text": "deixa mais escuro" }` ou `multipart/form-data` com o arquivo no
 }
 ```
 
-Não há áudio na resposta. Quem quiser ouvir usa TTS no cliente (`speechSynthesis`, `pt-BR` na página `/gen`).
+Não há áudio na resposta. Quem quiser ouvir usa TTS no cliente (`speechSynthesis`, `pt-BR` na página `/gen`, voz masculina se existir, senão pitch 0.85).
 
 Áudio vazio: `transcript` "" e `reply_text` "Não ouvi nada. Pode repetir?".
 
