@@ -84,8 +84,19 @@ async function summaryFor(code, fallbackStatus) {
   return { error: "supabase_unreachable", status: 503 };
 }
 
-function sendNoSession(res) {
-  res.status(200).json({ session: null });
+export async function loadActiveSession() {
+  const state = await supabaseRest("app_state?id=eq.1&select=current_session_code");
+  if (!state.ok) return { error: publicError(state), status: state.status || 503 };
+  const row = Array.isArray(state.json) ? state.json[0] : null;
+  const code = row?.current_session_code ? String(row.current_session_code).toUpperCase() : "";
+  if (!code) return { session: null };
+  if (!CODE_RE.test(code)) return { error: "invalid_code", status: 400 };
+  const found = await summaryFor(code, "active");
+  if (found.error === "not_found") return { session: null };
+  if (found.error) return { error: found.error, status: found.status };
+  if (found.data.status === "ended") return { session: null };
+  found.data.status = "active";
+  return { session: found.data };
 }
 
 export default async function handler(req, res) {
@@ -103,17 +114,13 @@ export default async function handler(req, res) {
     let code = String(req.query?.code || "").trim().toUpperCase();
     const polling = !code;
     if (polling) {
-      const state = await supabaseRest("app_state?id=eq.1&select=current_session_code");
-      if (!state.ok) {
-        sendError(res, state.status || 503, publicError(state));
+      const active = await loadActiveSession();
+      if (active.error) {
+        sendError(res, active.status || 503, active.error);
         return;
       }
-      const row = Array.isArray(state.json) ? state.json[0] : null;
-      code = row?.current_session_code ? String(row.current_session_code).toUpperCase() : "";
-      if (!code) {
-        sendNoSession(res);
-        return;
-      }
+      res.status(200).json({ session: active.session });
+      return;
     }
 
     if (!CODE_RE.test(code)) {
@@ -121,20 +128,11 @@ export default async function handler(req, res) {
       return;
     }
 
-    const found = await summaryFor(code, polling ? "active" : "ready");
-    if (found.error === "not_found" && polling) {
-      sendNoSession(res);
-      return;
-    }
+    const found = await summaryFor(code, "ready");
     if (found.error) {
       sendError(res, found.status, found.error);
       return;
     }
-    if (polling && found.data.status === "ended") {
-      sendNoSession(res);
-      return;
-    }
-    if (polling) found.data.status = "active";
     res.status(200).json({ session: found.data });
   } catch {
     if (!res.headersSent) sendError(res, 503, "supabase_unreachable");
