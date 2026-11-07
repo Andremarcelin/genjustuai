@@ -21,9 +21,19 @@
   margin: 0;
   padding: 16px 22px;
   border-bottom: 1px solid var(--line-soft);
+  flex-wrap: wrap;
 }
 
 .nav-cta { width: auto; padding: 10px 18px; }
+
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.nav-gen { width: auto; padding: 8px 4px; }
 
 .sync-user { font-weight: 600; margin: 0; }
 
@@ -69,12 +79,50 @@
 .hero-copy p { margin: 0 0 16px; color: var(--muted); font-size: 17px; }
 
 .hero-visual {
+  position: relative;
   margin: 0;
   border-radius: 18px;
   overflow: hidden;
   min-height: 280px;
   border: 1px solid var(--line);
   box-shadow: var(--glow);
+}
+
+.house-veil {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: var(--house-color, transparent);
+  opacity: var(--house-alpha, 0);
+  mix-blend-mode: soft-light;
+}
+
+.house-veil[hidden] { display: none !important; }
+
+.landing[data-house-mode] .hero-visual {
+  border-color: var(--house-color, var(--line));
+}
+
+.landing[data-house-mode] .stage {
+  box-shadow:
+    var(--glow),
+    inset 0 0 90px color-mix(in srgb, var(--lantern-color, transparent) var(--lantern-alpha, 0%), transparent);
+}
+
+.landing[data-house-dojo="Zen"] .house-veil {
+  background: linear-gradient(160deg, rgba(214, 230, 220, 0.55), transparent 72%), var(--house-color, transparent);
+}
+
+.landing[data-house-dojo="Cyber"] .house-veil {
+  background: linear-gradient(160deg, rgba(40, 220, 255, 0.38), transparent 70%), var(--house-color, transparent);
+}
+
+.landing[data-house-dojo="Excentrico"] .house-veil {
+  background: linear-gradient(160deg, rgba(255, 150, 40, 0.42), transparent 70%), var(--house-color, transparent);
+}
+
+.landing[data-house-dojo="Acolhedor"] .house-veil {
+  background: linear-gradient(160deg, rgba(255, 186, 186, 0.48), transparent 72%), var(--house-color, transparent);
 }
 
 .hero-visual img {

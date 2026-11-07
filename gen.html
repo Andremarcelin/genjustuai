@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Gen — GenJutsu AI</title>
+<link rel="icon" href="/assets/icon-crow.jpg">
+<meta name="theme-color" content="#050505">
+<meta name="description" content="Fale com a Gen, a presença da casa GenJutsu. Segure para falar no celular.">
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/site.css">
+</head>
+<body class="page-gen">
+<a class="skip" href="#ptt">Ir para o botão de falar</a>
+<main class="gen-shell">
+  <header class="gen-top">
+    <a class="nav-mark" href="/">
+      <img src="/assets/icon-crow.jpg" alt="">
+      GenJutsu
+    </a>
+    <p class="gen-status" id="gen-status" role="status">
+      <span class="gen-dot" id="gen-dot" aria-hidden="true"></span>
+      <span id="gen-status-text">Procurando a sessão…</span>
+    </p>
+  </header>
+
+  <section class="gen-captions" aria-live="polite" aria-relevant="additions text">
+    <p class="gen-kicker">Gen</p>
+    <p class="gen-line" id="caption-gen">Segure o botão e fale com a casa.</p>
+    <p class="gen-you" id="caption-user"></p>
+  </section>
+
+  <section class="gen-house" id="gen-house" aria-live="polite">
+    <span class="gen-swatch" id="gen-swatch" aria-hidden="true"></span>
+    <span id="gen-house-text">Casa em espera</span>
+  </section>
+
+  <form class="gen-compose" id="gen-form">
+    <label class="sr-only" for="gen-text">Escrever para a Gen</label>
+    <input id="gen-text" name="text" type="text" maxlength="400" autocomplete="off" placeholder="Ou escreva aqui" enterkeyhint="send">
+    <button class="cta cta-google" id="gen-send" type="submit">Enviar</button>
+  </form>
+
+  <button class="ptt" id="ptt" type="button" aria-pressed="false">
+    <span id="ptt-label">Segure para falar</span>
+  </button>
+  <p class="fine gen-foot">O caminho principal é a voz ao vivo. Se ela cair, o celular transcreve e lê a resposta em português.</p>
+</main>
+<script src="/js/gen-phone.js"></script>
+</body>
+</html>
