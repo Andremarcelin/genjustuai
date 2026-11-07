@@ -4,6 +4,7 @@ import { executeHouseTool } from "../../lib/gen/executor.js";
 import { infraFromStore, initApi, requireActiveSession } from "../../lib/gen/http.js";
 import { createSupabaseHouseStore } from "../../lib/gen/house-store.js";
 import { createRateLimiter } from "../../lib/gen/rate-limit.js";
+import { recordSessionHistory } from "../../lib/gen/history.js";
 
 const sharedLimiter = createRateLimiter({ limit: COMMAND_LIMIT, windowMs: COMMAND_WINDOW_MS });
 
@@ -40,6 +41,19 @@ export function createCommandsHandler(deps = {}) {
         const infra = infraFromStore(result);
         res.status(infra.status).json(infra.body);
         return;
+      }
+      if (result.status === "accepted" && tool !== "get_house_state") {
+        const source = req.body?.source === "voice" ? "voice" : "quest";
+        try {
+          await recordSessionHistory({
+            env: deps.env || process.env,
+            sessionCode: session.id,
+            source,
+            actions: [{ tool, args, status: "accepted" }],
+          });
+        } catch {
+          /* o histórico não pode derrubar o comando */
+        }
       }
       const body = { status: result.status, state: result.state };
       if (result.reason) body.reason = result.reason;

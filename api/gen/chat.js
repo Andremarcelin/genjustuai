@@ -10,6 +10,7 @@ import { buildSystemInstruction, chooseReply } from "../../lib/gen/persona.js";
 import { completeChat, parseToolArguments, transcribeAudio, visibleReply } from "../../lib/gen/providers.js";
 import { clientIp, createRateLimiter } from "../../lib/gen/rate-limit.js";
 import { toGroqTools } from "../../lib/gen/tools.js";
+import { loadMemoryForSession, recordSessionHistory } from "../../lib/gen/history.js";
 
 const sharedChatLimiter = createRateLimiter({ limit: CHAT_LIMIT, windowMs: CHAT_WINDOW_MS });
 const sharedIpLimiter = createRateLimiter({ limit: IP_LIMIT, windowMs: IP_WINDOW_MS });
@@ -56,6 +57,7 @@ export function createChatHandler(deps = {}) {
   const ipLimiter = deps.ipLimiter || sharedIpLimiter;
   const commandLimiter = deps.commandLimiter || sharedCommandLimiter;
   const now = deps.now || (() => Date.now());
+  const loadMemory = deps.loadMemory || loadMemoryForSession;
 
   return async function handler(req, res) {
     if (initApi(req, res, ["POST"])) return;
@@ -106,6 +108,24 @@ export function createChatHandler(deps = {}) {
         return;
       }
 
+      async function sendTurn(payload) {
+        if (payload.transcript) {
+          try {
+            await recordSessionHistory({
+              env,
+              sessionCode: session.id,
+              source: turn.audio ? "voice" : "chat",
+              transcript: payload.transcript,
+              reply: payload.reply_text,
+              actions: payload.actions,
+            });
+          } catch {
+            /* o histórico não pode derrubar a resposta */
+          }
+        }
+        res.status(200).json(payload);
+      }
+
       if (!transcript) {
         res.status(200).json({
           transcript: "",
@@ -127,8 +147,14 @@ export function createChatHandler(deps = {}) {
 
       const actions = [];
       let state = current.state || defaultHouseState(session.id);
+      let memory = "";
+      try {
+        memory = await loadMemory({ env, sessionCode: session.id });
+      } catch {
+        memory = "";
+      }
       const messages = [
-        { role: "system", content: buildSystemInstruction(session, state) },
+        { role: "system", content: buildSystemInstruction(session, state, memory) },
         { role: "user", content: transcript },
       ];
       const tools = toGroqTools();
@@ -176,7 +202,7 @@ export function createChatHandler(deps = {}) {
             });
           }
           const reply = replyText(visibleReply(message.content), actions, transcript, state);
-          res.status(200).json({ transcript, reply_text: reply, actions, state });
+          await sendTurn({ transcript, reply_text: reply, actions, state });
           return;
         }
         messages.push({
@@ -226,7 +252,7 @@ export function createChatHandler(deps = {}) {
 
       const finalTurn = await completeChat({ fetchImpl, env, messages, toolChoice: "none" });
       if (finalTurn.error) {
-        res.status(200).json({
+        await sendTurn({
           transcript,
           reply_text: replyText("", actions, transcript, state),
           actions,
@@ -234,7 +260,7 @@ export function createChatHandler(deps = {}) {
         });
         return;
       }
-      res.status(200).json({
+      await sendTurn({
         transcript,
         reply_text: replyText(visibleReply(finalTurn.message?.content), actions, transcript, state),
         actions,
