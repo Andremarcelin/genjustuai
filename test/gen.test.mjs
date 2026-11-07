@@ -422,7 +422,7 @@ test("a clear repeat of the current house does not ask to repeat", async () => {
   assert.equal(fallbackReply(
     [{ tool: "set_lights", status: "accepted" }],
     { transcript: "deixa a luz bem quente", state: WARM_BAMBOO },
-  ), "A casa atualizou.");
+  ), "Pronto. Deixei a luz quentinha. O bambu continua tocando.");
   assert.equal(chooseReply({
     modelText: "Já tá quentinha e com bambu tocando 😉",
     actions: [],
@@ -466,7 +466,10 @@ test("a clear repeat of the current house does not ask to repeat", async () => {
     assert.equal(res.body.state.ambience.preset, "bamboo");
     assert.notEqual(res.body.reply_text.trim(), "");
     assert.doesNotMatch(res.body.reply_text, /pode repetir/i);
+    assert.doesNotMatch(res.body.reply_text, /#[0-9A-Fa-f]{6}/);
     assert.match(res.body.reply_text, /bambu/i);
+    assert.match(system, /Chame set_lights/);
+    assert.match(system, /Só pule a ferramenta/);
     assert.match(system, /#FFAA00/);
     assert.match(system, /bamboo volume 0\.3/);
     assert.match(system, /Não peça para repetir/);
@@ -496,6 +499,74 @@ test("a clear repeat of the current house does not ask to repeat", async () => {
   assert.match(live.body.systemInstruction, /Não peça para repetir/);
   assert.equal(locked, live.body.systemInstruction);
   assert.equal(JSON.stringify(live.body).includes("gemini-secret-do-not-leak"), false);
+});
+
+const COOL_BAMBOO = {
+  session_id: "AB3K7Q",
+  version: 4,
+  mode: "hub",
+  dojo: null,
+  lights: {
+    main: { intensity: 0.45, color: "#00BFFF" },
+    lanterns: { intensity: 0.2, color: "#FF1A1A" },
+  },
+  ambience: { preset: "bamboo", volume: 0.3 },
+  updated_at: "2026-11-06T23:40:00.000Z",
+};
+
+test("a warm request on a cool light calls set_lights and does not claim it is already warm", async () => {
+  const ask = "deixa a luz bem quente e coloca som de bambu";
+  assert.equal(
+    fallbackReply([], { transcript: ask, state: COOL_BAMBOO }),
+    "Vou tentar de novo.",
+  );
+  assert.doesNotMatch(
+    fallbackReply([], { transcript: ask, state: COOL_BAMBOO }),
+    /#[0-9A-Fa-f]{6}|já tá/i,
+  );
+
+  const store = createMemoryHouseStore();
+  await seedHouse(store, COOL_BAMBOO);
+  const handler = createChatHandler({
+    loadSession: activeSession(),
+    env: { GROQ_API_KEY: "groq-secret-do-not-leak" },
+    store,
+    chatLimiter: limiter(),
+    ipLimiter: limiter(),
+    commandLimiter: limiter(),
+    now: () => Date.parse("2026-11-06T23:50:00.000Z"),
+    fetchImpl: async () => new Response(JSON.stringify({
+      choices: [{
+        message: {
+          role: "assistant",
+          content: "A luz principal já tá em #00BFFF e com bambu tocando.",
+          tool_calls: [],
+        },
+      }],
+    }), { status: 200 }),
+  });
+  const res = mockRes();
+  await handler({
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: { text: ask },
+  }, res);
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body.actions.length, 1);
+  assert.equal(res.body.actions[0].tool, "set_lights");
+  assert.equal(res.body.actions[0].status, "accepted");
+  assert.equal(res.body.actions[0].args.color, "#FFAA00");
+  assert.equal(res.body.actions[0].args.zone, "main");
+  assert.equal(res.body.actions[0].args.intensity, 0.8);
+  assert.equal(res.body.state.lights.main.color, "#FFAA00");
+  assert.equal(res.body.state.lights.main.intensity, 0.8);
+  assert.equal(res.body.state.ambience.preset, "bamboo");
+  assert.equal(res.body.state.version, 5);
+  assert.match(res.body.reply_text, /quentinha/i);
+  assert.match(res.body.reply_text, /bambu/i);
+  assert.doesNotMatch(res.body.reply_text, /#[0-9A-Fa-f]{3,6}/i);
+  assert.doesNotMatch(res.body.reply_text, /já tá em/i);
+  assert.doesNotMatch(res.body.reply_text, /pode repetir/i);
 });
 
 test("chat JSON path and missing session do not call Groq", async () => {
