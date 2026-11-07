@@ -9,6 +9,7 @@ import {
   nextLiveRetryMs,
   pcm16ToWav,
   routePcm,
+  shouldKeepCapture,
   takeBuffered,
 } from "../js/gen-mic.js";
 
@@ -37,6 +38,12 @@ test("pcm is buffered until live is ready, then flushed in order", () => {
   queue.push(pcm(8));
   assert.equal(takeBuffered(queue).length, 1);
   assert.equal(queue.length, 0);
+});
+
+test("the Android permission sheet does not end the hold", () => {
+  assert.equal(shouldKeepCapture({ permissionPending: true, hasLiveStream: false }), true);
+  assert.equal(shouldKeepCapture({ permissionPending: false, hasLiveStream: false }), true);
+  assert.equal(shouldKeepCapture({ permissionPending: false, hasLiveStream: true }), false);
 });
 
 test("live retry backs off and caps at 30s", () => {

@@ -1,6 +1,10 @@
 export const MIN_PCM_SAMPLES = 4800;
 export const MIN_BLOB_BYTES = 2048;
 
+export function shouldKeepCapture({ permissionPending, hasLiveStream }) {
+  return Boolean(permissionPending) || !hasLiveStream;
+}
+
 export function nextLiveRetryMs(attempt) {
   const step = Math.max(0, Number(attempt) || 0);
   return Math.min(30000, 1000 * (2 ** Math.min(step, 5)));

@@ -8,6 +8,7 @@ import {
   pcm16ToWav,
   pcmLevel,
   routePcm,
+  shouldKeepCapture,
   takeBuffered,
 } from "./gen-mic.js";
 
@@ -43,6 +44,7 @@ import {
   var liveVoice = "Charon";
   var captureCtx = null;
   var micOpen = null;
+  var permissionPending = false;
   var graphReady = false;
   var muteNode = null;
   var sourceNode = null;
@@ -450,18 +452,23 @@ import {
     if (decision.action === "send") decision.chunks.forEach(sendPcm);
   }
 
+  function hasLiveMic() {
+    return !!(micStream && micStream.getAudioTracks().some(function (track) { return track.readyState === "live"; }));
+  }
+
   function ensureMic() {
-    if (micStream && micStream.getAudioTracks().some(function (track) { return track.readyState === "live"; })) {
-      return Promise.resolve(micStream);
-    }
+    if (hasLiveMic()) return Promise.resolve(micStream);
     if (micOpen) return micOpen;
+    permissionPending = true;
     micOpen = navigator.mediaDevices.getUserMedia({
       audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true },
     }).then(function (stream) {
+      permissionPending = false;
       micStream = stream;
       showHelp("");
       return stream;
     }).catch(function (err) {
+      permissionPending = false;
       micOpen = null;
       throw err;
     });
@@ -654,30 +661,38 @@ import {
     finishUtterance();
   }
 
-  ptt.addEventListener("pointerdown", function (event) {
-    if (!sessionOn || listenReason === "toggle") return;
+  function blockCallout(event) {
     event.preventDefault();
+  }
+
+  [ptt, toggleBtn].forEach(function (el) {
+    if (!el) return;
+    el.addEventListener("contextmenu", blockCallout);
+    el.addEventListener("selectstart", blockCallout);
+    el.addEventListener("dragstart", blockCallout);
+  });
+
+  ptt.addEventListener("pointerdown", function (event) {
+    if (!sessionOn) return;
+    event.preventDefault();
+    if (listening && listenReason === "hold") {
+      stopListening("hold");
+      return;
+    }
+    if (listenReason === "toggle") return;
     try { ptt.setPointerCapture(event.pointerId); } catch (err) { /* pointer already gone */ }
     pointerDown = true;
     try { captureContext(); context(); } catch (err) { /* resume on the next gesture */ }
     startListening("hold", ensureMic());
   });
-  ptt.addEventListener("pointerup", function () {
-    pointerDown = false;
-    if (listenReason === "hold") stopListening("hold");
-  });
-  ptt.addEventListener("pointercancel", function () {
+  function endHoldIfMicReady() {
     pointerDown = false;
     if (listenReason !== "hold") return;
-    if (micStream) stopListening("hold");
-    else {
-      listening = false;
-      listenReason = null;
-      setPressed(false);
-      setStatus("connect", "Conectando…");
-    }
-  });
-  ptt.addEventListener("contextmenu", function (event) { event.preventDefault(); });
+    if (shouldKeepCapture({ permissionPending: permissionPending, hasLiveStream: hasLiveMic() })) return;
+    stopListening("hold");
+  }
+  ptt.addEventListener("pointerup", endHoldIfMicReady);
+  ptt.addEventListener("pointercancel", endHoldIfMicReady);
   if (toggleBtn) {
     toggleBtn.addEventListener("click", function () {
       if (!sessionOn) return;
