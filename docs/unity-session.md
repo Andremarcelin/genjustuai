@@ -4,7 +4,7 @@ O headset **não digita código**. Um admin escolhe a sessão atual em `/admin`.
 
 ## Expo
 
-1. Visitante responde as duas perguntas e salva sem conta. O site chama `signInAnonymously()` e gera o código (`sql/sessions.sql`, `sql/anonymous_auth.sql`, `sql/profile_id.sql`, com Anonymous sign-ins ligado no dashboard).
+1. Visitante responde as três perguntas e salva sem conta. O site chama `signInAnonymously()` e gera o código (`sql/sessions.sql`, `sql/anonymous_auth.sql`, `sql/profile_id.sql`, com Anonymous sign-ins ligado no dashboard). Essa gravação torna a sessão a ativa do Quest e tira a anterior de `active`.
 2. Staff abre `https://genjutsuai.vercel.app/admin` sem PIN, escolhe o código e clica **Iniciar sessão no Quest com este código**. Ativar outra sessão substitui a anterior: só uma fica `active`.
 3. O Quest chama `GET https://genjutsuai.vercel.app/api/session` (sem query) e carrega essa pessoa. O `id` (igual ao `session_code`) muda mesmo quando o `profile_id` se repete.
 4. **Finalizar sessão** grava `status = ended` e `ended_at`, tira o código de `app_state`, e o próximo poll volta `{ "session": null }` para a sala branca.
@@ -88,16 +88,16 @@ Erros, sempre JSON `{ "error": "..." }` e sem URL, chave ou corpo do Supabase. A
 
 ## Mapa do questionário → ProfileId
 
-| clima_ambiente | clima_tempo | profile_id | archetype |
-|---|---|---|---|
-| tranquilo | frio | Zen | Zen |
-| tranquilo | quente | Acolhedor | Acolhedor |
-| tranquilo | ameno | Acolhedor | Acolhedor |
-| agitado | frio | Cyber | Cyber |
-| agitado | ameno | Cyber | Cyber |
-| agitado | quente | Excentrico | Excêntrico |
+Três perguntas (`recarga`, `atmosfera`, `acolhida`), quatro opções cada. A pessoa não escolhe a casa. `js/zcea-profile.js` soma os pesos e, no empate, escolhe nesta ordem: Zen, Acolhedor, Cyber, Excentrico. Exemplos fechados:
 
-Implementação: `js/zcea-profile.js`. O visitante grava `profile_id` em `dossiers`, em `dossier_data.preferencias` e em `session_summaries` sem login Google. O resumo público só é gravado quando o par de respostas fecha um desses quatro ids. Entrar com Google, sem responder o questionário, não publica `Perfil em formação` nem apaga um quiz já salvo.
+| recarga | atmosfera | acolhida | profile_id |
+|---|---|---|---|
+| agua | madeira | aceno | Zen |
+| pulso | neon | enigma | Cyber |
+| cor | seda | porta | Excentrico |
+| mesa | bambu | cha | Acolhedor |
+
+O visitante grava `profile_id` em `dossiers`, em `dossier_data.preferencias` e em `session_summaries` sem login Google. O resumo público só é gravado quando as três respostas fecham um desses quatro ids. Entrar com Google, sem responder o questionário, não publica `Perfil em formação` nem apaga um quiz já salvo. `display_name` é o nome da conta, se houver, senão o nome escrito na visita.
 
 `POST /api/admin/session` com `{ "code": "AB3K7Q" }` (o botão **Iniciar sessão no Quest com este código**) devolve:
 

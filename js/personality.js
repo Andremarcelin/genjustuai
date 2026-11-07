@@ -46,6 +46,10 @@
   }
 
   function resolvedDisplayName(user, dossier, sessionCode) {
+    if (user && !isGuest(user)) {
+      var account = explicitName(user);
+      if (account) return account;
+    }
     var fromDossier = String((dossier && dossier.nome_exibicao) || "").trim();
     if (fromDossier && !isAlias(fromDossier)) return fromDossier;
     return displayName(user, sessionCode);
@@ -66,9 +70,10 @@
     var Z = loadZcea();
     var empty = { profile_id: null, letter: null, archetype: null };
     if (!Z) return empty;
-    var resolved = Z.resolve(pref.clima_ambiente, pref.clima_tempo);
+    var prefs = pref || {};
+    var resolved = Z.resolve(prefs);
     if (resolved.profile_id) return resolved;
-    var id = Z.sanitize(pref.profile_id);
+    var id = Z.sanitize(prefs.profile_id);
     if (!id) return empty;
     var meta = Z.META[id];
     return { profile_id: id, letter: meta.letter, archetype: meta.archetype };
@@ -88,11 +93,6 @@
     }
     return raw;
   }
-
-  var ANSWERS = {
-    clima_ambiente: { tranquilo: "Calmo e leve", agitado: "Aceso e em movimento" },
-    clima_tempo: { frio: "Frescor", quente: "Aconchego", ameno: "Neutro" }
-  };
 
   var PHRASE = {
     Zen: "{name}, o dia abre em água parada. A casa pede silêncio e frescor: respire devagar, que o que é seu chega sem alarde.",
@@ -125,7 +125,8 @@
   function answerText(field, value) {
     var raw = String(value || "").trim();
     if (!raw) return "";
-    var nice = ANSWERS[field] && ANSWERS[field][raw];
+    var Z = loadZcea();
+    var nice = Z && typeof Z.optionLabel === "function" ? Z.optionLabel(field, raw) : "";
     return nice ? nice + " (" + raw + ")" : raw;
   }
 
@@ -138,9 +139,15 @@
     var src = source || {};
     var pref = src.preferencias || {};
     var rows = [
-      ["Nome", src.display_name || ""],
-      ["Como você quer se sentir", answerText("clima_ambiente", pref.clima_ambiente)],
-      ["Temperatura", answerText("clima_tempo", pref.clima_tempo)],
+      ["Nome", src.display_name || ""]
+    ];
+    var Z = loadZcea();
+    if (Z && Z.QUESTIONS) {
+      Z.QUESTIONS.forEach(function (question) {
+        rows.push([question.prompt, answerText(question.id, pref[question.id])]);
+      });
+    }
+    rows.push(
       ["profile_id", src.profile_id || ""],
       ["Arquétipo", src.archetype || ""],
       ["Letra", src.letter || ""],
@@ -151,7 +158,7 @@
       ["ID da conta", src.user_id || ""],
       ["Texto salvo", src.personality_text || ""],
       ["Atualizado em", src.updated_at || ""]
-    ];
+    );
     if (src.fonte === "google") {
       rows.push(
         ["Agenda (itens)", countText(src.calendar_count)],
@@ -169,14 +176,8 @@
     var guest = isGuest(user) || data.fonte === "convidado";
     var name = resolvedDisplayName(user, data, sessionCode);
     var profile = resolvedProfile(pref);
-    var vibe = pref.clima_ambiente === "agitado"
-      ? "ritmo mais dinâmico"
-      : pref.clima_ambiente === "tranquilo"
-        ? "ambiente calmo"
-        : "clima ainda indefinido";
-    var tempo = pref.clima_tempo || "sem preferência de tempo";
     var phrase = phraseFor(profile.profile_id, name);
-    var text = phrase || (name + " prefere " + vibe + " e " + tempo + ".");
+    var text = phrase || (name + " ainda não fechou o perfil da casa.");
     if (!guest && data.fonte === "google") {
       var nCal = (data.calendar || []).length;
       var nYt = (data.youtube || []).length;
@@ -197,6 +198,7 @@
   return {
     isGuest: isGuest,
     displayName: displayName,
+    resolvedDisplayName: resolvedDisplayName,
     emailFor: emailFor,
     avatarFor: avatarFor,
     formatArchetype: formatArchetype,

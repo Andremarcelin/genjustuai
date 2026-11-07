@@ -38,43 +38,47 @@ const guestText = P.buildPersonality(guest, {
   calendar: [{ titulo: "não deve aparecer" }],
   youtube: [{ canal: "x" }],
   tasks: [{ titulo: "y" }],
-  preferencias: { clima_ambiente: "tranquilo", clima_tempo: "frio", profile_id: "Zen" }
+  nome_exibicao: "Lina",
+  preferencias: { recarga: "agua", atmosfera: "madeira", acolhida: "aceno", profile_id: "Zen" }
 }, "AB3K7Q");
 assert.strictEqual(guestText.archetype, "Zen");
 assert.strictEqual(guestText.profile_id, "Zen");
-assert.strictEqual(guestText.displayName, "Visitante AB3K7Q");
-assert.strictEqual(guestText.phrase, P.phraseFor("Zen", "Visitante AB3K7Q"));
-assert.ok(guestText.text.includes("Visitante AB3K7Q"));
+assert.strictEqual(guestText.displayName, "Lina");
+assert.strictEqual(guestText.phrase, P.phraseFor("Zen", "Lina"));
+assert.ok(guestText.text.includes("Lina"));
+assert.ok(!guestText.text.includes("Teste Roadmap"));
 assert.ok(guestText.text.includes("água parada"));
 assert.ok(!/agenda|YouTube|tarefa/i.test(guestText.text), guestText.text);
 
 const namedText = P.buildPersonality(guest, {
   fonte: "convidado",
   nome_exibicao: "Lina",
-  preferencias: { clima_ambiente: "agitado", clima_tempo: "ameno", profile_id: "Cyber" }
+  preferencias: { recarga: "pulso", atmosfera: "neon", acolhida: "enigma", profile_id: "Cyber" }
 }, "AB3K7Q");
 assert.strictEqual(namedText.displayName, "Lina");
 assert.ok(namedText.phrase.includes("Lina"));
 assert.ok(namedText.phrase.includes("pulso elétrico"));
 assert.strictEqual(P.phraseFor("Excentrico", "Lina").includes("gesto ousado"), true);
 assert.strictEqual(P.phraseFor("Acolhedor", "Lina").includes("aconchego"), true);
-assert.strictEqual(P.answerText("clima_ambiente", "tranquilo"), "Calmo e leve (tranquilo)");
-assert.strictEqual(P.answerText("clima_tempo", "quente"), "Aconchego (quente)");
+assert.strictEqual(P.answerText("recarga", "agua"), "Água parada, sem pressa (agua)");
+assert.strictEqual(P.answerText("atmosfera", "bambu"), "Chuva no bambu e chá (bambu)");
 
 const googleText = P.buildPersonality(google, {
   fonte: "google",
   calendar: [{}],
   youtube: [],
   tasks: [{}, {}],
-  preferencias: { clima_ambiente: "agitado", clima_tempo: "quente", profile_id: "Excentrico" }
+  nome_exibicao: "Teste Roadmap",
+  preferencias: { recarga: "cor", atmosfera: "seda", acolhida: "porta", profile_id: "Excentrico" }
 }, "ZZZZZZ");
 assert.strictEqual(googleText.archetype, "Excêntrico");
 assert.strictEqual(googleText.profile_id, "Excentrico");
 assert.ok(googleText.phrase.includes("Ana"));
+assert.ok(!googleText.text.includes("Teste Roadmap"));
 assert.ok(googleText.phrase.includes("gesto ousado"));
 assert.ok(/1 evento\(s\) de agenda, 0 canal\(is\) do YouTube e 2 tarefa\(s\)/.test(googleText.text));
 
-const unsynced = P.buildPersonality(google, { preferencias: { clima_ambiente: "tranquilo" } }, "");
+const unsynced = P.buildPersonality(google, { preferencias: { recarga: "agua" } }, "");
 assert.ok(!/agenda/.test(unsynced.text), unsynced.text);
 assert.strictEqual(unsynced.archetype, "Perfil em formação");
 assert.strictEqual(unsynced.profile_id, null);
@@ -103,18 +107,14 @@ assert.ok(!portal.includes("Nesta sessão há") , "calendar sentence must live i
 assert.ok(index.includes("Salvar sem conta e gerar o código"));
 assert.ok(index.includes("como visitante"));
 assert.ok(index.includes('id="visitor-name"'));
-assert.ok(index.includes("Como você quer se sentir na casa?"));
-assert.ok(index.includes("Calmo e leve"));
-assert.ok(index.includes("Aceso e em movimento"));
-assert.ok(index.includes("Que temperatura combina com você agora?"));
-assert.ok(index.includes("Frescor"));
-assert.ok(index.includes("Aconchego"));
-assert.ok(index.includes(">Neutro<"));
-assert.ok(index.includes('data-value="tranquilo"'));
-assert.ok(index.includes('data-value="agitado"'));
-assert.ok(index.includes('data-value="frio"'));
-assert.ok(index.includes('data-value="quente"'));
-assert.ok(index.includes('data-value="ameno"'));
+assert.ok(index.includes("Depois do dia, o que te devolve?"));
+assert.ok(index.includes("Água parada, sem pressa"));
+assert.ok(index.includes("Que clima você quer ao entrar?"));
+assert.ok(index.includes("Como você recebe quem chega?"));
+assert.ok(index.includes('data-value="agua"'));
+assert.ok(index.includes('data-value="pulso"'));
+assert.ok(index.includes('data-value="cor"'));
+assert.ok(index.includes('data-value="mesa"'));
 assert.ok(index.includes('id="ready-phrase"'));
 assert.ok(index.includes('id="ready-records"'));
 assert.ok(index.includes('class="parchment"'));
