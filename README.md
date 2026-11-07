@@ -2,7 +2,7 @@
 
 Portal da Smart Home Cognitiva para a experiência no Meta Quest 3S. Hospedagem: **Vercel**. Auth e banco: **Supabase**.
 
-O caminho principal não pede Google. A pessoa escreve o nome, responde duas perguntas e salva como visitante. Se não houver sessão, o cliente chama `supabase.auth.signInAnonymously()` e, com o papel `authenticated`, chama `genjutsu_ensure_session()` e grava `dossiers` + `session_summaries` (incluindo `profile_id`). Não há seletor de casa.
+O caminho principal não pede Google. A pessoa escreve o nome, responde três perguntas e salva como visitante. Se não houver sessão, o cliente chama `supabase.auth.signInAnonymously()` e, com o papel `authenticated`, chama `genjutsu_ensure_session()` e grava `dossiers` + `session_summaries` (incluindo `profile_id`). Não há seletor de casa.
 
 1. **Continuar sem conta** — abre o questionário. O nome é obrigatório. O botão **Salvar sem conta e gerar o código** cria a sessão anônima se ainda não existir. Não chama Calendar, YouTube, Contacts nem Tasks. O nome público é o que a pessoa escreveu (o fallback antigo `Visitante` + código só aparece se esse nome não existir). O e-mail fica vazio e o avatar é [`assets/guest-avatar.jpg`](assets/guest-avatar.jpg).
 2. **Continuar com Google** — opcional. OAuth com agenda, YouTube, contatos e tarefas (sem Gmail). O nome da conta preenche o campo e as mesmas duas perguntas gravam o mesmo `profile_id`.
@@ -11,16 +11,16 @@ Microsoft aparece só como “ou Microsoft”, fora desse par.
 
 O perfil do Quest é ZCEA, não as casas de marketing (Acolhedora / Elétrica / Ardente) nem os 8 arquétipos do CDD. `profile_id` é o id estável. `archetype` é o alias legível (`Excentrico` → `Excêntrico`).
 
-| clima_ambiente | clima_tempo | profile_id | archetype | Letra |
-| --- | --- | --- | --- | --- |
-| tranquilo | frio | Zen | Zen | Z |
-| tranquilo | quente | Acolhedor | Acolhedor | A |
-| tranquilo | ameno | Acolhedor | Acolhedor | A |
-| agitado | frio | Cyber | Cyber | C |
-| agitado | ameno | Cyber | Cyber | C |
-| agitado | quente | Excentrico | Excêntrico | E |
+As três perguntas (`recarga`, `atmosfera`, `acolhida`) não nomeiam a casa. `js/zcea-profile.js` soma os pesos. Empate, nesta ordem: Zen, Acolhedor, Cyber, Excentrico. Nas 64 combinações a conta é Zen 17, Cyber 13, Excentrico 16, Acolhedor 18.
 
-O resumo que o Quest lê (`session_summaries`) só nasce quando esse par fecha um `profile_id`. Login sem as duas respostas não grava `Perfil em formação` no lugar do perfil. Quem já tinha `preferencias` sem `profile_id` é preenchido por [`sql/backfill_profile_id.sql`](sql/backfill_profile_id.sql).
+| recarga | atmosfera | acolhida | profile_id | archetype |
+| --- | --- | --- | --- | --- |
+| agua | madeira | aceno | Zen | Zen |
+| pulso | neon | enigma | Cyber | Cyber |
+| cor | seda | porta | Excentrico | Excêntrico |
+| mesa | bambu | cha | Acolhedor | Acolhedor |
+
+O resumo que o Quest lê (`session_summaries`) só nasce quando as três respostas fecham um `profile_id`. Ao salvar, essa sessão vira a ativa e a anterior deixa de ser `active`. Login sem as três respostas não grava `Perfil em formação` no lugar do perfil. O nome no Quest é o da conta Google, se existir; senão, o nome escrito na visita. Quem já tinha `preferencias` sem `profile_id` é preenchido por [`sql/backfill_profile_id.sql`](sql/backfill_profile_id.sql).
 
 Documento mestre acadêmico (CDD): [docs/GenJutsu_AI_CDD_Completo.md](docs/GenJutsu_AI_CDD_Completo.md). Gap vs este repo: [docs/architecture/gap-cdd-vs-repo.md](docs/architecture/gap-cdd-vs-repo.md).
 

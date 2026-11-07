@@ -56,7 +56,7 @@
   function paintIdentity(user) {
     if (!user) return;
     currentPaintUser = user;
-    var name = P.displayName(user, sessionCode);
+    var name = P.resolvedDisplayName(user, globalDossie, sessionCode);
     var email = P.emailFor(user);
     var avatar = P.avatarFor(user);
     var guest = P.isGuest(user);
@@ -68,7 +68,6 @@
     });
     var typed = visitorNameValue();
     if (guest && typed) name = typed;
-    else if (globalDossie && globalDossie.nome_exibicao) name = globalDossie.nome_exibicao;
     $("user-name").textContent = name;
     if ($("ready-name")) $("ready-name").textContent = name;
     $("sync-user").textContent = name;
@@ -509,11 +508,11 @@
       });
       await upsertPublicSummary(user);
       bar.style.width = "100%";
-      $("sync-status").textContent = token ? "Rastro digital sincronizado" : "Cadastro pronto. Responda as duas perguntas.";
+      $("sync-status").textContent = token ? "Rastro digital sincronizado" : "Cadastro pronto. Responda as três perguntas.";
       setTimeout(goToPreferences, token ? 700 : 400);
     } catch (err) {
       console.error("Falha geral na coleta", err);
-      $("sync-status").textContent = "Não deu para sincronizar o Google. Vamos às duas perguntas.";
+      $("sync-status").textContent = "Não deu para sincronizar o Google. Vamos às três perguntas.";
       setTimeout(goToPreferences, 500);
     }
   }
@@ -575,7 +574,7 @@
     var btn = $("btn-save-questionnaire");
     if (note) {
       note.textContent = guest
-        ? "Sem conta. Dá para salvar como visitante: escreva o nome e responda as duas perguntas. A casa é inferida — você não escolhe o dojo. O Google não é necessário."
+        ? "Sem conta. Dá para salvar como visitante: escreva o nome e responda as três perguntas. A casa é inferida — você não escolhe o dojo. O Google não é necessário."
         : "Conta Google conectada. O nome pode ser o da conta. Salvar grava o perfil inferido neste código. Quem não tem conta usa o mesmo questionário como visitante.";
     }
     if (btn) btn.textContent = guest ? "Salvar sem conta e gerar o código" : "Salvar perfil e gerar o código";
@@ -649,8 +648,8 @@
       revealApp();
       showScreen("screen-questionnaire");
       setStatus("status-questionnaire", guestIntent
-        ? "Escreva seu nome e responda as duas perguntas. A gravação não pede login Google."
-        : "Confirme o nome e responda as duas perguntas. Sua conta Google já está conectada.");
+        ? "Escreva seu nome e responda as três perguntas. A gravação não pede login Google."
+        : "A conta já tem nome. Responda as três perguntas. Sua conta Google já está conectada.");
     } finally {
       authBusy = false;
     }
@@ -674,7 +673,11 @@
         b.classList.toggle("selected", on);
         b.setAttribute("aria-pressed", on ? "true" : "false");
       });
-      renderQuestProfile(G.selection(selectedValue("clima_ambiente"), selectedValue("clima_tempo")));
+      renderQuestProfile(G.selection(
+        selectedValue("recarga"),
+        selectedValue("atmosfera"),
+        selectedValue("acolhida")
+      ));
     });
   });
 
@@ -702,8 +705,9 @@
   $("btn-leave-ready").addEventListener("click", leaveJourney);
 
   $("btn-save-questionnaire").addEventListener("click", async function () {
-    var vibe = selectedValue("clima_ambiente");
-    var tempo = selectedValue("clima_tempo");
+    var recarga = selectedValue("recarga");
+    var atmosfera = selectedValue("atmosfera");
+    var acolhida = selectedValue("acolhida");
     var visitorName = visitorNameValue();
     var savingAsGuest = guestIntent || !currentPaintUser || P.isGuest(currentPaintUser);
     var nameInput = $("visitor-name");
@@ -716,8 +720,8 @@
       return;
     }
     if (nameInput) nameInput.removeAttribute("aria-invalid");
-    if (!G.selection(vibe, tempo)) {
-      setStatus("status-questionnaire", "Responda as duas perguntas antes de salvar.", true);
+    if (!G.selection(recarga, atmosfera, acolhida)) {
+      setStatus("status-questionnaire", "Responda as três perguntas antes de salvar.", true);
       return;
     }
     if (!sb) {
@@ -731,8 +735,9 @@
     try {
       var saved = await G.saveWithoutLogin({
         auth: sb.auth,
-        vibe: vibe,
-        tempo: tempo,
+        recarga: recarga,
+        atmosfera: atmosfera,
+        acolhida: acolhida,
         dossier: globalDossie,
         isGuest: P.isGuest,
         emailFor: P.emailFor,
@@ -745,6 +750,9 @@
         personality: P.buildPersonality,
         remember: function (dossier) { globalDossie = dossier; },
         ensureSession: allocateSessionCode,
+        activateSession: function (code) {
+          return sb.rpc("genjutsu_set_current_session", { p_code: code });
+        },
         writeDossier: function (row) {
           return sb.from("dossiers").upsert(row, { onConflict: "user_id" });
         },

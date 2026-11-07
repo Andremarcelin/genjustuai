@@ -73,28 +73,33 @@
     return Object.assign({}, user || {}, { user_metadata: meta });
   }
 
-  function selection(vibe, tempo) {
-    var resolved = loadZcea().resolve(vibe, tempo);
+  function selection(recarga, atmosfera, acolhida) {
+    var resolved = loadZcea().resolve(recarga, atmosfera, acolhida);
     if (!resolved.profile_id) return null;
     return {
-      clima_ambiente: vibe,
-      clima_tempo: tempo,
+      recarga: recarga,
+      atmosfera: atmosfera,
+      acolhida: acolhida,
       profile_id: resolved.profile_id,
       letter: resolved.letter,
-      archetype: resolved.archetype
+      archetype: resolved.archetype,
+      tie: resolved.tie
     };
   }
 
+  function answersComplete(pref) {
+    return !!(pref && pref.recarga && pref.atmosfera && pref.acolhida);
+  }
+
   // O login não pode apagar um quiz já gravado. A resposta nova só substitui
-  // o par clima_ambiente + clima_tempo quando as duas vierem preenchidas.
+  // as três escolhas quando todas vierem preenchidas.
   function mergeStoredDossier(stored, incoming) {
     var base = stored && typeof stored === "object" && !Array.isArray(stored) ? stored : {};
     var next = incoming && typeof incoming === "object" && !Array.isArray(incoming) ? incoming : {};
     var merged = Object.assign({}, base, next);
     var storedPref = base.preferencias && typeof base.preferencias === "object" ? base.preferencias : null;
     var nextPref = next.preferencias && typeof next.preferencias === "object" ? next.preferencias : null;
-    var nextComplete = !!(nextPref && nextPref.clima_ambiente && nextPref.clima_tempo);
-    if (storedPref && !nextComplete) {
+    if (storedPref && !answersComplete(nextPref)) {
       merged.preferencias = Object.assign({}, storedPref, nextPref || {});
     }
     return merged;
@@ -167,9 +172,9 @@
   }
 
   async function saveWithoutLogin(deps) {
-    var picked = selection(deps.vibe, deps.tempo);
+    var picked = selection(deps.recarga, deps.atmosfera, deps.acolhida);
     if (!picked) {
-      var incomplete = new Error("Responda as duas perguntas antes de salvar.");
+      var incomplete = new Error("Responda as três perguntas antes de salvar.");
       incomplete.code = "incomplete";
       throw incomplete;
     }
@@ -198,8 +203,9 @@
     if (guest) base.fonte = "convidado";
     if (visitorName) base.nome_exibicao = visitorName;
     base.preferencias = {
-      clima_ambiente: picked.clima_ambiente,
-      clima_tempo: picked.clima_tempo,
+      recarga: picked.recarga,
+      atmosfera: picked.atmosfera,
+      acolhida: picked.acolhida,
       profile_id: picked.profile_id
     };
     if (typeof deps.remember === "function") deps.remember(base);
@@ -234,6 +240,15 @@
 
     var dossierWrite = await writeRow(deps.writeDossier, dossierRow);
     var summaryWrite = await writeRow(deps.writeSummary, summaryRow);
+    var activated = false;
+    if (typeof deps.activateSession === "function") {
+      try {
+        var activation = await deps.activateSession(sessionCode);
+        activated = !(activation && activation.error);
+      } catch (activateErr) {
+        activated = false;
+      }
+    }
     var profilePendingSql = dossierWrite.profilePendingSql || summaryWrite.profilePendingSql;
     var recordSource = {
       display_name: persona.displayName,
@@ -266,7 +281,8 @@
       persona: persona,
       dossier: base,
       fields: fields,
-      profilePendingSql: profilePendingSql
+      profilePendingSql: profilePendingSql,
+      activated: activated
     };
   }
 

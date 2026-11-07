@@ -148,7 +148,7 @@ export default async function handler(req, res) {
         hint: listed.missing || (!recent.length && current.missingState)
           ? SQL_HINT
           : (!recent.length
-            ? "Banco ok, mas nenhuma sessão gravada. No site, responda as duas perguntas e salve sem conta."
+            ? "Banco ok, mas nenhuma sessão gravada. No site, responda as três perguntas e salve sem conta."
             : null),
       });
       return;

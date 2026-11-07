@@ -45,7 +45,7 @@
       <img class="crow-mark" src="/assets/icon-crow.jpg" alt="Corvo GenJutsu, olhos vermelhos e torii neon">
       <p class="eyebrow">Smart Home Cognitiva · Quest 3S</p>
       <h1>A casa que reconhece quem chega</h1>
-      <p>Responda duas perguntas e salve sem conta. O código da sessão e o perfil do Quest aparecem na hora. Google fica opcional e só sincroniza a rotina.</p>
+      <p>Responda três perguntas e salve sem conta. O código da sessão e o perfil do Quest aparecem na hora. Google fica opcional e só sincroniza a rotina.</p>
       <div class="fork" id="entrada">
         <button class="cta cta-guest" id="btn-guest" type="button">Continuar sem conta</button>
         <button class="cta cta-google" id="btn-google" type="button">Continuar com Google</button>
@@ -64,7 +64,7 @@
     <div class="pillars">
       <article class="pillar">
         <h3>Perfil do Quest</h3>
-        <p>O nome e duas perguntas inferem Zen, Cyber, Excêntrico ou Acolhedor. Ninguém escolhe a casa. O Quest lê o profile_id estável: Zen, Cyber, Excentrico ou Acolhedor.</p>
+        <p>O nome e três perguntas inferem Zen, Cyber, Excêntrico ou Acolhedor. Ninguém escolhe a casa. O Quest lê o profile_id estável: Zen, Cyber, Excentrico ou Acolhedor.</p>
       </article>
       <article class="pillar">
         <h3>Google ou visitante</h3>
@@ -82,7 +82,7 @@
     <div class="steps-row">
       <div class="step-card"><span>01</span>Continue sem conta — Google é opcional</div>
       <div class="step-card"><span>02</span>Sincronize o rastro — o visitante pula esta etapa</div>
-      <div class="step-card"><span>03</span>Escreva o nome e responda as duas perguntas</div>
+      <div class="step-card"><span>03</span>Escreva o nome e responda as três perguntas</div>
       <div class="step-card"><span>04</span>Vista o Quest e entre no genjutsu</div>
     </div>
   </section>
@@ -163,21 +163,31 @@
   </section>
 
   <section class="screen" id="screen-questionnaire">
-    <h2 class="screen-title">Seu nome e duas perguntas</h2>
-    <p class="guest-save-note" id="guest-save-note">Sem conta. Dá para salvar como visitante: escreva o nome e responda as duas perguntas. A casa é inferida — você não escolhe o dojo. O Google não é necessário.</p>
+    <h2 class="screen-title">Seu nome e três perguntas</h2>
+    <p class="guest-save-note" id="guest-save-note">Sem conta. Dá para salvar como visitante: escreva o nome e responda as três perguntas. A casa é inferida — você não escolhe o dojo. O Google não é necessário.</p>
     <label class="section-label" for="visitor-name">Como você quer ser chamado?</label>
     <input type="text" id="visitor-name" name="visitor-name" maxlength="40" autocomplete="name" required aria-describedby="visitor-name-hint" placeholder="Seu nome">
     <p class="field-hint" id="visitor-name-hint">O nome entra na frase da sessão. Pelo menos 2 letras.</p>
-    <p class="section-label" id="label-vibe">Como você quer se sentir na casa?</p>
-    <div class="option-col" role="group" aria-labelledby="label-vibe">
-      <button type="button" class="option" data-field="clima_ambiente" data-value="tranquilo" aria-pressed="false">Calmo e leve</button>
-      <button type="button" class="option" data-field="clima_ambiente" data-value="agitado" aria-pressed="false">Aceso e em movimento</button>
+    <p class="section-label" id="label-recarga">Depois do dia, o que te devolve?</p>
+    <div class="option-col" role="group" aria-labelledby="label-recarga">
+      <button type="button" class="option" data-field="recarga" data-value="agua" aria-pressed="false">Água parada, sem pressa</button>
+      <button type="button" class="option" data-field="recarga" data-value="pulso" aria-pressed="false">Um pulso, luz e ritmo</button>
+      <button type="button" class="option" data-field="recarga" data-value="cor" aria-pressed="false">Cor demais e riso alto</button>
+      <button type="button" class="option" data-field="recarga" data-value="mesa" aria-pressed="false">Uma mesa posta, gente perto</button>
     </div>
-    <p class="section-label" id="label-tempo">Que temperatura combina com você agora?</p>
-    <div class="option-col" role="group" aria-labelledby="label-tempo">
-      <button type="button" class="option" data-field="clima_tempo" data-value="frio" aria-pressed="false">Frescor</button>
-      <button type="button" class="option" data-field="clima_tempo" data-value="quente" aria-pressed="false">Aconchego</button>
-      <button type="button" class="option" data-field="clima_tempo" data-value="ameno" aria-pressed="false">Neutro</button>
+    <p class="section-label" id="label-atmosfera">Que clima você quer ao entrar?</p>
+    <div class="option-col" role="group" aria-labelledby="label-atmosfera">
+      <button type="button" class="option" data-field="atmosfera" data-value="madeira" aria-pressed="false">Luz baixa e madeira lisa</button>
+      <button type="button" class="option" data-field="atmosfera" data-value="neon" aria-pressed="false">Neon frio e metal</button>
+      <button type="button" class="option" data-field="atmosfera" data-value="seda" aria-pressed="false">Lanterna quente e seda</button>
+      <button type="button" class="option" data-field="atmosfera" data-value="bambu" aria-pressed="false">Chuva no bambu e chá</button>
+    </div>
+    <p class="section-label" id="label-acolhida">Como você recebe quem chega?</p>
+    <div class="option-col" role="group" aria-labelledby="label-acolhida">
+      <button type="button" class="option" data-field="acolhida" data-value="aceno" aria-pressed="false">Um aceno, e o silêncio fica</button>
+      <button type="button" class="option" data-field="acolhida" data-value="enigma" aria-pressed="false">Um enigma na porta</button>
+      <button type="button" class="option" data-field="acolhida" data-value="porta" aria-pressed="false">Porta aberta e improviso</button>
+      <button type="button" class="option" data-field="acolhida" data-value="cha" aria-pressed="false">Chá e um lugar guardado</button>
     </div>
     <div class="quest-profile" id="quiz-profile" hidden></div>
     <button class="cta cta-guest" id="btn-save-questionnaire" type="button">Salvar sem conta e gerar o código</button>
@@ -202,7 +212,7 @@
         <img class="session-qr" alt="QR da sessão para o Quest">
         <a class="session-link" href="#" target="_blank" rel="noopener">Abrir resumo</a>
       </div>
-      <p class="record-foot">O headset inicia esta sessão quando o admin escolhe o código em /admin.</p>
+      <p class="record-foot">Esta sessão passa a ser a do Quest. O admin ainda pode trocar o código em /admin.</p>
     </section>
     <button class="cta ghost" id="btn-leave-ready" type="button">Sair e escolher de novo</button>
   </section>

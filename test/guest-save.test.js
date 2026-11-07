@@ -51,8 +51,9 @@ function depsFor(auth, hooks) {
   return {
     writes,
     auth,
-    vibe: "agitado",
-    tempo: "quente",
+    recarga: "cor",
+    atmosfera: "seda",
+    acolhida: "porta",
     dossier: options.dossier || { calendar: [{ titulo: "oculto" }] },
     isGuest: P.isGuest,
     emailFor: P.emailFor,
@@ -105,8 +106,9 @@ test("save without a session signs in anonymously and writes the ZCEA profile", 
   assert.equal(dossier.dossier_data.nome_exibicao, "Lina");
   assert.equal(dossier.dossier_data.fonte, "convidado");
   assert.equal(dossier.dossier_data.preferencias.profile_id, "Excentrico");
-  assert.equal(dossier.dossier_data.preferencias.clima_ambiente, "agitado");
-  assert.equal(dossier.dossier_data.preferencias.clima_tempo, "quente");
+  assert.equal(dossier.dossier_data.preferencias.recarga, "cor");
+  assert.equal(dossier.dossier_data.preferencias.atmosfera, "seda");
+  assert.equal(dossier.dossier_data.preferencias.acolhida, "porta");
 
   const summary = deps.writes.summary[0];
   assert.equal(summary.session_code, CODE);
@@ -120,8 +122,9 @@ test("save without a session signs in anonymously and writes the ZCEA profile", 
   assert.doesNotMatch(summary.personality_text, /agenda|YouTube|tarefa|oculto/i);
   const labels = Object.fromEntries(saved.fields);
   assert.equal(labels.Nome, "Lina");
-  assert.equal(labels["Como você quer se sentir"], "Aceso e em movimento (agitado)");
-  assert.equal(labels.Temperatura, "Aconchego (quente)");
+  assert.equal(labels["Depois do dia, o que te devolve?"], "Cor demais e riso alto (cor)");
+  assert.equal(labels["Que clima você quer ao entrar?"], "Lanterna quente e seda (seda)");
+  assert.equal(labels["Como você recebe quem chega?"], "Porta aberta e improviso (porta)");
   assert.equal(labels.profile_id, "Excentrico");
   assert.equal(labels["Arquétipo"], "Excêntrico");
   assert.equal(labels.Letra, "E");
@@ -142,8 +145,9 @@ test("two saves with the same profile keep different session codes", async () =>
       visitorName: code === "AAAAAA" ? "Lina" : "Nico",
       ensure: function () { return code; },
     });
-    deps.vibe = "tranquilo";
-    deps.tempo = "frio";
+    deps.recarga = "agua";
+    deps.atmosfera = "madeira";
+    deps.acolhida = "aceno";
     return { saved: await G.saveWithoutLogin(deps), deps };
   }
   const first = await saveOnce("AAAAAA");
@@ -163,8 +167,9 @@ test("an existing Google session is reused and anonymous sign-in is not called",
   const deps = depsFor(auth, {
     dossier: { fonte: "google", calendar: [{}], youtube: [], tasks: [] }
   });
-  deps.vibe = "tranquilo";
-  deps.tempo = "frio";
+  deps.recarga = "agua";
+  deps.atmosfera = "madeira";
+  deps.acolhida = "aceno";
   const saved = await G.saveWithoutLogin(deps);
 
   assert.deepEqual(auth.calls, ["getSession"]);
@@ -201,10 +206,10 @@ test("disabled anonymous provider stops before the session RPC", async () => {
 test("incomplete answers do not create a visitor", async () => {
   const auth = authWith(null, guestUser());
   const deps = depsFor(auth);
-  deps.tempo = "";
+  deps.acolhida = "";
   await assert.rejects(() => G.saveWithoutLogin(deps), (err) => {
     assert.equal(err.code, "incomplete");
-    assert.match(err.message, /duas perguntas/);
+    assert.match(err.message, /três perguntas/);
     return true;
   });
   assert.deepEqual(auth.calls, []);
@@ -226,20 +231,34 @@ test("a guest without a name does not open an anonymous session", async () => {
   assert.equal(G.normalizeVisitorName("   "), "");
 });
 
+test("saving a visitor activates that session and drops the previous active one", async () => {
+  const deps = depsFor(authWith(null, guestUser()), { visitorName: "Lina" });
+  const calls = [];
+  deps.activateSession = async function (code) {
+    calls.push(code);
+    return { data: code, error: null };
+  };
+  const saved = await G.saveWithoutLogin(deps);
+  assert.deepEqual(calls, [CODE]);
+  assert.equal(saved.activated, true);
+  assert.equal(saved.visitorName, "Lina");
+  assert.equal(deps.writes.summary[0].display_name, "Lina");
+});
+
 test("a later sync keeps a quiz that was already stored", () => {
   const stored = {
     fonte: "google",
     calendar: [{ titulo: "antigo" }],
-    preferencias: { clima_ambiente: "agitado", clima_tempo: "frio", profile_id: "Cyber" }
+    preferencias: { recarga: "pulso", atmosfera: "neon", acolhida: "enigma", profile_id: "Cyber" }
   };
   const merged = G.mergeStoredDossier(stored, { fonte: "google", calendar: [], youtube: [] });
   assert.equal(merged.preferencias.profile_id, "Cyber");
-  assert.equal(merged.preferencias.clima_ambiente, "agitado");
-  assert.equal(merged.preferencias.clima_tempo, "frio");
+  assert.equal(merged.preferencias.recarga, "pulso");
+  assert.equal(merged.preferencias.acolhida, "enigma");
   assert.deepEqual(merged.calendar, []);
 
   const replaced = G.mergeStoredDossier(stored, {
-    preferencias: { clima_ambiente: "tranquilo", clima_tempo: "quente", profile_id: "Acolhedor" }
+    preferencias: { recarga: "mesa", atmosfera: "bambu", acolhida: "cha", profile_id: "Acolhedor" }
   });
   assert.equal(replaced.preferencias.profile_id, "Acolhedor");
   assert.equal(replaced.calendar[0].titulo, "antigo");
@@ -268,16 +287,18 @@ test("the page copy tells the visitor they are saving without an account", () =>
   assert.match(index, /Salvar sem conta e gerar o código/);
   assert.match(index, /salvar como visitante/i);
   assert.match(index, /id="visitor-name"/);
-  assert.match(index, /Como você quer se sentir na casa/);
-  assert.match(index, /Calmo e leve/);
-  assert.match(index, /Aceso e em movimento/);
-  assert.match(index, /Que temperatura combina com você agora/);
-  assert.match(index, /data-field="clima_ambiente"/);
-  assert.match(index, /data-value="tranquilo"/);
-  assert.match(index, /data-value="agitado"/);
-  assert.match(index, /data-value="frio"/);
-  assert.match(index, /data-value="quente"/);
-  assert.match(index, /data-value="ameno"/);
+  assert.match(index, /Depois do dia, o que te devolve/);
+  assert.match(index, /Água parada, sem pressa/);
+  assert.match(index, /Que clima você quer ao entrar/);
+  assert.match(index, /Como você recebe quem chega/);
+  assert.match(index, /data-field="recarga"/);
+  assert.match(index, /data-field="atmosfera"/);
+  assert.match(index, /data-field="acolhida"/);
+  assert.match(index, /data-value="agua"/);
+  assert.match(index, /data-value="pulso"/);
+  assert.match(index, /data-value="madeira"/);
+  assert.match(index, /data-value="cha"/);
+  assert.doesNotMatch(index, /data-field="clima_ambiente"/);
   assert.match(index, /id="quiz-profile"/);
   assert.match(index, /id="ready-profile"/);
   assert.match(index, /id="ready-records"/);
