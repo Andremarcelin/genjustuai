@@ -226,6 +226,20 @@
     if (result.data.session_code && !sessionCode) renderSessionCode(result.data.session_code);
   }
 
+  async function allocateSessionCode(user) {
+    if (!sb || !user) return "";
+    var rpc = await sb.rpc("genjutsu_allocate_session_code");
+    if (!rpc.error && rpc.data) {
+      var fresh = String(rpc.data).trim().toUpperCase();
+      renderSessionCode(fresh);
+      return fresh;
+    }
+    if (rpc.error) console.warn("genjutsu_allocate_session_code:", rpc.error);
+    var fallback = randomSessionCode();
+    renderSessionCode(fallback);
+    return fallback;
+  }
+
   async function ensureSessionCode(user) {
     if (!sb || !user) return "";
     var rpc = await sb.rpc("genjutsu_ensure_session");
@@ -730,12 +744,12 @@
         visitorName: visitorName,
         personality: P.buildPersonality,
         remember: function (dossier) { globalDossie = dossier; },
-        ensureSession: ensureSessionCode,
+        ensureSession: allocateSessionCode,
         writeDossier: function (row) {
           return sb.from("dossiers").upsert(row, { onConflict: "user_id" });
         },
         writeSummary: function (row) {
-          return sb.from("session_summaries").upsert(row, { onConflict: "session_code" });
+          return sb.from("session_summaries").insert(row);
         }
       });
       guestIntent = saved.guest;

@@ -13,15 +13,17 @@
 <div class="admin-wrap">
   <p class="eyebrow">GenJutsu AI</p>
   <h1>Sessão do Quest</h1>
-  <p class="muted">O Quest em <code>GET /api/session</code> carrega a pessoa escolhida. Visitante aparece sem e-mail. Esta página abre sem PIN.</p>
+  <p class="muted">O Quest em <code>GET /api/session</code> carrega a sessão ativa. Várias pessoas podem ter o mesmo perfil; o código distingue cada uma. Esta página abre sem PIN.</p>
   <button class="secondary" id="load" type="button">Atualizar lista</button>
   <div class="pick" id="pick">
-    <div class="muted">Selecionado para o Quest</div>
+    <div class="muted">Sessão ativa no Quest</div>
     <p id="pick-name" class="nm">Nenhum</p>
     <p id="pick-code" class="cd">—</p>
     <p id="pick-profile" class="muted">Sem perfil do Quest</p>
+    <p id="pick-status" class="muted">Nenhuma sessão ativa</p>
+    <button class="secondary" id="end" type="button" hidden>Finalizar sessão</button>
   </div>
-  <h2>Últimos cadastros</h2>
+  <h2>Sessões</h2>
   <div id="list"></div>
   <label class="muted" for="manual">Ou cole o código de 6 letras</label>
   <input type="text" id="manual" maxlength="6" placeholder="Y2FWQZ" autocomplete="off" spellcheck="false">
@@ -35,6 +37,7 @@
 <script>
   var $ = function (id) { return document.getElementById(id); };
   var selected = { name: "", code: "", profileId: "" };
+  var activeCode = "";
   function esc(value) {
     return String(value || "").replace(/[&<>"']/g, function (ch) {
       return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch];
@@ -49,7 +52,7 @@
       missing_config: "Falta SUPABASE_URL ou SUPABASE_ANON_KEY na Vercel. Redeploy.",
       supabase_unreachable: "O Supabase não respondeu. Confira a URL do projeto.",
       missing_service_role: "Falta a chave de leitura SUPABASE_ANON_KEY na Vercel.",
-      need_sql: "Rode no SQL Editor, nesta ordem: sql/dossiers.sql, sql/sessions.sql, sql/app_state.sql, sql/admin_read.sql, sql/anonymous_auth.sql e sql/profile_id.sql."
+      need_sql: "Rode no SQL Editor, nesta ordem: sql/dossiers.sql, sql/sessions.sql, sql/app_state.sql, sql/admin_read.sql, sql/anonymous_auth.sql, sql/profile_id.sql e sql/session_lifecycle.sql."
     };
     return map[data.error] || data.hint || data.error || "Erro";
   }
@@ -60,13 +63,26 @@
   function profileLabel(profileId) {
     return profileId ? "Perfil do Quest: " + profileId : "Sem perfil do Quest";
   }
-  function showPick(name, code, profileId) {
-    selected = { name: name, code: code, profileId: profileId || "" };
-    $("pick-name").textContent = name || "Sem nome";
-    $("pick-code").textContent = code || "—";
-    $("pick-profile").textContent = profileLabel(selected.profileId);
+  function statusLabel(status) {
+    if (status === "active") return "Ativa";
+    if (status === "ended") return "Encerrada";
+    return "Aguardando";
+  }
+  function markActive(code) {
+    activeCode = code || "";
+    $("end").hidden = !activeCode;
+    $("pick-status").textContent = activeCode ? "Status: Ativa" : "Nenhuma sessão ativa";
     $("list").querySelectorAll(".row").forEach(function (el) {
-      el.classList.toggle("on", el.dataset.c === code);
+      el.classList.toggle("live", !!activeCode && el.dataset.c === activeCode);
+    });
+  }
+  function showPick(name, code, profileId) {
+    selected = { name: name || "", code: code || "", profileId: profileId || "" };
+    $("pick-name").textContent = selected.name || "Nenhum";
+    $("pick-code").textContent = selected.code || "—";
+    $("pick-profile").textContent = selected.code ? profileLabel(selected.profileId) : "Sem perfil do Quest";
+    $("list").querySelectorAll(".row").forEach(function (el) {
+      el.classList.toggle("on", !!selected.code && el.dataset.c === selected.code);
     });
   }
   async function load() {
@@ -84,10 +100,12 @@
       return;
     }
     var recent = data.recent || [];
+    var cur = recent.find(function (r) { return r.session_code === data.current_session_code && r.status !== "ended"; });
+    var endedCurrent = recent.find(function (r) { return r.session_code === data.current_session_code && r.status === "ended"; });
     $("sql-help").hidden = !data.hint;
     setStatus(data.hint
-      || (data.current_session_code
-        ? "Quest está em " + data.current_session_code
+      || (cur
+        ? "Quest está em " + cur.session_code
         : "Nenhuma sessão no Quest ainda"), Boolean(data.hint));
     $("list").innerHTML = recent.map(function (r) {
       var email = r.email ? esc(r.email) : "Convidado · sem e-mail";
@@ -95,15 +113,17 @@
         + '<div class="nm">' + esc(r.display_name || "Sem nome") + "</div>"
         + '<div class="muted">' + email + "</div>"
         + '<div class="muted">' + esc(profileLabel(r.profile_id)) + "</div>"
+        + '<div class="muted">Status: ' + esc(statusLabel(r.status)) + "</div>"
         + '<div class="cd">' + esc(r.session_code) + "</div>"
         + "</button>";
-    }).join("") || "<p class='muted'>Nenhum cadastro com código ainda.</p>";
+    }).join("") || "<p class='muted'>Nenhuma sessão gravada ainda.</p>";
     $("list").querySelectorAll(".row").forEach(function (el) {
       el.onclick = function () { showPick(el.dataset.n, el.dataset.c, el.dataset.p); };
     });
-    var cur = recent.find(function (r) { return r.session_code === data.current_session_code; });
     if (cur) showPick(cur.display_name, cur.session_code, cur.profile_id);
-    else if (data.current_session_code) showPick("Sessão atual", data.current_session_code, "");
+    else if (data.current_session_code && !endedCurrent) showPick("Sessão atual", data.current_session_code, "");
+    else showPick("", "", "");
+    markActive(cur ? data.current_session_code : "");
   }
   $("save").onclick = async function () {
     var typed = $("manual").value.trim().toUpperCase();
@@ -127,10 +147,49 @@
     }
     if (res.ok && data.profile_id) selected.profileId = data.profile_id;
     if (res.ok && data.display_name) selected.name = data.display_name;
-    if (res.ok) showPick(selected.name, data.current_session_code || selected.code, data.profile_id || selected.profileId);
-    setStatus(res.ok
-      ? "Quest iniciado com " + selected.name + " · " + data.current_session_code + ". " + profileLabel(data.profile_id)
-      : explain(data), !res.ok);
+    if (!res.ok) {
+      setStatus(explain(data), true);
+      return;
+    }
+    var startedName = selected.name;
+    var startedCode = data.current_session_code || selected.code;
+    var startedProfile = data.profile_id || selected.profileId;
+    showPick(startedName, startedCode, startedProfile);
+    markActive(startedCode);
+    load().then(function () {
+      setStatus("Quest iniciado com " + startedName + " · " + startedCode + ". " + profileLabel(startedProfile), false);
+    }).catch(function () {});
+  };
+  $("end").onclick = async function () {
+    if (!activeCode) {
+      setStatus("Nenhuma sessão ativa para finalizar.", true);
+      return;
+    }
+    var ending = activeCode;
+    var res, data;
+    try {
+      res = await fetch("/api/admin/session", {
+        method: "POST",
+        headers: headers(),
+        credentials: "same-origin",
+        body: JSON.stringify({ action: "end", code: ending })
+      });
+      data = await res.json();
+    } catch (e) {
+      setStatus("Sem rede. Tente de novo.", true);
+      return;
+    }
+    if (!res.ok) {
+      setStatus(explain(data), true);
+      return;
+    }
+    var endedCode = data.ended_session_code || ending;
+    activeCode = "";
+    $("end").hidden = true;
+    showPick("", "", "");
+    load().then(function () {
+      setStatus("Sessão " + endedCode + " encerrada. O Quest volta para a sala branca.", false);
+    }).catch(function () {});
   };
   $("load").onclick = function () { load().catch(function () {}); };
   $("manual").addEventListener("input", function () {

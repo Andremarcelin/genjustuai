@@ -85,7 +85,7 @@ test("dead Supabase DNS becomes supabase_unreachable without leaking host or key
   });
 });
 
-test("empty app_state is no_current_session and a missing summary is not_found", async () => {
+test("empty app_state is session null and a missing summary is not_found", async () => {
   global.fetch = async (url) => {
     if (String(url).includes("app_state")) return jsonResponse([]);
     return jsonResponse([]);
@@ -93,8 +93,8 @@ test("empty app_state is no_current_session and a missing summary is not_found",
   await withEnv({ SUPABASE_URL: "https://example.supabase.co", SUPABASE_ANON_KEY: ANON }, async () => {
     const empty = mockRes();
     await sessionHandler({ method: "GET", query: {}, headers: {} }, empty);
-    assert.equal(empty.statusCode, 404);
-    assert.deepEqual(empty.body, { error: "no_current_session" });
+    assert.equal(empty.statusCode, 200);
+    assert.deepEqual(empty.body, { session: null });
 
     const missing = mockRes();
     await sessionHandler({ method: "GET", query: { code: "AB3K7Q" }, headers: {} }, missing);
@@ -115,9 +115,11 @@ test("summary JSON includes a sanitized profile_id and keeps archetype", async (
     const res = mockRes();
     await sessionHandler({ method: "GET", query: { code: "ab3k7q" }, headers: {} }, res);
     assert.equal(res.statusCode, 200);
-    assert.equal(res.body.profile_id, "Excentrico");
-    assert.equal(res.body.archetype, "Excêntrico");
-    assert.equal(res.body.session_code, "AB3K7Q");
+    assert.equal(res.body.session.id, "AB3K7Q");
+    assert.equal(res.body.session.profile_id, "Excentrico");
+    assert.equal(res.body.session.archetype, "Excêntrico");
+    assert.equal(res.body.session.session_code, "AB3K7Q");
+    assert.equal(res.body.session.status, "ready");
   });
 });
 
@@ -133,9 +135,9 @@ test("a readable archetype fills profile_id when the column is empty", async () 
     const res = mockRes();
     await sessionHandler({ method: "GET", query: { code: "AB3K7Q" }, headers: {} }, res);
     assert.equal(res.statusCode, 200);
-    assert.equal(res.body.display_name, "Lina");
-    assert.equal(res.body.profile_id, "Excentrico");
-    assert.equal(res.body.archetype, "Excêntrico");
+    assert.equal(res.body.session.display_name, "Lina");
+    assert.equal(res.body.session.profile_id, "Excentrico");
+    assert.equal(res.body.session.archetype, "Excêntrico");
   });
 });
 
@@ -160,10 +162,10 @@ test("unknown profile_id is returned as null and a missing column falls back", a
   await withEnv({ SUPABASE_URL: "https://example.supabase.co", SUPABASE_ANON_KEY: ANON }, async () => {
     const res = mockRes();
     await sessionHandler({ method: "GET", query: { code: "AB3K7Q" }, headers: {} }, res);
-    assert.equal(calls, 2);
+    assert.equal(calls, 3);
     assert.equal(res.statusCode, 200);
-    assert.equal(res.body.profile_id, null);
-    assert.equal(res.body.archetype, "Ritmo ativo");
+    assert.equal(res.body.session.profile_id, null);
+    assert.equal(res.body.session.archetype, "Ritmo ativo");
     assert.equal(leaked(res).includes(ANON), false);
   });
 });
@@ -251,11 +253,12 @@ test("admin is open without a PIN even when ADMIN_SECRET is set", async () => {
   global.fetch = async (url) => {
     called = true;
     const target = String(url);
-    if (target.includes("genjutsu_recent_signups")) {
+    if (target.includes("session_summaries")) {
       return jsonResponse([{
         session_code: "AB3K7Q",
         display_name: "Visitante AB3K7Q",
-        email: "",
+        profile_id: "Zen",
+        status: "active",
         updated_at: "2026-11-05T00:00:00Z",
       }]);
     }
@@ -274,6 +277,8 @@ test("admin is open without a PIN even when ADMIN_SECRET is set", async () => {
     assert.equal(res.statusCode, 200);
     assert.equal(res.body.current_session_code, "AB3K7Q");
     assert.equal(res.body.recent[0].display_name, "Visitante AB3K7Q");
+    assert.equal(res.body.recent[0].status, "active");
+    assert.equal(res.body.recent[0].profile_id, "Zen");
     assert.equal(res.headers["Set-Cookie"], undefined);
     const raw = leaked(res);
     assert.equal(raw.includes("custom-pin-should-be-ignored"), false);
@@ -335,11 +340,149 @@ test("admin list attaches the Quest profile_id from the public summary", async (
   });
 });
 
+test("polling returns the active session id and null after it is ended", async () => {
+  global.fetch = async (url) => {
+    const target = String(url);
+    if (target.includes("app_state")) return jsonResponse([{ current_session_code: "AB3K7Q" }]);
+    return jsonResponse([{
+      session_code: "AB3K7Q",
+      display_name: "Lina",
+      personality_text: "frase",
+      archetype: "Zen",
+      profile_id: "Zen",
+      status: "active",
+    }]);
+  };
+  await withEnv({ SUPABASE_URL: "https://example.supabase.co", SUPABASE_ANON_KEY: ANON }, async () => {
+    const active = mockRes();
+    await sessionHandler({ method: "GET", query: {}, headers: {} }, active);
+    assert.equal(active.statusCode, 200);
+    assert.equal(active.body.session.id, "AB3K7Q");
+    assert.equal(active.body.session.session_code, "AB3K7Q");
+    assert.equal(active.body.session.profile_id, "Zen");
+    assert.equal(active.body.session.status, "active");
+    assert.equal(active.body.session.display_name, "Lina");
+
+    global.fetch = async (url) => {
+      const target = String(url);
+      if (target.includes("app_state")) return jsonResponse([{ current_session_code: "AB3K7Q" }]);
+      return jsonResponse([{
+        session_code: "AB3K7Q",
+        display_name: "Lina",
+        personality_text: "frase",
+        archetype: "Zen",
+        profile_id: "Zen",
+        status: "ended",
+      }]);
+    };
+    const ended = mockRes();
+    await sessionHandler({ method: "GET", query: {}, headers: {} }, ended);
+    assert.equal(ended.statusCode, 200);
+    assert.deepEqual(ended.body, { session: null });
+
+    const byCode = mockRes();
+    await sessionHandler({ method: "GET", query: { code: "AB3K7Q" }, headers: {} }, byCode);
+    assert.equal(byCode.statusCode, 200);
+    assert.equal(byCode.body.session.status, "ended");
+    assert.equal(byCode.body.session.id, "AB3K7Q");
+  });
+});
+
+test("the same profile can be two sessions and ending clears the active one", async () => {
+  global.fetch = async (url) => {
+    const target = String(url);
+    if (target.includes("app_state")) return jsonResponse([{ current_session_code: "BBBBBB" }]);
+    if (target.includes("session_summaries")) {
+      return jsonResponse([
+        {
+          session_code: "BBBBBB",
+          display_name: "Nico",
+          profile_id: "Zen",
+          status: "active",
+          updated_at: "2026-11-06T12:00:00Z",
+        },
+        {
+          session_code: "AAAAAA",
+          display_name: "Lina",
+          profile_id: "Zen",
+          status: "ready",
+          updated_at: "2026-11-06T11:00:00Z",
+        },
+      ]);
+    }
+    return jsonResponse([]);
+  };
+  await withEnv({ SUPABASE_URL: "https://example.supabase.co", SUPABASE_ANON_KEY: ANON }, async () => {
+    const list = mockRes();
+    await adminHandler({ method: "GET", headers: {} }, list);
+    assert.equal(list.statusCode, 200);
+    assert.equal(list.body.recent.length, 2);
+    assert.equal(list.body.recent[0].profile_id, "Zen");
+    assert.equal(list.body.recent[1].profile_id, "Zen");
+    assert.equal(list.body.recent[0].session_code, "BBBBBB");
+    assert.equal(list.body.recent[0].status, "active");
+    assert.equal(list.body.recent[1].status, "ready");
+    assert.notEqual(list.body.recent[0].session_code, list.body.recent[1].session_code);
+
+    let endBody = "";
+    global.fetch = async (url, options) => {
+      endBody = options && options.body ? String(options.body) : endBody;
+      if (String(url).includes("genjutsu_end_session")) return jsonResponse("BBBBBB");
+      return jsonResponse([]);
+    };
+    const end = mockRes();
+    await adminHandler({
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: { action: "end", code: "BBBBBB" },
+    }, end);
+    assert.equal(end.statusCode, 200);
+    assert.equal(end.body.status, "ended");
+    assert.equal(end.body.current_session_code, null);
+    assert.equal(end.body.ended_session_code, "BBBBBB");
+    assert.match(endBody, /BBBBBB/);
+  });
+});
+
+test("ending without the lifecycle function asks for the sql file", async () => {
+  global.fetch = async () => jsonResponse({
+    code: "PGRST202",
+    message: "function genjutsu_end_session does not exist",
+  }, 404);
+  await withEnv({ SUPABASE_URL: "https://example.supabase.co", SUPABASE_ANON_KEY: ANON }, async () => {
+    const res = mockRes();
+    await adminHandler({
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: { action: "end" },
+    }, res);
+    assert.equal(res.statusCode, 502);
+    assert.equal(res.body.error, "need_sql");
+    assert.match(res.body.hint, /session_lifecycle\.sql/);
+  });
+});
+
+test("session lifecycle sql keeps many rows per profile and records ended", () => {
+  const sql = fs.readFileSync(new URL("../sql/session_lifecycle.sql", import.meta.url), "utf8");
+  const sessions = fs.readFileSync(new URL("../sql/sessions.sql", import.meta.url), "utf8");
+  assert.match(sql, /add column if not exists status/);
+  assert.match(sql, /add column if not exists ended_at/);
+  assert.match(sql, /genjutsu_end_session/);
+  assert.match(sql, /genjutsu_allocate_session_code/);
+  assert.match(sql, /status = 'ready'/);
+  assert.match(sql, /drop trigger if exists trg_freeze_session_code/);
+  assert.match(sql, /session_summaries_one_active_idx/);
+  assert.doesNotMatch(sql, /unique \(profile_id\)/i);
+  assert.doesNotMatch(sessions, /create trigger trg_freeze_session_code/);
+});
+
 test("admin page loads the session UI without a PIN field", () => {
   const html = fs.readFileSync(new URL("../admin.html", import.meta.url), "utf8");
   assert.match(html, /\/api\/admin\/session/);
-  assert.match(html, /Últimos cadastros/);
+  assert.match(html, /Sessões/);
   assert.match(html, /Iniciar sessão no Quest com este código/);
+  assert.match(html, /Finalizar sessão/);
+  assert.match(html, /action: "end"/);
   assert.match(html, /id="pick-profile"/);
   assert.match(html, /Perfil do Quest/);
   assert.doesNotMatch(html, /id="secret"/);
