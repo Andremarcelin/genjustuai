@@ -51,9 +51,9 @@ function depsFor(auth, hooks) {
   return {
     writes,
     auth,
-    recarga: "cor",
-    atmosfera: "seda",
-    acolhida: "porta",
+    folga: "impulso",
+    problema: "atalho",
+    festa: "pista",
     dossier: options.dossier || { calendar: [{ titulo: "oculto" }] },
     isGuest: P.isGuest,
     emailFor: P.emailFor,
@@ -106,9 +106,9 @@ test("save without a session signs in anonymously and writes the ZCEA profile", 
   assert.equal(dossier.dossier_data.nome_exibicao, "Lina");
   assert.equal(dossier.dossier_data.fonte, "convidado");
   assert.equal(dossier.dossier_data.preferencias.profile_id, "Excentrico");
-  assert.equal(dossier.dossier_data.preferencias.recarga, "cor");
-  assert.equal(dossier.dossier_data.preferencias.atmosfera, "seda");
-  assert.equal(dossier.dossier_data.preferencias.acolhida, "porta");
+  assert.equal(dossier.dossier_data.preferencias.folga, "impulso");
+  assert.equal(dossier.dossier_data.preferencias.problema, "atalho");
+  assert.equal(dossier.dossier_data.preferencias.festa, "pista");
 
   const summary = deps.writes.summary[0];
   assert.equal(summary.session_code, CODE);
@@ -122,9 +122,9 @@ test("save without a session signs in anonymously and writes the ZCEA profile", 
   assert.doesNotMatch(summary.personality_text, /agenda|YouTube|tarefa|oculto/i);
   const labels = Object.fromEntries(saved.fields);
   assert.equal(labels.Nome, "Lina");
-  assert.equal(labels["Depois do dia, o que te devolve?"], "Cor demais e riso alto (cor)");
-  assert.equal(labels["Que clima você quer ao entrar?"], "Lanterna quente e seda (seda)");
-  assert.equal(labels["Como você recebe quem chega?"], "Porta aberta e improviso (porta)");
+  assert.equal(labels["Num fim de semana livre, você…"], "sai sem roteiro atrás de algo que nunca fez (impulso)");
+  assert.equal(labels["Quando surge um problema difícil, você…"], "tenta um atalho ousado antes de abrir o manual (atalho)");
+  assert.equal(labels["Numa festa onde conhece pouca gente, você…"], "puxa a conversa, improvisa e vira o centro sem planejar (pista)");
   assert.equal(labels.profile_id, "Excentrico");
   assert.equal(labels["Arquétipo"], "Excêntrico");
   assert.equal(labels.Letra, "E");
@@ -145,9 +145,9 @@ test("two saves with the same profile keep different session codes", async () =>
       visitorName: code === "AAAAAA" ? "Lina" : "Nico",
       ensure: function () { return code; },
     });
-    deps.recarga = "agua";
-    deps.atmosfera = "madeira";
-    deps.acolhida = "aceno";
+    deps.folga = "ordem";
+    deps.problema = "respira";
+    deps.festa = "canto";
     return { saved: await G.saveWithoutLogin(deps), deps };
   }
   const first = await saveOnce("AAAAAA");
@@ -167,9 +167,9 @@ test("an existing Google session is reused and anonymous sign-in is not called",
   const deps = depsFor(auth, {
     dossier: { fonte: "google", calendar: [{}], youtube: [], tasks: [] }
   });
-  deps.recarga = "agua";
-  deps.atmosfera = "madeira";
-  deps.acolhida = "aceno";
+  deps.folga = "ordem";
+  deps.problema = "respira";
+  deps.festa = "canto";
   const saved = await G.saveWithoutLogin(deps);
 
   assert.deepEqual(auth.calls, ["getSession"]);
@@ -180,7 +180,7 @@ test("an existing Google session is reused and anonymous sign-in is not called",
   assert.equal(deps.writes.dossier[0].full_name, "Ana");
   assert.equal(deps.writes.dossier[0].dossier_data.fonte, "google");
   assert.equal(deps.writes.dossier[0].profile_id, "Zen");
-  assert.match(deps.writes.summary[0].personality_text, /água parada/);
+  assert.match(deps.writes.summary[0].personality_text, /passo de cada vez/);
   assert.match(deps.writes.summary[0].personality_text, /1 evento\(s\) de agenda/);
   const googleLabels = Object.fromEntries(saved.fields);
   assert.equal(googleLabels.Nome, "Ana");
@@ -206,7 +206,7 @@ test("disabled anonymous provider stops before the session RPC", async () => {
 test("incomplete answers do not create a visitor", async () => {
   const auth = authWith(null, guestUser());
   const deps = depsFor(auth);
-  deps.acolhida = "";
+  deps.festa = "";
   await assert.rejects(() => G.saveWithoutLogin(deps), (err) => {
     assert.equal(err.code, "incomplete");
     assert.match(err.message, /três perguntas/);
@@ -249,16 +249,16 @@ test("a later sync keeps a quiz that was already stored", () => {
   const stored = {
     fonte: "google",
     calendar: [{ titulo: "antigo" }],
-    preferencias: { recarga: "pulso", atmosfera: "neon", acolhida: "enigma", profile_id: "Cyber" }
+    preferencias: { folga: "sistema", problema: "modelo", festa: "mapa", profile_id: "Cyber" }
   };
   const merged = G.mergeStoredDossier(stored, { fonte: "google", calendar: [], youtube: [] });
   assert.equal(merged.preferencias.profile_id, "Cyber");
-  assert.equal(merged.preferencias.recarga, "pulso");
-  assert.equal(merged.preferencias.acolhida, "enigma");
+  assert.equal(merged.preferencias.folga, "sistema");
+  assert.equal(merged.preferencias.festa, "mapa");
   assert.deepEqual(merged.calendar, []);
 
   const replaced = G.mergeStoredDossier(stored, {
-    preferencias: { recarga: "mesa", atmosfera: "bambu", acolhida: "cha", profile_id: "Acolhedor" }
+    preferencias: { folga: "gente", problema: "junto", festa: "anel", profile_id: "Acolhedor" }
   });
   assert.equal(replaced.preferencias.profile_id, "Acolhedor");
   assert.equal(replaced.calendar[0].titulo, "antigo");
@@ -283,21 +283,25 @@ test("a missing profile_id column still stores the session code", async () => {
 test("the page copy tells the visitor they are saving without an account", () => {
   const index = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
   const portal = fs.readFileSync(path.join(__dirname, "..", "js", "portal.js"), "utf8");
+  const css = fs.readFileSync(path.join(__dirname, "..", "portal.css"), "utf8");
   const anon = fs.readFileSync(path.join(__dirname, "..", "sql", "anonymous_auth.sql"), "utf8");
   assert.match(index, /Salvar sem conta e gerar o código/);
   assert.match(index, /salvar como visitante/i);
   assert.match(index, /id="visitor-name"/);
-  assert.match(index, /Depois do dia, o que te devolve/);
-  assert.match(index, /Água parada, sem pressa/);
-  assert.match(index, /Que clima você quer ao entrar/);
-  assert.match(index, /Como você recebe quem chega/);
-  assert.match(index, /data-field="recarga"/);
-  assert.match(index, /data-field="atmosfera"/);
-  assert.match(index, /data-field="acolhida"/);
-  assert.match(index, /data-value="agua"/);
-  assert.match(index, /data-value="pulso"/);
-  assert.match(index, /data-value="madeira"/);
-  assert.match(index, /data-value="cha"/);
+  assert.match(index, /Num fim de semana livre, você/);
+  assert.match(index, /Quando surge um problema difícil, você/);
+  assert.match(index, /Numa festa onde conhece pouca gente, você/);
+  assert.match(index, /organiza o dia em silêncio/);
+  assert.match(index, /data-field="folga"/);
+  assert.match(index, /data-field="problema"/);
+  assert.match(index, /data-field="festa"/);
+  assert.match(index, /data-value="ordem"/);
+  assert.match(index, /data-value="sistema"/);
+  assert.match(index, /data-value="pista"/);
+  assert.match(index, /Como sua casa vai responder/);
+  assert.match(index, /Sua sessão está pronta — coloque o Quest/);
+  assert.match(index, /id="ready-kanji"/);
+  assert.match(css, /prefers-reduced-motion/);
   assert.doesNotMatch(index, /data-field="clima_ambiente"/);
   assert.match(index, /id="quiz-profile"/);
   assert.match(index, /id="ready-profile"/);

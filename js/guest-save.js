@@ -73,22 +73,31 @@
     return Object.assign({}, user || {}, { user_metadata: meta });
   }
 
-  function selection(recarga, atmosfera, acolhida) {
-    var resolved = loadZcea().resolve(recarga, atmosfera, acolhida);
+  function selection(first, second, third) {
+    var Z = loadZcea();
+    var resolved = Z.resolve(first, second, third);
     if (!resolved.profile_id) return null;
-    return {
-      recarga: recarga,
-      atmosfera: atmosfera,
-      acolhida: acolhida,
+    var picked = {
       profile_id: resolved.profile_id,
       letter: resolved.letter,
       archetype: resolved.archetype,
-      tie: resolved.tie
+      tie: resolved.tie,
+      scores: resolved.scores
     };
+    var raw = [first, second, third];
+    Z.QUESTIONS.forEach(function (question, index) {
+      picked[question.id] = raw[index];
+    });
+    return picked;
   }
 
   function answersComplete(pref) {
-    return !!(pref && pref.recarga && pref.atmosfera && pref.acolhida);
+    var Z = loadZcea();
+    if (!pref || !Z) return false;
+    for (var i = 0; i < Z.QUESTIONS.length; i++) {
+      if (!pref[Z.QUESTIONS[i].id]) return false;
+    }
+    return true;
   }
 
   // O login não pode apagar um quiz já gravado. A resposta nova só substitui
@@ -172,7 +181,9 @@
   }
 
   async function saveWithoutLogin(deps) {
-    var picked = selection(deps.recarga, deps.atmosfera, deps.acolhida);
+    var questions = loadZcea().QUESTIONS;
+    var answers = questions.map(function (question) { return deps[question.id]; });
+    var picked = selection(answers[0], answers[1], answers[2]);
     if (!picked) {
       var incomplete = new Error("Responda as três perguntas antes de salvar.");
       incomplete.code = "incomplete";
@@ -202,12 +213,10 @@
     }
     if (guest) base.fonte = "convidado";
     if (visitorName) base.nome_exibicao = visitorName;
-    base.preferencias = {
-      recarga: picked.recarga,
-      atmosfera: picked.atmosfera,
-      acolhida: picked.acolhida,
-      profile_id: picked.profile_id
-    };
+    base.preferencias = { profile_id: picked.profile_id };
+    questions.forEach(function (question) {
+      base.preferencias[question.id] = picked[question.id];
+    });
     if (typeof deps.remember === "function") deps.remember(base);
 
     var namedUser = applyVisitorName(user, visitorName, guest);

@@ -20,7 +20,7 @@
 <meta name="twitter:image" content="https://genjutsuai.vercel.app/assets/og-hero.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Noto+Serif+JP:wght@600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/site.css">
 <link rel="stylesheet" href="/portal.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -163,31 +163,31 @@
   </section>
 
   <section class="screen" id="screen-questionnaire">
-    <h2 class="screen-title">Seu nome e três perguntas</h2>
+    <h2 class="screen-title">Seu nome e três situações</h2>
     <p class="guest-save-note" id="guest-save-note">Sem conta. Dá para salvar como visitante: escreva o nome e responda as três perguntas. A casa é inferida — você não escolhe o dojo. O Google não é necessário.</p>
     <label class="section-label" for="visitor-name">Como você quer ser chamado?</label>
     <input type="text" id="visitor-name" name="visitor-name" maxlength="40" autocomplete="name" required aria-describedby="visitor-name-hint" placeholder="Seu nome">
     <p class="field-hint" id="visitor-name-hint">O nome entra na frase da sessão. Pelo menos 2 letras.</p>
-    <p class="section-label" id="label-recarga">Depois do dia, o que te devolve?</p>
-    <div class="option-col" role="group" aria-labelledby="label-recarga">
-      <button type="button" class="option" data-field="recarga" data-value="agua" aria-pressed="false">Água parada, sem pressa</button>
-      <button type="button" class="option" data-field="recarga" data-value="pulso" aria-pressed="false">Um pulso, luz e ritmo</button>
-      <button type="button" class="option" data-field="recarga" data-value="cor" aria-pressed="false">Cor demais e riso alto</button>
-      <button type="button" class="option" data-field="recarga" data-value="mesa" aria-pressed="false">Uma mesa posta, gente perto</button>
+    <p class="section-label" id="label-folga">Num fim de semana livre, você…</p>
+    <div class="option-col" role="group" aria-labelledby="label-folga">
+      <button type="button" class="option" data-field="folga" data-value="ordem" aria-pressed="false">organiza o dia em silêncio e segue o plano</button>
+      <button type="button" class="option" data-field="folga" data-value="sistema" aria-pressed="false">abre um aparelho ou um sistema só para ver como funciona</button>
+      <button type="button" class="option" data-field="folga" data-value="impulso" aria-pressed="false">sai sem roteiro atrás de algo que nunca fez</button>
+      <button type="button" class="option" data-field="folga" data-value="gente" aria-pressed="false">chama alguém e cuida do almoço e da conversa</button>
     </div>
-    <p class="section-label" id="label-atmosfera">Que clima você quer ao entrar?</p>
-    <div class="option-col" role="group" aria-labelledby="label-atmosfera">
-      <button type="button" class="option" data-field="atmosfera" data-value="madeira" aria-pressed="false">Luz baixa e madeira lisa</button>
-      <button type="button" class="option" data-field="atmosfera" data-value="neon" aria-pressed="false">Neon frio e metal</button>
-      <button type="button" class="option" data-field="atmosfera" data-value="seda" aria-pressed="false">Lanterna quente e seda</button>
-      <button type="button" class="option" data-field="atmosfera" data-value="bambu" aria-pressed="false">Chuva no bambu e chá</button>
+    <p class="section-label" id="label-problema">Quando surge um problema difícil, você…</p>
+    <div class="option-col" role="group" aria-labelledby="label-problema">
+      <button type="button" class="option" data-field="problema" data-value="respira" aria-pressed="false">respira, ordena os fatos e resolve um passo de cada vez</button>
+      <button type="button" class="option" data-field="problema" data-value="modelo" aria-pressed="false">monta um modelo, testa hipóteses e escolhe a jogada</button>
+      <button type="button" class="option" data-field="problema" data-value="atalho" aria-pressed="false">tenta um atalho ousado antes de abrir o manual</button>
+      <button type="button" class="option" data-field="problema" data-value="junto" aria-pressed="false">chama quem está perto e segura o clima enquanto resolvem</button>
     </div>
-    <p class="section-label" id="label-acolhida">Como você recebe quem chega?</p>
-    <div class="option-col" role="group" aria-labelledby="label-acolhida">
-      <button type="button" class="option" data-field="acolhida" data-value="aceno" aria-pressed="false">Um aceno, e o silêncio fica</button>
-      <button type="button" class="option" data-field="acolhida" data-value="enigma" aria-pressed="false">Um enigma na porta</button>
-      <button type="button" class="option" data-field="acolhida" data-value="porta" aria-pressed="false">Porta aberta e improviso</button>
-      <button type="button" class="option" data-field="acolhida" data-value="cha" aria-pressed="false">Chá e um lugar guardado</button>
+    <p class="section-label" id="label-festa">Numa festa onde conhece pouca gente, você…</p>
+    <div class="option-col" role="group" aria-labelledby="label-festa">
+      <button type="button" class="option" data-field="festa" data-value="canto" aria-pressed="false">fica num canto calmo, observa e entra só quando faz sentido</button>
+      <button type="button" class="option" data-field="festa" data-value="mapa" aria-pressed="false">lê a sala, vê quem decide o quê e escolhe com quem falar</button>
+      <button type="button" class="option" data-field="festa" data-value="pista" aria-pressed="false">puxa a conversa, improvisa e vira o centro sem planejar</button>
+      <button type="button" class="option" data-field="festa" data-value="anel" aria-pressed="false">percebe quem está sozinho e puxa essa pessoa para o círculo</button>
     </div>
     <div class="quest-profile" id="quiz-profile" hidden></div>
     <button class="cta cta-guest" id="btn-save-questionnaire" type="button">Salvar sem conta e gerar o código</button>
@@ -195,12 +195,46 @@
   </section>
 
   <section class="screen" id="screen-ready">
-    <h2 class="screen-title">Sessão pronta</h2>
+    <h2 class="screen-title">A casa leu você</h2>
     <article class="parchment" aria-labelledby="ready-kicker">
-      <p class="parchment-kicker" id="ready-kicker">Leitura da casa</p>
+      <p class="parchment-kicker" id="ready-kicker">O que a casa entendeu</p>
       <p class="parchment-name" id="ready-name"></p>
+      <div class="seal-row">
+        <p class="hanko" id="ready-kanji" aria-hidden="true"></p>
+        <div>
+          <p class="parchment-sign" id="ready-profile" hidden></p>
+          <p class="seal-title" id="ready-title"></p>
+        </div>
+      </div>
       <p class="parchment-phrase" id="ready-phrase"></p>
-      <p class="parchment-sign" id="ready-profile" hidden></p>
+      <h3 class="parchment-sub">O que a casa mediu</h3>
+      <ul class="trait-bars" id="ready-traits"></ul>
+      <h3 class="parchment-sub">Como sua casa vai responder</h3>
+      <ul class="house-rows">
+        <li>
+          <span class="house-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="22" height="22"><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          </span>
+          <span class="house-key">Luz</span>
+          <span class="house-val" id="ready-luz"></span>
+        </li>
+        <li>
+          <span class="house-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="22" height="22"><path d="M4 10v4M8 7v10M12 4v16M16 7v10M20 10v4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          </span>
+          <span class="house-key">Som</span>
+          <span class="house-val" id="ready-som"></span>
+        </li>
+        <li>
+          <span class="house-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="22" height="22"><path d="M3 14c2.5-4 5-4 7.5 0s5 4 7.5 0 4-4 3 0" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M4 18h16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          </span>
+          <span class="house-key">Clima</span>
+          <span class="house-val" id="ready-clima"></span>
+        </li>
+      </ul>
+      <p class="quest-step">Sua sessão está pronta — coloque o Quest</p>
+      <p class="quest-code" id="ready-quest-code" data-session-code>—</p>
     </article>
     <section class="session-record" aria-labelledby="record-title">
       <h3 id="record-title">Registros desta sessão</h3>

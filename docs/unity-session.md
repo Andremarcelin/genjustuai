@@ -32,7 +32,7 @@ O poll **sem query** responde **200** nos dois casos abaixo. Não é erro. `404 
     "id": "AB3K7Q",
     "session_code": "AB3K7Q",
     "display_name": "Lina",
-    "personality_text": "Lina, o dia abre em água parada. A casa pede silêncio e frescor: respire devagar, que o que é seu chega sem alarde. Este cartão é só o resumo; o dossiê completo fica na conta.",
+    "personality_text": "Lina, a casa entendeu que você recarrega no silêncio e resolve um passo de cada vez. A luz fica baixa e azul, o som quase quieto, o ar fresco — o seu ritmo não será empurrado. Este cartão é só o resumo; o dossiê completo fica na conta.",
     "archetype": "Zen",
     "profile_id": "Zen",
     "status": "active"
@@ -58,7 +58,7 @@ O poll sem query não devolve a sessão encerrada: ela deixa de ser a ativa e ca
     "id": "AB3K7Q",
     "session_code": "AB3K7Q",
     "display_name": "Lina",
-    "personality_text": "Lina, o dia abre em água parada. A casa pede silêncio e frescor: respire devagar, que o que é seu chega sem alarde. Este cartão é só o resumo; o dossiê completo fica na conta.",
+    "personality_text": "Lina, a casa entendeu que você recarrega no silêncio e resolve um passo de cada vez. A luz fica baixa e azul, o som quase quieto, o ar fresco — o seu ritmo não será empurrado. Este cartão é só o resumo; o dossiê completo fica na conta.",
     "archetype": "Zen",
     "profile_id": "Zen",
     "status": "ended"
@@ -88,14 +88,14 @@ Erros, sempre JSON `{ "error": "..." }` e sem URL, chave ou corpo do Supabase. A
 
 ## Mapa do questionário → ProfileId
 
-Três perguntas (`recarga`, `atmosfera`, `acolhida`), quatro opções cada. A pessoa não escolhe a casa. `js/zcea-profile.js` soma os pesos e, no empate, escolhe nesta ordem: Zen, Acolhedor, Cyber, Excentrico. Exemplos fechados:
+Três situações (`folga`, `problema`, `festa`), quatro opções cada. A pessoa não escolhe a casa. `js/zcea-profile.js` soma os pesos e, no empate, escolhe nesta ordem: Zen, Acolhedor, Cyber, Excentrico. Exemplos fechados:
 
-| recarga | atmosfera | acolhida | profile_id |
+| folga | problema | festa | profile_id |
 |---|---|---|---|
-| agua | madeira | aceno | Zen |
-| pulso | neon | enigma | Cyber |
-| cor | seda | porta | Excentrico |
-| mesa | bambu | cha | Acolhedor |
+| ordem | respira | canto | Zen |
+| sistema | modelo | mapa | Cyber |
+| impulso | atalho | pista | Excentrico |
+| gente | junto | anel | Acolhedor |
 
 O visitante grava `profile_id` em `dossiers`, em `dossier_data.preferencias` e em `session_summaries` sem login Google. O resumo público só é gravado quando as três respostas fecham um desses quatro ids. Entrar com Google, sem responder o questionário, não publica `Perfil em formação` nem apaga um quiz já salvo. `display_name` é o nome da conta, se houver, senão o nome escrito na visita.
 

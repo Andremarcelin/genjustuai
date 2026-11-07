@@ -95,10 +95,10 @@
   }
 
   var PHRASE = {
-    Zen: "{name}, o dia abre em água parada. A casa pede silêncio e frescor: respire devagar, que o que é seu chega sem alarde.",
-    Cyber: "{name}, um pulso elétrico atravessa o cômodo. Hoje a casa pensa rápido com você — foco frio, gesto preciso, nada de espera.",
-    Excentrico: "{name}, o calor sobe e a casa perde a compostura. Hoje vale o gesto ousado: cor demais, riso alto, um caminho que só você inventa.",
-    Acolhedor: "{name}, o aconchego já guardou um lugar. Hoje a casa aquece quem fica: ofereça presença, e o calor volta em dobro."
+    Zen: "{name}, a casa entendeu que você recarrega no silêncio e resolve um passo de cada vez. A luz fica baixa e azul, o som quase quieto, o ar fresco — o seu ritmo não será empurrado.",
+    Cyber: "{name}, a casa entendeu que você pensa em sistemas e escolhe a jogada antes de agir. O neon azul pulsa curto, a noite fica baixa e o clima pede foco, para a cabeça trabalhar sem ruído.",
+    Excentrico: "{name}, a casa entendeu que você busca o que ainda não fez e puxa a sala sem roteiro. A luz esquenta, o som sobe e o clima fica solto, para o gesto ousado ter espaço.",
+    Acolhedor: "{name}, a casa entendeu que você cuida de quem está perto e segura o clima junto. A lanterna fica quente, o bambu baixo, e já há um lugar guardado para a conversa."
   };
 
   function profileIdFrom(value) {

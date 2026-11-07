@@ -1,6 +1,7 @@
 (function () {
   var P = window.GenjutsuPersonality;
   var G = window.GenjutsuGuestSave;
+  var Z = window.GenjutsuZcea;
   var $ = function (id) { return document.getElementById(id); };
   var SESSION_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   var GOOGLE_SCOPES = [
@@ -595,30 +596,83 @@
     });
   }
 
+  function paintTraits(scores) {
+    var list = $("ready-traits");
+    if (!list || !Z) return;
+    list.replaceChildren();
+    var cap = typeof Z.scoreCap === "function" ? Z.scoreCap() : 15;
+    Z.PROFILE_IDS.forEach(function (id) {
+      var score = scores && scores[id] ? scores[id] : 0;
+      var li = document.createElement("li");
+      var name = document.createElement("span");
+      name.className = "trait-name";
+      name.textContent = Z.META[id].archetype;
+      var track = document.createElement("span");
+      track.className = "trait-track";
+      var fill = document.createElement("span");
+      fill.className = "trait-fill";
+      fill.style.width = Math.round((score / cap) * 100) + "%";
+      track.appendChild(fill);
+      var value = document.createElement("span");
+      value.className = "trait-score";
+      value.textContent = String(score);
+      li.appendChild(name);
+      li.appendChild(track);
+      li.appendChild(value);
+      list.appendChild(li);
+    });
+  }
+
+  function paintHouse(house) {
+    ["luz", "som", "clima"].forEach(function (key) {
+      var el = $("ready-" + key);
+      if (el) el.textContent = house && house[key] ? house[key] : "";
+    });
+  }
+
+  function revealParchment() {
+    var card = document.querySelector("#screen-ready .parchment");
+    if (!card) return;
+    card.classList.remove("reveal");
+    var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduce) return;
+    void card.offsetWidth;
+    card.classList.add("reveal");
+  }
+
   function paintReady(saved) {
     var phrase = saved && saved.persona ? saved.persona.phrase : "";
     if ($("ready-phrase")) $("ready-phrase").textContent = phrase || "";
-    var sign = $("ready-profile");
     var profile = saved && saved.profile;
+    var meta = profile && Z && Z.META[profile.profile_id];
+    var sign = $("ready-profile");
     if (sign) {
-      var defined = !!(profile && profile.profile_id);
-      sign.hidden = !defined;
-      sign.textContent = defined ? profile.letter + " · " + profile.archetype : "";
+      sign.hidden = !meta;
+      sign.textContent = meta ? meta.archetype : "";
     }
+    var kanji = $("ready-kanji");
+    if (kanji) kanji.textContent = meta ? meta.kanji : "";
+    var title = $("ready-title");
+    if (title) title.textContent = meta ? meta.title : "";
+    paintTraits(profile && profile.scores);
+    paintHouse(meta && meta.house);
+    var code = (saved && saved.sessionCode) || sessionCode || "";
+    var codeEl = $("ready-quest-code");
+    if (codeEl) codeEl.textContent = code || "—";
     renderSessionFields(saved && saved.fields);
     var readyNote = $("ready-guest-note");
     if (readyNote) readyNote.hidden = !(saved && saved.guest);
+    revealParchment();
   }
 
   function renderQuestProfile(resolved) {
     var defined = !!(resolved && resolved.profile_id);
     var label = defined ? "Perfil do Quest: " + resolved.letter + " · " + resolved.archetype : "";
-    ["quiz-profile", "ready-profile"].forEach(function (id) {
-      var el = $(id);
-      if (!el) return;
+    var el = $("quiz-profile");
+    if (el) {
       el.hidden = !defined;
       el.textContent = label;
-    });
+    }
     var readyNote = $("ready-guest-note");
     if (readyNote) {
       var guest = guestIntent || (currentPaintUser && P.isGuest(currentPaintUser));
@@ -629,6 +683,11 @@
   function selectedValue(field) {
     var current = document.querySelector('.option.selected[data-field="' + field + '"]');
     return current ? current.dataset.value : "";
+  }
+
+  function quizAnswers() {
+    if (!Z) return ["", "", ""];
+    return Z.QUESTIONS.map(function (question) { return selectedValue(question.id); });
   }
 
   async function startGuest() {
@@ -673,11 +732,7 @@
         b.classList.toggle("selected", on);
         b.setAttribute("aria-pressed", on ? "true" : "false");
       });
-      renderQuestProfile(G.selection(
-        selectedValue("recarga"),
-        selectedValue("atmosfera"),
-        selectedValue("acolhida")
-      ));
+      renderQuestProfile(G.selection.apply(null, quizAnswers()));
     });
   });
 
@@ -705,9 +760,7 @@
   $("btn-leave-ready").addEventListener("click", leaveJourney);
 
   $("btn-save-questionnaire").addEventListener("click", async function () {
-    var recarga = selectedValue("recarga");
-    var atmosfera = selectedValue("atmosfera");
-    var acolhida = selectedValue("acolhida");
+    var answers = quizAnswers();
     var visitorName = visitorNameValue();
     var savingAsGuest = guestIntent || !currentPaintUser || P.isGuest(currentPaintUser);
     var nameInput = $("visitor-name");
@@ -720,7 +773,7 @@
       return;
     }
     if (nameInput) nameInput.removeAttribute("aria-invalid");
-    if (!G.selection(recarga, atmosfera, acolhida)) {
+    if (!G.selection(answers[0], answers[1], answers[2])) {
       setStatus("status-questionnaire", "Responda as três perguntas antes de salvar.", true);
       return;
     }
@@ -735,9 +788,9 @@
     try {
       var saved = await G.saveWithoutLogin({
         auth: sb.auth,
-        recarga: recarga,
-        atmosfera: atmosfera,
-        acolhida: acolhida,
+        folga: answers[0],
+        problema: answers[1],
+        festa: answers[2],
         dossier: globalDossie,
         isGuest: P.isGuest,
         emailFor: P.emailFor,
