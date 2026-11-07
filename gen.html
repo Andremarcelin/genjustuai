@@ -33,6 +33,11 @@
     <p class="gen-you" id="caption-user"></p>
   </section>
 
+  <section class="gen-history" aria-labelledby="gen-history-title">
+    <h2 id="gen-history-title">Histórico com a casa</h2>
+    <ol class="history" id="gen-history"></ol>
+  </section>
+
   <section class="gen-house" id="gen-house" aria-live="polite">
     <span class="gen-swatch" id="gen-swatch" aria-hidden="true"></span>
     <span id="gen-house-text">Casa em espera</span>
@@ -52,6 +57,8 @@
   <p class="fine mic-help" id="mic-help" hidden></p>
   <p class="fine gen-foot">O caminho principal é a voz ao vivo. Segure o botão, ou toque para ligar e desligar o microfone.</p>
 </main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/js/history-view.js"></script>
 <script type="module" src="/js/gen-phone.js"></script>
 </body>
 </html>

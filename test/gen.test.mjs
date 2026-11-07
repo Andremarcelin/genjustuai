@@ -4,6 +4,7 @@ import fs from "node:fs";
 import { supabaseRest } from "../lib/supabase-rest.cjs";
 import { DEFAULT_AMBIENCE, DEFAULT_LIGHTS, STATE_KEYS, defaultHouseState } from "../lib/gen/defaults.js";
 import { buildSystemInstruction, chooseReply, fallbackReply } from "../lib/gen/persona.js";
+import { composeMemory } from "../lib/gen/history.js";
 import { TOOLS, toGeminiDeclarations, toGroqTools, validateToolCall } from "../lib/gen/tools.js";
 import { createMemoryHouseStore } from "../lib/gen/house-store.js";
 import { createSupabaseHouseStore } from "../lib/gen/house-store.js";
@@ -107,6 +108,75 @@ test("persona uses the name and profile and does not reveal the quiz", () => {
   assert.match(withHouse, /já está assim/);
   assert.doesNotMatch(withHouse, /SEGREDO_DO_QUIZ/);
   assert.doesNotMatch(withHouse, /tranquilo/);
+});
+
+test("chat and live prompts include the visitor's prior turns", async () => {
+  const older = [];
+  for (let i = 0; i < 6; i += 1) older.push({ role: "visitor", kind: "transcript", body: `fala antiga ${i} `.repeat(40) });
+  older.push({ role: "house", kind: "action", body: "Colocou o som de bambu." });
+  const recent = [
+    { role: "visitor", kind: "transcript", body: "deixa a luz bem azul" },
+    { role: "house", kind: "action", body: "Ajustou a luz da casa." },
+    { role: "gen", kind: "reply", body: "Pronto. Deixei a luz azul." },
+  ];
+  const memory = composeMemory(older.concat(recent), { recentTurns: 3, budgetChars: 500 });
+  assert.match(memory, /deixa a luz bem azul/);
+  assert.match(memory, /Pronto\. Deixei a luz azul/);
+  assert.match(memory, /Ajustou a luz da casa/);
+  assert.match(memory, /falas anteriores/);
+  assert.match(memory, /Colocou o som de bambu/);
+  assert.ok(memory.length <= 500);
+  const prompt = buildSystemInstruction(SESSION, null, memory);
+  assert.match(prompt, /deixa a luz bem azul/);
+  assert.match(prompt, /Memória desta sessão/);
+  assert.doesNotMatch(prompt, /SEGREDO_DO_QUIZ/);
+
+  let system = "";
+  const handler = createChatHandler({
+    loadSession: activeSession(),
+    store: createMemoryHouseStore(),
+    env: { GROQ_API_KEY: "groq-secret" },
+    chatLimiter: limiter(),
+    ipLimiter: limiter(),
+    commandLimiter: limiter(),
+    loadMemory: async () => memory,
+    fetchImpl: async (_url, opts) => {
+      system = JSON.parse(opts.body).messages[0].content;
+      return new Response(JSON.stringify({
+        choices: [{ message: { role: "assistant", content: "Pode deixar.", tool_calls: [] } }],
+      }), { status: 200 });
+    },
+  });
+  const res = mockRes();
+  await handler({
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: { text: "e agora?" },
+  }, res);
+  assert.equal(res.statusCode, 200);
+  assert.match(system, /deixa a luz bem azul/);
+  assert.match(system, /Pronto\. Deixei a luz azul/);
+  assert.equal(JSON.stringify(res.body).includes("groq-secret"), false);
+
+  let liveText = "";
+  const voice = createVoiceHandler({
+    loadSession: activeSession(),
+    store: createMemoryHouseStore(),
+    env: { GEMINI_API_KEY: "gemini-secret" },
+    limiter: limiter(),
+    ipLimiter: limiter(),
+    loadMemory: async () => memory,
+    fetchImpl: async (_url, opts) => {
+      liveText = JSON.parse(opts.body).bidiGenerateContentSetup.systemInstruction.parts[0].text;
+      return new Response(JSON.stringify({ name: "ephemeral-token" }), { status: 200 });
+    },
+  });
+  const live = mockRes();
+  await voice({ method: "POST", headers: {}, body: {} }, live);
+  assert.equal(live.statusCode, 200);
+  assert.match(live.body.systemInstruction, /deixa a luz bem azul/);
+  assert.equal(liveText, live.body.systemInstruction);
+  assert.equal(JSON.stringify(live.body).includes("gemini-secret"), false);
 });
 
 test("tool schemas reject unknown fields and out-of-range values", () => {

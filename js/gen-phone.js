@@ -182,6 +182,81 @@ import {
     if (reply) captionGen.textContent = reply;
   }
 
+  var genClient = null;
+  var postedUser = "";
+  var postedGen = "";
+  var historyTimer = null;
+
+  async function genToken() {
+    if (!window.supabase) return "";
+    try {
+      if (!genClient) {
+        var cfgRes = await fetch("/api/config", { cache: "no-store" });
+        var cfg = await cfgRes.json();
+        if (!cfg.supabaseUrl || !cfg.supabaseAnonKey) return "";
+        genClient = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
+      }
+      var got = await genClient.auth.getSession();
+      return (got && got.data && got.data.session && got.data.session.access_token) || "";
+    } catch (err) {
+      return "";
+    }
+  }
+
+  async function refreshGenHistory() {
+    var list = $("gen-history");
+    if (!list || !window.GenjutsuHistory) return;
+    var token = await genToken();
+    if (!token) {
+      window.GenjutsuHistory.render(list, []);
+      return;
+    }
+    try {
+      var res = await fetch("/api/gen/history", {
+        headers: { Authorization: "Bearer " + token },
+        cache: "no-store",
+      });
+      if (!res.ok) return;
+      var body = await res.json();
+      window.GenjutsuHistory.render(list, body.entries || []);
+    } catch (err) {
+      /* tenta de novo no próximo ciclo */
+    }
+  }
+
+  async function postVoiceLine(role, body) {
+    var text = String(body || "").trim();
+    if (!text) return;
+    var token = await genToken();
+    if (!token) return;
+    try {
+      await fetch("/api/gen/history", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + token,
+        },
+        body: JSON.stringify({ source: "voice", role: role, body: text }),
+      });
+    } catch (err) {
+      /* a fala ao vivo continua mesmo sem o histórico */
+    }
+  }
+
+  async function rememberTurn() {
+    var user = captionUser.textContent.trim();
+    var reply = captionGen.textContent.trim();
+    if (user && user !== postedUser) {
+      postedUser = user;
+      await postVoiceLine("visitor", user);
+    }
+    if (reply && reply !== postedGen && reply !== "Segure o botão e fale com a casa.") {
+      postedGen = reply;
+      await postVoiceLine("gen", reply);
+    }
+    refreshGenHistory();
+  }
+
   async function postChat(body, isForm) {
     var res = await fetch("/api/gen/chat", isForm ? { method: "POST", body: body } : {
       method: "POST",
@@ -196,6 +271,7 @@ import {
     showReply(json.transcript, json.reply_text);
     paintHouse(json.state);
     speak(json.reply_text);
+    refreshGenHistory();
     setStatus("fallback", "Voz do navegador");
     return json;
   }
@@ -214,7 +290,7 @@ import {
       var res = await fetch("/api/gen/commands", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tool: call.name, args: call.args || {} }),
+        body: JSON.stringify({ tool: call.name, args: call.args || {}, source: "voice" }),
       });
       var body = await res.json().catch(function () { return { status: "rejected", reason: "invalid_request" }; });
       if (body.state) paintHouse(body.state);
@@ -261,6 +337,7 @@ import {
     var outputText = field(server, "outputTranscription", "output_transcription");
     if (inputText && inputText.text) captionUser.textContent = inputText.text;
     if (outputText && outputText.text) captionGen.textContent = outputText.text;
+    if (server.turnComplete || server.turn_complete) rememberTurn();
     var turn = field(server, "modelTurn", "model_turn");
     var parts = (turn && turn.parts) || [];
     parts.forEach(function (part) {
@@ -736,6 +813,7 @@ import {
         },
       }));
       setStatus("live", "Ao vivo");
+      rememberTurn();
       return;
     }
     busy = true;
@@ -755,6 +833,10 @@ import {
     if (toggleBtn) toggleBtn.disabled = !sessionOn;
     $("gen-send").disabled = !sessionOn;
     input.disabled = !sessionOn;
+    if (sessionOn && !historyTimer) {
+      refreshGenHistory();
+      historyTimer = setInterval(refreshGenHistory, 4000);
+    }
     if (!sessionOn) {
       sawSession = false;
       closeSocket();

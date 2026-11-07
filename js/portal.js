@@ -630,14 +630,114 @@
     });
   }
 
+  var historyTimer = null;
+  var historyChannel = null;
+
+  function paintAlvo(scores) {
+    var host = $("ready-alvo");
+    if (!host || !Z) return;
+    host.replaceChildren();
+    var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("viewBox", "0 0 160 160");
+    var cx = 80;
+    var cy = 80;
+    var radius = 58;
+    [0.33, 0.66, 1].forEach(function (scale) {
+      var ring = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      ring.setAttribute("cx", String(cx));
+      ring.setAttribute("cy", String(cy));
+      ring.setAttribute("r", String(radius * scale));
+      ring.setAttribute("class", "alvo-ring");
+      svg.appendChild(ring);
+    });
+    var cap = typeof Z.scoreCap === "function" ? Z.scoreCap() : 15;
+    var ids = Z.PROFILE_IDS;
+    var points = ids.map(function (id, index) {
+      var angle = -Math.PI / 2 + (index * Math.PI * 2) / ids.length;
+      var amount = scores && scores[id] ? scores[id] : 0;
+      var reach = 14 + (Math.max(0, Math.min(cap, amount)) / cap) * (radius - 14);
+      return [cx + Math.cos(angle) * reach, cy + Math.sin(angle) * reach, angle];
+    });
+    var shape = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+    shape.setAttribute("class", "alvo-shape");
+    shape.setAttribute("points", points.map(function (point) {
+      return point[0].toFixed(1) + "," + point[1].toFixed(1);
+    }).join(" "));
+    svg.appendChild(shape);
+    points.forEach(function (point, index) {
+      var label = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      var lx = cx + Math.cos(point[2]) * (radius + 14);
+      var ly = cy + Math.sin(point[2]) * (radius + 14);
+      label.setAttribute("x", lx.toFixed(1));
+      label.setAttribute("y", ly.toFixed(1));
+      label.setAttribute("class", "alvo-label");
+      label.textContent = Z.META[ids[index]].letter;
+      svg.appendChild(label);
+    });
+    host.appendChild(svg);
+  }
+
   function revealParchment() {
-    var card = document.querySelector("#screen-ready .parchment");
-    if (!card) return;
-    card.classList.remove("reveal");
+    var scroll = $("ready-scroll");
+    if (!scroll) return;
     var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduce) return;
-    void card.offsetWidth;
-    card.classList.add("reveal");
+    scroll.classList.remove("is-open");
+    if (reduce) {
+      scroll.classList.add("is-open", "is-settled");
+      return;
+    }
+    void scroll.offsetWidth;
+    scroll.classList.add("is-open");
+  }
+
+  async function accessToken() {
+    if (!sb || !sb.auth || typeof sb.auth.getSession !== "function") return "";
+    try {
+      var got = await sb.auth.getSession();
+      return (got && got.data && got.data.session && got.data.session.access_token) || "";
+    } catch (err) {
+      return "";
+    }
+  }
+
+  async function refreshHistory() {
+    var list = $("ready-timeline");
+    if (!list || !window.GenjutsuHistory) return;
+    var token = await accessToken();
+    if (!token) {
+      window.GenjutsuHistory.render(list, []);
+      return;
+    }
+    var query = sessionCode ? "?code=" + encodeURIComponent(sessionCode) : "";
+    try {
+      var res = await fetch("/api/gen/history" + query, {
+        headers: { Authorization: "Bearer " + token },
+        cache: "no-store"
+      });
+      if (!res.ok) return;
+      var body = await res.json();
+      window.GenjutsuHistory.render(list, body.entries || []);
+    } catch (err) {
+      /* a leitura do histórico espera a próxima tentativa */
+    }
+  }
+
+  function watchHistory(user) {
+    refreshHistory();
+    if (historyTimer) clearInterval(historyTimer);
+    historyTimer = setInterval(refreshHistory, 4000);
+    if (!sb || !user || typeof sb.channel !== "function") return;
+    if (historyChannel) {
+      try { sb.removeChannel(historyChannel); } catch (err) { /* canal antigo */ }
+    }
+    historyChannel = sb.channel("gen-history-" + user.id)
+      .on("postgres_changes", {
+        event: "INSERT",
+        schema: "public",
+        table: "gen_history",
+        filter: "user_id=eq." + user.id
+      }, function () { refreshHistory(); })
+      .subscribe();
   }
 
   function paintReady(saved) {
@@ -655,6 +755,9 @@
     var title = $("ready-title");
     if (title) title.textContent = meta ? meta.title : "";
     paintTraits(profile && profile.scores);
+    paintAlvo(profile && profile.scores);
+    var sumi = $("ready-sumi");
+    if (sumi) sumi.dataset.profile = profile && profile.profile_id ? profile.profile_id : "";
     paintHouse(meta && meta.house);
     var code = (saved && saved.sessionCode) || sessionCode || "";
     var codeEl = $("ready-quest-code");
@@ -663,6 +766,7 @@
     var readyNote = $("ready-guest-note");
     if (readyNote) readyNote.hidden = !(saved && saved.guest);
     revealParchment();
+    watchHistory(saved && saved.user);
   }
 
   function renderQuestProfile(resolved) {
