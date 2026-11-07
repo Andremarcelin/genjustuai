@@ -4,6 +4,7 @@ import { executeHouseTool } from "../../lib/gen/executor.js";
 import { infraFromStore, initApi, requireActiveSession } from "../../lib/gen/http.js";
 import { createSupabaseHouseStore } from "../../lib/gen/house-store.js";
 import { createLiveToken } from "../../lib/gen/providers.js";
+import { loadMemoryForSession } from "../../lib/gen/history.js";
 import { clientIp, createRateLimiter } from "../../lib/gen/rate-limit.js";
 
 const sharedSessionLimiter = createRateLimiter({ limit: VOICE_TOKEN_LIMIT, windowMs: VOICE_TOKEN_WINDOW_MS });
@@ -17,6 +18,7 @@ export function createVoiceHandler(deps = {}) {
   const ipLimiter = deps.ipLimiter || sharedIpLimiter;
   const store = deps.store || createSupabaseHouseStore();
   const now = deps.now || (() => Date.now());
+  const loadMemory = deps.loadMemory || loadMemoryForSession;
 
   return async function handler(req, res) {
     if (initApi(req, res, ["POST"])) return;
@@ -41,11 +43,18 @@ export function createVoiceHandler(deps = {}) {
         res.status(infra.status).json(infra.body);
         return;
       }
+      let memory = "";
+      try {
+        memory = await loadMemory({ env, sessionCode: session.id });
+      } catch {
+        memory = "";
+      }
       const token = await createLiveToken({
         fetchImpl,
         env,
         session,
         state: current.state,
+        memory,
         now: stamp,
       });
       if (token.error === "missing_config") {

@@ -38,6 +38,7 @@ Documento mestre acadêmico (CDD): [docs/GenJutsu_AI_CDD_Completo.md](docs/GenJu
    8. [`sql/freeze_session_code.sql`](sql/freeze_session_code.sql) — solta o código antigo, se o trigger que travava `session_code` já existia
    9. [`sql/session_lifecycle.sql`](sql/session_lifecycle.sql) — `status` (`ready` / `active` / `ended`), `ended_at`, um código novo por visita e uma única sessão ativa. **Precisa rodar no Supabase ao vivo** para o botão Finalizar sessão.
    10. [`sql/house_state.sql`](sql/house_state.sql) — estado da casa, log das ferramentas da Gen, RLS e o broadcast `house:<session_id>`. **Não roda sozinho**: cole no SQL Editor. Sem ele, luz e dojo respondem `502 need_sql`.
+   11. [`sql/gen_history.sql`](sql/gen_history.sql) — falas, respostas e gestos da casa. A pessoa só lê as próprias linhas.
 3. **Authentication → URL configuration**
    - Site URL: `https://SEU-PROJETO.vercel.app`
    - Redirect URLs: `https://SEU-PROJETO.vercel.app/**` e `https://SEU-REF.supabase.co/auth/v1/callback`
