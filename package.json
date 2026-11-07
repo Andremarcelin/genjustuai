@@ -1,0 +1,15 @@
+{
+  "name": "genjutsuai",
+  "private": true,
+  "description": "GenJutsu AI — portal da smart home cognitiva",
+  "scripts": {
+    "build": "node scripts/inject-gsc.js",
+    "test": "node test/personality.test.js && node --test test/guest-save.test.js test/zcea-profile.test.js test/session-api.test.mjs test/gen.test.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "zod": "^3.25.76"
+  }
+}
