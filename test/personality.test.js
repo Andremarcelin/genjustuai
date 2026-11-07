@@ -39,7 +39,7 @@ const guestText = P.buildPersonality(guest, {
   youtube: [{ canal: "x" }],
   tasks: [{ titulo: "y" }],
   nome_exibicao: "Lina",
-  preferencias: { recarga: "agua", atmosfera: "madeira", acolhida: "aceno", profile_id: "Zen" }
+  preferencias: { folga: "ordem", problema: "respira", festa: "canto", profile_id: "Zen" }
 }, "AB3K7Q");
 assert.strictEqual(guestText.archetype, "Zen");
 assert.strictEqual(guestText.profile_id, "Zen");
@@ -47,21 +47,21 @@ assert.strictEqual(guestText.displayName, "Lina");
 assert.strictEqual(guestText.phrase, P.phraseFor("Zen", "Lina"));
 assert.ok(guestText.text.includes("Lina"));
 assert.ok(!guestText.text.includes("Teste Roadmap"));
-assert.ok(guestText.text.includes("água parada"));
+assert.ok(guestText.text.includes("passo de cada vez"));
 assert.ok(!/agenda|YouTube|tarefa/i.test(guestText.text), guestText.text);
 
 const namedText = P.buildPersonality(guest, {
   fonte: "convidado",
   nome_exibicao: "Lina",
-  preferencias: { recarga: "pulso", atmosfera: "neon", acolhida: "enigma", profile_id: "Cyber" }
+  preferencias: { folga: "sistema", problema: "modelo", festa: "mapa", profile_id: "Cyber" }
 }, "AB3K7Q");
 assert.strictEqual(namedText.displayName, "Lina");
 assert.ok(namedText.phrase.includes("Lina"));
-assert.ok(namedText.phrase.includes("pulso elétrico"));
+assert.ok(namedText.phrase.includes("sistemas"));
 assert.strictEqual(P.phraseFor("Excentrico", "Lina").includes("gesto ousado"), true);
-assert.strictEqual(P.phraseFor("Acolhedor", "Lina").includes("aconchego"), true);
-assert.strictEqual(P.answerText("recarga", "agua"), "Água parada, sem pressa (agua)");
-assert.strictEqual(P.answerText("atmosfera", "bambu"), "Chuva no bambu e chá (bambu)");
+assert.strictEqual(P.phraseFor("Acolhedor", "Lina").includes("quem está perto"), true);
+assert.strictEqual(P.answerText("folga", "ordem"), "organiza o dia em silêncio e segue o plano (ordem)");
+assert.strictEqual(P.answerText("festa", "anel"), "percebe quem está sozinho e puxa essa pessoa para o círculo (anel)");
 
 const googleText = P.buildPersonality(google, {
   fonte: "google",
@@ -69,7 +69,7 @@ const googleText = P.buildPersonality(google, {
   youtube: [],
   tasks: [{}, {}],
   nome_exibicao: "Teste Roadmap",
-  preferencias: { recarga: "cor", atmosfera: "seda", acolhida: "porta", profile_id: "Excentrico" }
+  preferencias: { folga: "impulso", problema: "atalho", festa: "pista", profile_id: "Excentrico" }
 }, "ZZZZZZ");
 assert.strictEqual(googleText.archetype, "Excêntrico");
 assert.strictEqual(googleText.profile_id, "Excentrico");
@@ -78,7 +78,7 @@ assert.ok(!googleText.text.includes("Teste Roadmap"));
 assert.ok(googleText.phrase.includes("gesto ousado"));
 assert.ok(/1 evento\(s\) de agenda, 0 canal\(is\) do YouTube e 2 tarefa\(s\)/.test(googleText.text));
 
-const unsynced = P.buildPersonality(google, { preferencias: { recarga: "agua" } }, "");
+const unsynced = P.buildPersonality(google, { preferencias: { folga: "ordem" } }, "");
 assert.ok(!/agenda/.test(unsynced.text), unsynced.text);
 assert.strictEqual(unsynced.archetype, "Perfil em formação");
 assert.strictEqual(unsynced.profile_id, null);
@@ -107,14 +107,16 @@ assert.ok(!portal.includes("Nesta sessão há") , "calendar sentence must live i
 assert.ok(index.includes("Salvar sem conta e gerar o código"));
 assert.ok(index.includes("como visitante"));
 assert.ok(index.includes('id="visitor-name"'));
-assert.ok(index.includes("Depois do dia, o que te devolve?"));
-assert.ok(index.includes("Água parada, sem pressa"));
-assert.ok(index.includes("Que clima você quer ao entrar?"));
-assert.ok(index.includes("Como você recebe quem chega?"));
-assert.ok(index.includes('data-value="agua"'));
-assert.ok(index.includes('data-value="pulso"'));
-assert.ok(index.includes('data-value="cor"'));
-assert.ok(index.includes('data-value="mesa"'));
+assert.ok(index.includes("Num fim de semana livre, você…"));
+assert.ok(index.includes("organiza o dia em silêncio e segue o plano"));
+assert.ok(index.includes("Quando surge um problema difícil, você…"));
+assert.ok(index.includes("Numa festa onde conhece pouca gente, você…"));
+assert.ok(index.includes('data-value="ordem"'));
+assert.ok(index.includes('data-value="sistema"'));
+assert.ok(index.includes('data-value="impulso"'));
+assert.ok(index.includes('data-value="gente"'));
+assert.ok(index.includes("Como sua casa vai responder"));
+assert.ok(index.includes("Sua sessão está pronta — coloque o Quest"));
 assert.ok(index.includes('id="ready-phrase"'));
 assert.ok(index.includes('id="ready-records"'));
 assert.ok(index.includes('class="parchment"'));

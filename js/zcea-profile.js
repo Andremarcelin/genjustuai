@@ -1,6 +1,8 @@
 // Perfil da demo Unity: Z / C / E / A.
-// O visitante não escolhe a casa. Três perguntas somam um vetor
-// Zen, Cyber, Excentrico, Acolhedor. Empate: Zen, Acolhedor, Cyber, Excentrico.
+// Três situações, no estilo dos itens situacionais dos cinco grandes fatores.
+// O visitante não escolhe a casa. Empate: Zen, Acolhedor, Cyber, Excentrico.
+// Zen = calma, introspecção, ordem. Cyber = análise, sistemas, estratégia.
+// Excentrico = novidade, expressão, improviso. Acolhedor = calor, cuidado, gente.
 (function (root, factory) {
   var api = factory();
   if (typeof module === "object" && module.exports) module.exports = api;
@@ -9,45 +11,89 @@
   var PROFILE_IDS = ["Zen", "Cyber", "Excentrico", "Acolhedor"];
   var TIE_BREAK = ["Zen", "Acolhedor", "Cyber", "Excentrico"];
   var META = {
-    Zen: { letter: "Z", archetype: "Zen" },
-    Cyber: { letter: "C", archetype: "Cyber" },
-    Excentrico: { letter: "E", archetype: "Excêntrico" },
-    Acolhedor: { letter: "A", archetype: "Acolhedor" }
+    Zen: {
+      letter: "Z",
+      archetype: "Zen",
+      kanji: "禅",
+      title: "Calma em ordem",
+      house: {
+        luz: "Luz baixa e azul",
+        som: "Quase quieto",
+        clima: "Ar fresco, madeira quieta"
+      }
+    },
+    Cyber: {
+      letter: "C",
+      archetype: "Cyber",
+      kanji: "電",
+      title: "Mente que desmonta",
+      house: {
+        luz: "Neon azul em pulso curto",
+        som: "Noite baixa, sem conversa",
+        clima: "Foco frio, pouca distração"
+      }
+    },
+    Excentrico: {
+      letter: "E",
+      archetype: "Excêntrico",
+      kanji: "奇",
+      title: "Impulso vivo",
+      house: {
+        luz: "Luz quente e alta",
+        som: "Volume mais alto, ritmo solto",
+        clima: "Calor e movimento"
+      }
+    },
+    Acolhedor: {
+      letter: "A",
+      archetype: "Acolhedor",
+      kanji: "温",
+      title: "Mesa aberta",
+      house: {
+        luz: "Lanterna quente",
+        som: "Bambu baixo",
+        clima: "Aconchego, um lugar guardado"
+      }
+    }
   };
 
   function weights(zen, acolhedor, cyber, excentrico) {
     return { Zen: zen, Acolhedor: acolhedor, Cyber: cyber, Excentrico: excentrico };
   }
 
+  function option(id, label, primary, zen, acolhedor, cyber, excentrico) {
+    return { id: id, label: label, primary: primary, scores: weights(zen, acolhedor, cyber, excentrico) };
+  }
+
   var QUESTIONS = [
     {
-      id: "recarga",
-      prompt: "Depois do dia, o que te devolve?",
+      id: "folga",
+      prompt: "Num fim de semana livre, você…",
       options: [
-        { id: "agua", label: "Água parada, sem pressa", scores: weights(5, 2, 0, 0) },
-        { id: "pulso", label: "Um pulso, luz e ritmo", scores: weights(0, 0, 5, 2) },
-        { id: "cor", label: "Cor demais e riso alto", scores: weights(0, 0, 2, 5) },
-        { id: "mesa", label: "Uma mesa posta, gente perto", scores: weights(2, 5, 0, 0) }
+        option("ordem", "organiza o dia em silêncio e segue o plano", "Zen", 5, 2, 0, 0),
+        option("sistema", "abre um aparelho ou um sistema só para ver como funciona", "Cyber", 0, 0, 5, 2),
+        option("impulso", "sai sem roteiro atrás de algo que nunca fez", "Excentrico", 0, 0, 2, 5),
+        option("gente", "chama alguém e cuida do almoço e da conversa", "Acolhedor", 2, 5, 0, 0)
       ]
     },
     {
-      id: "atmosfera",
-      prompt: "Que clima você quer ao entrar?",
+      id: "problema",
+      prompt: "Quando surge um problema difícil, você…",
       options: [
-        { id: "madeira", label: "Luz baixa e madeira lisa", scores: weights(5, 1, 0, 1) },
-        { id: "neon", label: "Neon frio e metal", scores: weights(1, 0, 5, 1) },
-        { id: "seda", label: "Lanterna quente e seda", scores: weights(0, 1, 1, 5) },
-        { id: "bambu", label: "Chuva no bambu e chá", scores: weights(1, 5, 1, 0) }
+        option("respira", "respira, ordena os fatos e resolve um passo de cada vez", "Zen", 5, 1, 0, 1),
+        option("modelo", "monta um modelo, testa hipóteses e escolhe a jogada", "Cyber", 1, 0, 5, 1),
+        option("atalho", "tenta um atalho ousado antes de abrir o manual", "Excentrico", 0, 1, 1, 5),
+        option("junto", "chama quem está perto e segura o clima enquanto resolvem", "Acolhedor", 1, 5, 1, 0)
       ]
     },
     {
-      id: "acolhida",
-      prompt: "Como você recebe quem chega?",
+      id: "festa",
+      prompt: "Numa festa onde conhece pouca gente, você…",
       options: [
-        { id: "aceno", label: "Um aceno, e o silêncio fica", scores: weights(5, 2, 0, 0) },
-        { id: "enigma", label: "Um enigma na porta", scores: weights(1, 0, 5, 2) },
-        { id: "porta", label: "Porta aberta e improviso", scores: weights(0, 2, 1, 5) },
-        { id: "cha", label: "Chá e um lugar guardado", scores: weights(2, 5, 0, 1) }
+        option("canto", "fica num canto calmo, observa e entra só quando faz sentido", "Zen", 5, 2, 0, 0),
+        option("mapa", "lê a sala, vê quem decide o quê e escolhe com quem falar", "Cyber", 1, 0, 5, 2),
+        option("pista", "puxa a conversa, improvisa e vira o centro sem planejar", "Excentrico", 0, 2, 1, 5),
+        option("anel", "percebe quem está sozinho e puxa essa pessoa para o círculo", "Acolhedor", 2, 5, 0, 1)
       ]
     }
   ];
@@ -75,14 +121,23 @@
     return { profile_id: null, letter: null, archetype: null, scores: null, tie: false };
   }
 
-  function resolve(recarga, atmosfera, acolhida) {
-    if (recarga && typeof recarga === "object") {
-      return resolve(recarga.recarga, recarga.atmosfera, recarga.acolhida);
+  function answersFrom(first, second, third) {
+    if (first && typeof first === "object") {
+      return [
+        first[QUESTIONS[0].id],
+        first[QUESTIONS[1].id],
+        first[QUESTIONS[2].id]
+      ];
     }
+    return [first, second, third];
+  }
+
+  function resolve(first, second, third) {
+    var raw = answersFrom(first, second, third);
     var picked = [
-      optionById(QUESTIONS[0], recarga),
-      optionById(QUESTIONS[1], atmosfera),
-      optionById(QUESTIONS[2], acolhida)
+      optionById(QUESTIONS[0], raw[0]),
+      optionById(QUESTIONS[1], raw[1]),
+      optionById(QUESTIONS[2], raw[2])
     ];
     if (!picked[0] || !picked[1] || !picked[2]) return emptyProfile();
     var scores = { Zen: 0, Cyber: 0, Excentrico: 0, Acolhedor: 0 };
@@ -127,6 +182,10 @@
     return option ? option.label : "";
   }
 
+  function scoreCap() {
+    return 15;
+  }
+
   return {
     PROFILE_IDS: PROFILE_IDS,
     TIE_BREAK: TIE_BREAK,
@@ -135,6 +194,7 @@
     sanitize: sanitize,
     resolve: resolve,
     label: label,
-    optionLabel: optionLabel
+    optionLabel: optionLabel,
+    scoreCap: scoreCap
   };
 });
