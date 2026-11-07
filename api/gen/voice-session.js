@@ -64,6 +64,7 @@ export function createVoiceHandler(deps = {}) {
         wsUrl: token.wsUrl,
         systemInstruction: token.systemInstruction,
         tools: token.tools,
+        voiceName: token.voiceName,
       });
     } catch {
       if (!res.headersSent) res.status(503).json({ error: "supabase_unreachable" });

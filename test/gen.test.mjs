@@ -15,6 +15,8 @@ import { createCommandsHandler } from "../api/gen/commands.js";
 import { createVoiceHandler } from "../api/gen/voice-session.js";
 import { createChatHandler } from "../api/gen/chat.js";
 import { GEMINI_LIVE_MODEL, GEMINI_LIVE_RESOURCE, GROQ_CHAT_MODEL, GROQ_STT_MODEL } from "../lib/gen/constants.js";
+import { resolveVoiceName } from "../lib/gen/voice.js";
+import { pickPtBrMaleVoice, SPEECH_FALLBACK_PITCH } from "../js/gen-voice.js";
 
 const SESSION = {
   id: "AB3K7Q",
@@ -297,6 +299,12 @@ test("voice session mints a Gemini ephemeral token and hides the API key", async
   assert.match(request.bidiGenerateContentSetup.systemInstruction.parts[0].text, /Lina/);
   assert.equal(request.bidiGenerateContentSetup.tools[0].functionDeclarations.length, 4);
   assert.equal(JSON.stringify(request).includes(secret), false);
+  assert.equal(res.body.voiceName, "Charon");
+  assert.equal(
+    request.bidiGenerateContentSetup.generationConfig.speechConfig.voiceConfig.prebuiltVoiceConfig.voiceName,
+    "Charon",
+  );
+  assert.equal(request.bidiGenerateContentSetup.generationConfig.speechConfig.languageCode, "pt-BR");
 
   let called = false;
   const bare = createVoiceHandler({
@@ -657,6 +665,10 @@ test("pages wire the phone, the provider, and the session contract", () => {
   assert.match(phone, /\/api\/gen\/chat/);
   assert.match(phone, /\/api\/gen\/commands/);
   assert.match(phone, /speechSynthesis/);
+  assert.match(phone, /voiceName/);
+  assert.match(phone, /SPEECH_FALLBACK_PITCH/);
+  assert.doesNotMatch(phone, /Aoede/);
+  assert.match(env, /GEN_VOICE_NAME=/);
   assert.match(phone, /AudioWorklet/);
   assert.match(phone, /pt-BR/);
   assert.match(phone, /audio\/pcm;rate=16000/);
@@ -668,4 +680,60 @@ test("pages wire the phone, the provider, and the session contract", () => {
 
 test("supabase helper still exports the CommonJS functions", () => {
   assert.equal(typeof supabaseRest, "function");
+});
+
+test("live voice defaults to Charon and can be overridden", async () => {
+  assert.equal(resolveVoiceName({}), "Charon");
+  assert.equal(resolveVoiceName({ GEN_VOICE_NAME: "  " }), "Charon");
+  assert.equal(resolveVoiceName({ GEN_VOICE_NAME: "bad voice" }), "Charon");
+  assert.equal(resolveVoiceName({ GEN_VOICE_NAME: "Fenrir" }), "Fenrir");
+
+  let voice = "";
+  const handler = createVoiceHandler({
+    loadSession: activeSession(),
+    store: createMemoryHouseStore(),
+    env: { GEMINI_API_KEY: "gemini-secret-do-not-leak", GEN_VOICE_NAME: "Fenrir" },
+    limiter: limiter(),
+    ipLimiter: limiter(),
+    fetchImpl: async (_url, opts) => {
+      voice = JSON.parse(opts.body).bidiGenerateContentSetup.generationConfig.speechConfig.voiceConfig.prebuiltVoiceConfig.voiceName;
+      return new Response(JSON.stringify({ name: "ephemeral-token-voice" }), { status: 200 });
+    },
+  });
+  const res = mockRes();
+  await handler({ method: "POST", headers: {} }, res);
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body.voiceName, "Fenrir");
+  assert.equal(voice, "Fenrir");
+  assert.equal(
+    JSON.parse(JSON.stringify(res.body)).voiceName,
+    "Fenrir",
+  );
+});
+
+test("speech fallback prefers a pt-BR male voice and otherwise lowers pitch", () => {
+  assert.equal(SPEECH_FALLBACK_PITCH, 0.85);
+  const voices = [
+    { name: "Luciana", lang: "pt-BR", voiceURI: "Luciana" },
+    { name: "Google US English", lang: "en-US", voiceURI: "male" },
+    { name: "Google português do Brasil", lang: "pt-BR", voiceURI: "google-pt" },
+    { name: "Daniel", lang: "pt-BR", voiceURI: "Daniel" },
+  ];
+  assert.equal(pickPtBrMaleVoice(voices).name, "Daniel");
+  assert.equal(pickPtBrMaleVoice([
+    { name: "Google português masculino", lang: "pt-BR" },
+  ]).name, "Google português masculino");
+  assert.equal(pickPtBrMaleVoice([
+    { name: "Ricardo", lang: "pt-PT" },
+  ]).name, "Ricardo");
+  assert.equal(pickPtBrMaleVoice([
+    { name: "Antônio", lang: "pt-BR" },
+  ]).name, "Antônio");
+  assert.equal(pickPtBrMaleVoice([
+    { name: "Female", lang: "pt-BR" },
+    { name: "Google português do Brasil", lang: "pt-BR" },
+  ]), null);
+  assert.equal(pickPtBrMaleVoice([
+    { name: "Daniel", lang: "en-US" },
+  ]), null);
 });
