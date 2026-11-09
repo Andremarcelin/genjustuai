@@ -116,7 +116,8 @@
 
   function showLanding() {
     if (onEntryRoute() || ($("landing") && $("landing").dataset.role === "shell")) {
-      goHome();
+      revealApp();
+      showScreen("screen-login");
       return;
     }
     if ($("landing")) $("landing").classList.remove("hidden");
@@ -213,7 +214,7 @@
   }
 
   async function requireClient() {
-    await configReady;
+    if (!sb) await configReady;
     if (!sb) {
       openConfigFallback("A conexão não veio de /api/config. A configuração fica fora da jornada.");
       return false;
@@ -836,7 +837,7 @@
     } catch (e) {}
     journeyPhase = "";
     showLoggedOut();
-    showLanding();
+    goHome();
   }
 
   document.querySelectorAll(".option").forEach(function (btn) {
