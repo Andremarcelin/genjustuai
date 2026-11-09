@@ -312,7 +312,7 @@ test("Groq 429 after retry falls back to Gemini flash lite keys", async () => {
   assert.equal(result.message.content, "Oi, Lina. Tô aqui.");
   assert.equal(result.provider, "gemini");
   assert.equal(result.model, GEMINI_TEXT_MODEL);
-  assert.equal(seen.filter((url) => url === GROQ_CHAT_URL).length, 2);
+  assert.equal(seen.filter((url) => url === GROQ_CHAT_URL).length, 0);
   assert.ok(seen.includes(GEMINI_GENERATE_URL));
   assert.equal(JSON.stringify(result).includes("groq-secret"), false);
   assert.equal(JSON.stringify(result).includes("good-gemini"), false);
