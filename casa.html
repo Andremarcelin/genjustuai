@@ -69,23 +69,24 @@
         <div class="casa-understood" id="casa-understood">
           <h2>O que a casa entendeu de você</h2>
           <p id="casa-badges" class="casa-badges"></p>
+          <p id="casa-understood-copy" class="casa-understood-copy"></p>
         </div>
 
         <div class="casa-groups">
           <div class="casa-section-head">
             <h2>Grupos</h2>
-            <button class="text-link" type="button" id="btn-groups-all">Ver tudo</button>
+            <button class="casa-ver-tudo" type="button" id="btn-groups-all">Ver tudo</button>
           </div>
           <div class="casa-group-row" role="list">
-            <button type="button" class="casa-group" data-room="Quarto" role="listitem">
+            <button type="button" class="casa-group" data-room="Quarto" role="listitem" aria-pressed="false">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 18V9.5A1.5 1.5 0 0 1 4.5 8H20a1 1 0 0 1 1 1v9M3 14h18M6 8V6.5A1.5 1.5 0 0 1 7.5 5h4A1.5 1.5 0 0 1 13 6.5V8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
               Quarto
             </button>
-            <button type="button" class="casa-group" data-room="Sala" role="listitem">
+            <button type="button" class="casa-group" data-room="Sala" role="listitem" aria-pressed="false">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 16V10l4-3h8l4 3v6M4 16h16M7 16v3M17 16v3M8 12h8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
               Sala
             </button>
-            <button type="button" class="casa-group" data-room="Cozinha" role="listitem">
+            <button type="button" class="casa-group" data-room="Cozinha" role="listitem" aria-pressed="false">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 15c0 2.2 2.2 4 5 4s5-1.8 5-4V9H7v6zM9 9V6M15 9V7m-3 0V5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M8 19h8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
               Cozinha
             </button>
@@ -125,10 +126,11 @@
 
   <div class="casa-dock">
     <div class="casa-chips" id="casa-chips" aria-label="Sugestões da casa"></div>
-    <button class="casa-ask" id="casa-ask" type="button">
-      <span>Pergunte para o Gen</span>
-      <span class="casa-mic" aria-hidden="true"></span>
-    </button>
+    <p class="casa-voice-status" id="casa-voice-status" role="status" aria-live="polite"></p>
+    <div class="casa-ask" role="group" aria-label="Pergunte para o Gen">
+      <button class="casa-ask-text" id="casa-ask" type="button">Pergunte para o Gen</button>
+      <button type="button" class="casa-mic" id="casa-dock-voice" aria-label="Falar"></button>
+    </div>
   </div>
 </div>
 
@@ -154,6 +156,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/js/casa-suggestions.js"></script>
 <script src="/js/casa-view.js"></script>
+<script src="/js/casa-voice.js"></script>
 <script src="/js/casa.js"></script>
 </body>
 </html>
