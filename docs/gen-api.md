@@ -21,7 +21,13 @@ Sessão ativa, com ou sem linha gravada ainda (200):
     "dojo": null,
     "lights": {
       "main": { "intensity": 0.35, "color": "#FF1A1A" },
-      "lanterns": { "intensity": 0.2, "color": "#FF1A1A" }
+      "lanterns": { "intensity": 0.2, "color": "#FF1A1A" },
+      "sala_luz": { "on": true, "color": "#FF1A1A", "intensity": 0.35 },
+      "quarto_luz": { "on": false, "color": "#FF1A1A", "intensity": 0.2 },
+      "abajur": { "on": false, "color": "#FFAA00", "intensity": 0.45 },
+      "fita_led": { "on": false, "color": "#7C3AED", "intensity": 0.55 },
+      "tv": { "on": false, "color": "#3B82F6", "intensity": 0.7 },
+      "ambiente": { "on": false, "color": "#FF1A1A", "intensity": 0.3 }
     },
     "ambience": { "preset": "quiet", "volume": 0.15 },
     "updated_at": null
@@ -54,6 +60,31 @@ Depois de `set_lights` ou `set_ambience`, o objeto da zona (ou o ambience) pode 
 | `dojo` | `Zen`, `Cyber`, `Excentrico` ou `Acolhedor` |
 
 Presets de ambiência: `quiet`, `rain`, `bamboo`, `night`. Volume de 0 a 0.5. Cor `#RRGGBB`. Intensidade de 0 a 1.
+
+### Dispositivos (Casa / Unity)
+
+`lights.main` e `lights.lanterns` **continuam o contrato do Quest**. Não quebre o parse antigo.
+
+Os device ids abaixo vivem no mesmo jsonb. Quem ainda só lê `main`/`lanterns` ignora o resto. Aliases:
+
+| device_id | alias Quest | cômodo | Unity (sugerido) |
+|---|---|---|---|
+| `sala_luz` | `main` (`intensity` 0 quando `on` é false) | Sala | `Lights/Sala/Main.color` |
+| `quarto_luz` | `lanterns` | Quarto | `Lights/Quarto/Ceiling` |
+| `abajur` | — | Quarto | `Lights/Quarto/Abajur` |
+| `fita_led` | — | Sala | LEDStrip emissive |
+| `tv` | — | Sala | Props/TV emissive |
+| `ambiente` | `ambience.volume` 0 quando `on` é false | Casa | Audio + color grade |
+
+Cada dispositivo: `{ "on": boolean, "color": "#RRGGBB", "intensity": 0..1 }`.
+
+`POST /api/house/device` (Bearer do visitante, ou sessão ativa do Quest):
+
+```json
+{ "device_id": "sala_luz", "on": true, "color": "#FF1A1A", "intensity": 0.85 }
+```
+
+SQL extra: [`sql/house_devices.sql`](../sql/house_devices.sql) depois de `sql/house_state.sql`. RLS: só o dono lê a linha; a API grava com service role. O Quest segue no `GET /api/house/state` e no broadcast `house_state_changed`.
 
 ## Realtime
 
@@ -130,6 +161,8 @@ Números podem ir como number ou string numérica. Chave extra é `invalid_args`
 | tool | args | efeito |
 |---|---|---|
 | `get_house_state` | `{}` | lê. Não sobe `version`. |
+| `list_devices` | `{}` | lê dispositivos. Não sobe `version`. |
+| `set_device` | `device_id`, `on`?, `color`?, `intensity`? | pinta/liga um device e sincroniza `main`/`lanterns` quando for o caso. |
 | `set_lights` | `zone` `main`\|`lanterns`, `intensity` 0..1, `color` `#RRGGBB`, `transition_ms` 300..5000 | uma zona. A outra fica. |
 | `set_ambience` | `preset` `quiet`\|`rain`\|`bamboo`\|`night`, `volume` 0..0.5, `transition_ms` 500..5000 | som. |
 | `switch_dojo` | `dojo` `Zen`\|`Cyber`\|`Excentrico`\|`Acolhedor`, `transition_ms` 2000..8000 | `mode` passa a `dojo`. Não grava `profile_id`. |
@@ -244,6 +277,6 @@ Celular, push-to-talk. Primeiro pede o token e fala pelo WebSocket (microfone vi
 
 ## SQL
 
-Aplicar à mão, no projeto `ahzsvjimyfzjcfuhgdgw`, depois de `sql/session_lifecycle.sql`: [`sql/house_state.sql`](../sql/house_state.sql) e depois [`sql/house_devices.sql`](../sql/house_devices.sql). Este repositório não aplica a migração. Sem `house_state.sql`, a voz até pode ser configurada, mas comando de casa responde `need_sql`. Sem o grant de `service_role` em `house_devices.sql`, a escrita responde `db_permission_denied`.
+Aplicar à mão, no projeto `ahzsvjimyfzjcfuhgdgw`, depois de `sql/session_lifecycle.sql`: [`sql/house_state.sql`](../sql/house_state.sql) e [`sql/house_devices.sql`](../sql/house_devices.sql). Este repositório não aplica a migração. Sem o primeiro, comando de casa responde `need_sql`. Sem o segundo, `main`/`lanterns` ainda funcionam; os device ids entram na leitura via normalização no servidor. Sem o grant de `service_role` em `house_devices.sql`, a escrita responde `db_permission_denied`.
 
 Variáveis só de servidor: `GEMINI_API_KEY`, `GROQ_API_KEY`, e `SUPABASE_SERVICE_ROLE` para gravar a casa. A anon key continua pública em `/api/config` e não escreve nessas tabelas.

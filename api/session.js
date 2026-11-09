@@ -1,4 +1,5 @@
 import { supabaseRest } from "../lib/supabase-rest.cjs";
+import { userIdFromBearer } from "../lib/gen/http.js";
 
 const PROFILE_IDS = new Set(["Zen", "Cyber", "Excentrico", "Acolhedor"]);
 const SESSION_STATUSES = new Set(["ready", "active", "ended"]);
@@ -82,6 +83,45 @@ async function summaryFor(code, fallbackStatus) {
     return { error: publicError(result), status: result.status || 503 };
   }
   return { error: "supabase_unreachable", status: 503 };
+}
+
+export async function loadSessionForUser(userId) {
+  const uid = String(userId || "").trim();
+  if (!uid) return { session: null };
+  const fields = SUMMARY_FIELDS.slice();
+  while (fields.length >= 4) {
+    const result = await supabaseRest(
+      `session_summaries?user_id=eq.${encodeURIComponent(uid)}&select=${fields.join(",")}&order=updated_at.desc&limit=1`,
+      { raw: true },
+    );
+    if (result.ok) {
+      const row = Array.isArray(result.json) ? result.json[0] : null;
+      if (!row) return { session: null };
+      return { session: toPublicSession(row, "ready") };
+    }
+    if (!isMissingColumn(result)) return { error: publicError(result), status: result.status || 503 };
+    if (fields.includes("status")) {
+      fields.splice(fields.indexOf("status"), 1);
+      continue;
+    }
+    if (fields.includes("profile_id")) {
+      fields.splice(fields.indexOf("profile_id"), 1);
+      continue;
+    }
+    return { error: publicError(result), status: result.status || 503 };
+  }
+  return { session: null };
+}
+
+export async function loadSessionForRequest(req, env = process.env, fetchImpl = globalThis.fetch) {
+  const userId = await userIdFromBearer(req, env, fetchImpl);
+  if (userId) {
+    const own = await loadSessionForUser(userId);
+    if (own.error) return own;
+    if (own.session) return own;
+    return { session: null };
+  }
+  return loadActiveSession();
 }
 
 export async function loadActiveSession() {

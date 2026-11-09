@@ -77,7 +77,6 @@ $$;
 
 revoke all on function genjutsu_internal.lights_valid(jsonb) from public, anon, authenticated;
 
-
 -- service_role must EXECUTE validators used by CHECK constraints.
 -- Without this, INSERT/UPDATE returns 403 and the API maps it to missing_config.
 grant usage on schema genjutsu_internal to service_role;

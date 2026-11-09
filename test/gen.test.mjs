@@ -60,7 +60,7 @@ function noSession() {
 }
 
 async function withEnv(env, fn) {
-  const keys = ["SUPABASE_URL", "SUPABASE_ANON_KEY", "SUPABASE_SERVICE_ROLE", "GEMINI_API_KEY", "GROQ_API_KEY"];
+  const keys = ["SUPABASE_URL", "SUPABASE_ANON_KEY", "SUPABASE_SERVICE_ROLE", "SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_SECRET_KEY", "GEMINI_API_KEY", "GROQ_API_KEY"];
   const previous = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
   for (const key of keys) delete process.env[key];
   Object.assign(process.env, env);
@@ -353,7 +353,7 @@ test("voice session mints a Gemini ephemeral token and hides the API key", async
   assert.equal(res.body.expiresAt, "2026-11-07T00:00:00.000Z");
   assert.match(res.body.wsUrl, /BidiGenerateContentConstrained/);
   assert.match(res.body.wsUrl, /access_token=ephemeral-token-1/);
-  assert.equal(res.body.tools.length, 4);
+  assert.equal(res.body.tools.length, 6);
   assert.match(res.body.systemInstruction, /Lina/);
   assert.match(res.body.systemInstruction, /Não peça para repetir/);
   assert.match(res.body.systemInstruction, /Estado atual da casa/);
@@ -367,7 +367,7 @@ test("voice session mints a Gemini ephemeral token and hides the API key", async
   assert.equal(request.bidiGenerateContentSetup.model, GEMINI_LIVE_RESOURCE);
   assert.equal(request.fieldMask, undefined);
   assert.match(request.bidiGenerateContentSetup.systemInstruction.parts[0].text, /Lina/);
-  assert.equal(request.bidiGenerateContentSetup.tools[0].functionDeclarations.length, 4);
+  assert.equal(request.bidiGenerateContentSetup.tools[0].functionDeclarations.length, 6);
   assert.equal(JSON.stringify(request).includes(secret), false);
   assert.equal(res.body.voiceName, "Charon");
   assert.equal(
@@ -694,6 +694,21 @@ test("service role writes do not send the anon key", async () => {
     assert.equal(blocked.error, "missing_config");
     assert.equal(called, false);
   });
+
+  await withEnv({
+    SUPABASE_URL: "https://ahzsvjimyfzjcfuhgdgw.supabase.co",
+    SUPABASE_ANON_KEY: "anon-key-do-not-use-for-writes",
+    SUPABASE_SERVICE_ROLE_KEY: "service-role-key-alias",
+  }, async () => {
+    let auth = "";
+    global.fetch = async (_url, opts) => {
+      auth = opts.headers.Authorization;
+      return new Response(JSON.stringify([]), { status: 200, headers: { "content-type": "application/json" } });
+    };
+    const store = createSupabaseHouseStore();
+    await store.load("AB3K7Q");
+    assert.equal(auth, "Bearer service-role-key-alias");
+  });
 });
 
 test("house SQL resets to the hub, locks RLS, and broadcasts without quiz data", () => {
@@ -723,6 +738,9 @@ test("pages wire the phone, the provider, and the session contract", () => {
   assert.match(html, /id="house-veil"/);
   assert.match(html, /js\/house-state\.js/);
   assert.match(html, /href="\/gen"/);
+  assert.match(html, /href="\/casa"/);
+  assert.match(html, /O que a casa entendeu de você/);
+  assert.match(html, /Ir para a minha Casa/);
   assert.match(provider, /HouseStateProvider/);
   assert.match(provider, /house:/);
   assert.match(provider, /house_state_changed/);
@@ -743,6 +761,7 @@ test("pages wire the phone, the provider, and the session contract", () => {
   assert.match(phone, /pt-BR/);
   assert.match(phone, /audio\/pcm;rate=16000/);
   assert.match(vercel, /\/gen/);
+  assert.match(vercel, /\/casa/);
   assert.match(env, /GEMINI_API_KEY=/);
   assert.match(env, /GROQ_API_KEY=/);
   assert.doesNotMatch(phone, /GEMINI_API_KEY|GROQ_API_KEY/);
