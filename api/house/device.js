@@ -73,6 +73,9 @@ export function createDeviceHandler(deps = {}) {
         store,
         limiter,
         now: now(),
+        fetchImpl: deps.fetchImpl || globalThis.fetch,
+        env: deps.env || process.env,
+        profileId: session.profile_id || session.profileId,
       });
       if (result.error) {
         const infra = infraFromStore(result);

@@ -30,6 +30,7 @@ Sessão ativa, com ou sem linha gravada ainda (200):
       "ambiente": { "on": false, "color": "#FF1A1A", "intensity": 0.3 }
     },
     "ambience": { "preset": "quiet", "volume": 0.15 },
+    "media": null,
     "updated_at": null
   }
 }
@@ -107,6 +108,7 @@ Payload, o mesmo objeto `state`, sem nome e sem questionário:
     "lanterns": { "intensity": 0.2, "color": "#FF1A1A" }
   },
   "ambience": { "preset": "quiet", "volume": 0.15 },
+  "media": null,
   "updated_at": "2026-11-06T23:50:00.000Z"
 }
 ```
@@ -166,6 +168,27 @@ Números podem ir como number ou string numérica. Chave extra é `invalid_args`
 | `set_lights` | `zone` `main`\|`lanterns`, `intensity` 0..1, `color` `#RRGGBB`, `transition_ms` 300..5000 | uma zona. A outra fica. |
 | `set_ambience` | `preset` `quiet`\|`rain`\|`bamboo`\|`night`, `volume` 0..0.5, `transition_ms` 500..5000 | som. |
 | `switch_dojo` | `dojo` `Zen`\|`Cyber`\|`Excentrico`\|`Acolhedor`, `transition_ms` 2000..8000 | `mode` passa a `dojo`. Não grava `profile_id`. |
+| `play_music` | `query`?, `mood`? | resolve MP3 livre (Jamendo se `JAMENDO_CLIENT_ID` no servidor, senão Internet Archive). Grava `state.media`, liga `tv`. |
+| `open_video` | `query` | MP4 livre no Archive. Liga `tv`. Sem YouTube. |
+| `stop_media` | `{}` | `media.playing` false. |
+| `web_search` | `query` | DuckDuckGo Instant Answer. Não muda a casa. |
+
+`state.media`:
+
+```json
+{
+  "type": "audio",
+  "url": "https://archive.org/download/…/track.mp3",
+  "title": "Acoustic guitar evening",
+  "artist": "Internet Archive",
+  "license": "CC BY",
+  "device": "tv",
+  "playing": true,
+  "updated_at": "2026-11-09T02:00:00.000Z"
+}
+```
+
+URL só `https` em `archive.org` ou `jamendo.com`. O Quest / `/casa` tocam o mesmo objeto. Ligar `ambiente` puxa a playlist ZCEA (Zen lo-fi/shakuhachi, Cyber synthwave, Excentrico jazz, Acolhedor acústico). `POST /api/house/media` no site: `{ "playing": false }` ou `{ "stop": true }` ou `{ "action": "play_music", "query": "jazz" }`. SQL: [`sql/house_media.sql`](../sql/house_media.sql).
 
 Limite: 20 mutações por sessão a cada 60 s. Leitura tem o mesmo teto, separado. Acima disso, `rejected` / `rate_limited`.
 
@@ -277,6 +300,6 @@ Celular, push-to-talk. Primeiro pede o token e fala pelo WebSocket (microfone vi
 
 ## SQL
 
-Aplicar à mão, no projeto `ahzsvjimyfzjcfuhgdgw`, depois de `sql/session_lifecycle.sql`: [`sql/house_state.sql`](../sql/house_state.sql) e [`sql/house_devices.sql`](../sql/house_devices.sql). Este repositório não aplica a migração. Sem o primeiro, comando de casa responde `need_sql`. Sem o segundo, `main`/`lanterns` ainda funcionam; os device ids entram na leitura via normalização no servidor. Sem o grant de `service_role` em `house_devices.sql`, a escrita responde `db_permission_denied`.
+Aplicar à mão, no projeto `ahzsvjimyfzjcfuhgdgw`, depois de `sql/session_lifecycle.sql`: [`sql/house_state.sql`](../sql/house_state.sql), [`sql/house_devices.sql`](../sql/house_devices.sql) e [`sql/house_media.sql`](../sql/house_media.sql). Este repositório não aplica a migração. Sem o primeiro, comando de casa responde `need_sql`. Sem o segundo, `main`/`lanterns` ainda funcionam; os device ids entram na leitura via normalização no servidor. Sem o terceiro, `media` fica `null` e a API ignora a coluna. Sem o grant de `service_role` nas funções de CHECK (`house_devices.sql` e `house_media.sql`), a escrita responde `db_permission_denied`.
 
-Variáveis só de servidor: `GEMINI_API_KEY`, `GROQ_API_KEY`, e `SUPABASE_SERVICE_ROLE` para gravar a casa. A anon key continua pública em `/api/config` e não escreve nessas tabelas.
+Variáveis só de servidor: `GEMINI_API_KEY`, `GROQ_API_KEY`, `SUPABASE_SERVICE_ROLE` para gravar a casa, e opcional `JAMENDO_CLIENT_ID` (nunca no cliente). A anon key continua pública em `/api/config` e não escreve nessas tabelas.
