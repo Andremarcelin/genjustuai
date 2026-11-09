@@ -7,6 +7,7 @@ import {
   chatPrimary,
   completeChat,
   geminiKeys,
+  openaiToGeminiContents,
   parseGroundingChunks,
   searchGeminiGrounded,
 } from "../lib/gen/providers.js";
@@ -156,6 +157,42 @@ test("routine confirmation is natural, not A casa atualizou", () => {
   assert.match(reply, /Fechado/);
 });
 
+test("openaiToGeminiContents uses user/model roles and functionResponse objects", () => {
+  const mapped = openaiToGeminiContents([
+    { role: "system", content: "sys" },
+    { role: "user", content: "clima" },
+    {
+      role: "assistant",
+      content: "",
+      tool_calls: [{ id: "c1", function: { name: "get_weather", arguments: "{\"city\":\"SP\"}" } }],
+    },
+    { role: "tool", name: "get_weather", content: JSON.stringify({ status: "accepted", weather: { temp: 18 } }) },
+  ]);
+  assert.equal(mapped.system, "sys");
+  assert.equal(mapped.contents[0].role, "user");
+  assert.equal(mapped.contents[1].role, "model");
+  assert.equal(mapped.contents[1].parts[0].functionCall.name, "get_weather");
+  assert.equal(mapped.contents[2].role, "user");
+  assert.equal(mapped.contents[2].parts[0].functionResponse.name, "get_weather");
+  assert.equal(mapped.contents[2].parts[0].functionResponse.response.weather.temp, 18);
+});
+
+test("parseMatchFact ignores unrelated 7h routines and stores ISO kickoff", () => {
+  assert.equal(parseMatchFact("todo dia às 7h acende a sala"), null);
+  const fact = parseMatchFact(
+    "O próximo jogo do Corinthians é quarta 18/11/2026 às 21h30 contra o Botafogo na Neo Química Arena.",
+    new Date("2026-11-09T18:00:00.000Z"),
+  );
+  assert.equal(hasKickoff(fact), true);
+  assert.equal(fact.hour, 21);
+  assert.equal(fact.minute, 30);
+  assert.ok(fact.datetime);
+  assert.match(fact.event, /Botafogo/i);
+  const planned = gameRoutineFromFact(fact);
+  assert.equal(planned.hour, 21);
+  assert.equal(planned.minute, 30);
+});
+
 test("web_search uses Gemini grounding then cites 1-2 sources", async () => {
   const json = {
     candidates: [{
@@ -175,9 +212,13 @@ test("web_search uses Gemini grounding then cites 1-2 sources", async () => {
   const grounded = await searchGeminiGrounded({
     env: { GEMINI_API_KEY: "g" },
     query: "próximo jogo Corinthians",
+    now: new Date("2026-11-09T18:00:00.000Z"),
     fetchImpl: async (_url, opts) => {
       const body = JSON.parse(opts.body);
       assert.ok(body.tools[0].google_search || body.tools[0].googleSearch);
+      const blob = JSON.stringify(body);
+      assert.match(blob, /2026/);
+      assert.doesNotMatch(blob, /\b2025\b/);
       return new Response(JSON.stringify(json), { status: 200 });
     },
   });

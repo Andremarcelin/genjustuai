@@ -162,6 +162,7 @@ export function createChatHandler(deps = {}) {
           meta: {
             provider: payload.meta?.provider || payload.provider || null,
             model: payload.meta?.model || payload.model || null,
+            ...(payload.meta?.gemini_error ? { gemini_error: payload.meta.gemini_error } : {}),
           },
         };
         delete body.provider;
@@ -184,7 +185,7 @@ export function createChatHandler(deps = {}) {
               .filter((item) => item.tool === "web_search")
               .map((item) => item.grounded_text || (item.search || []).map((hit) => hit.snippet).join(" "))
               .join(" ");
-            const fact = parseMatchFact(`${body.transcript} ${body.reply_text} ${searchBlob}`, new Date(stamp));
+            const fact = parseMatchFact(`${body.transcript}\n${body.reply_text}\n${searchBlob}`, new Date(stamp));
             await sessionMemory.remember(session.id, {
               transcript: body.transcript,
               reply: body.reply_text,
@@ -250,7 +251,7 @@ export function createChatHandler(deps = {}) {
         });
         return;
       }
-      let routinePlan = parseRoutineRequest(transcript);
+      let routinePlan = gameAsk ? null : parseRoutineRequest(transcript);
       if (gameAsk && hasKickoff(recalled.facts?.match)) {
         const game = gameRoutineFromFact(recalled.facts.match);
         routinePlan = {
@@ -265,7 +266,7 @@ export function createChatHandler(deps = {}) {
         };
       }
       const messages = [
-        { role: "system", content: buildSystemInstruction(session, state, memory, { profanity: allowSwear }) },
+        { role: "system", content: buildSystemInstruction(session, state, memory, { profanity: allowSwear, now: new Date(stamp) }) },
         { role: "user", content: transcript },
       ];
       const tools = toGroqTools();
@@ -335,7 +336,11 @@ export function createChatHandler(deps = {}) {
           });
           return;
         }
-        used = { provider: completion.provider || used.provider, model: completion.model || used.model };
+        used = {
+          provider: completion.provider || used.provider,
+          model: completion.model || used.model,
+          gemini_error: completion.gemini_error || used.gemini_error,
+        };
         const message = completion.message;
         const calls = Array.isArray(message.tool_calls) ? message.tool_calls : [];
         if (!calls.length) {
@@ -381,6 +386,7 @@ export function createChatHandler(deps = {}) {
           pushAction(name, parsed, outcome);
           messages.push({
             role: "tool",
+            name: name || "tool",
             tool_call_id: call?.id || `call_${actions.length}`,
             content: JSON.stringify({
               status: outcome.status,
@@ -398,7 +404,11 @@ export function createChatHandler(deps = {}) {
 
       const finalTurn = await completeChat({ fetchImpl, env, messages, toolChoice: "none" });
       if (!finalTurn.error) {
-        used = { provider: finalTurn.provider || used.provider, model: finalTurn.model || used.model };
+        used = {
+          provider: finalTurn.provider || used.provider,
+          model: finalTurn.model || used.model,
+          gemini_error: finalTurn.gemini_error || used.gemini_error,
+        };
       }
       if (finalTurn.error) {
         await sendTurn({
