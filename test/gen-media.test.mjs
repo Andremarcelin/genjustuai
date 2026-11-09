@@ -4,7 +4,7 @@ import fs from "node:fs";
 import { executeHouseTool } from "../lib/gen/executor.js";
 import { createMemoryHouseStore } from "../lib/gen/house-store.js";
 import { TOOLS, validateToolCall } from "../lib/gen/tools.js";
-import { isAllowedMediaUrl, parseArchiveSearch, parseGloboNextMatch, pickArchiveFile, parseDuckDuckGo } from "../lib/gen/media.js";
+import { isAllowedMediaUrl, parseArchiveSearch, parseGloboNextMatch, parseGoogleNewsRss, pickArchiveFile, parseDuckDuckGo } from "../lib/gen/media.js";
 import { PROFILE_PLAYLISTS } from "../lib/gen/media-playlists.js";
 import { parseHouseIntent, plannedActions } from "../lib/gen/intent.js";
 import { createRateLimiter } from "../lib/gen/rate-limit.js";
@@ -73,6 +73,12 @@ function mockRes() {
     end() { this.headersSent = true; return this; },
   };
 }
+
+test("parseGoogleNewsRss keeps article titles and links", () => {
+  const hits = parseGoogleNewsRss(`<rss><channel><item><title>IA hoje</title><link>https://example.com/ia</link><description>Manchete</description></item></channel></rss>`);
+  assert.equal(hits[0].title, "IA hoje");
+  assert.equal(hits[0].url, "https://example.com/ia");
+});
 
 test("parseGloboNextMatch reads next kickoff from ge.globo JSON", () => {
   const hits = parseGloboNextMatch(
