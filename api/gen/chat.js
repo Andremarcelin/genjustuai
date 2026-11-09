@@ -214,7 +214,46 @@ export function createChatHandler(deps = {}) {
           return;
         }
         if (completion.error) {
-          res.status(502).json({ error: "provider_unreachable", provider: "groq" });
+          const intentActions = routinePlan
+            ? [{
+              tool: "create_routine",
+              args: {
+                name: routinePlan.name,
+                hour: routinePlan.schedule.hour,
+                minute: routinePlan.schedule.minute,
+                days: routinePlan.schedule.days,
+                actions: routinePlan.actions,
+                once: routinePlan.schedule.once === true,
+              },
+            }]
+            : plannedActions(parseHouseIntent(transcript), state);
+          if (!intentActions.length) {
+            res.status(502).json({ error: "provider_unreachable", provider: "groq" });
+            return;
+          }
+          for (const plan of intentActions) {
+            const outcome = await runTool(plan.tool, plan.args);
+            if (outcome.error) {
+              const infra = infraFromStore(outcome);
+              res.status(infra.status).json(infra.body);
+              return;
+            }
+            if (outcome.state) state = outcome.state;
+            actions.push({
+              tool: plan.tool,
+              args: plan.args,
+              status: outcome.status,
+              reason: outcome.reason || null,
+              search: outcome.search || undefined,
+              weather: outcome.weather || undefined,
+            });
+          }
+          await sendTurn({
+            transcript,
+            reply_text: replyText("", actions, transcript, state),
+            actions,
+            state,
+          });
           return;
         }
         const message = completion.message;

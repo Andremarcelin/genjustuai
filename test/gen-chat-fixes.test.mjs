@@ -246,6 +246,45 @@ test("get_weather uses Open-Meteo and describes pt-BR", async () => {
   assert.equal(JSON.stringify(res.body).includes("groq-secret-do-not-leak"), false);
 });
 
+test("LLM down still answers weather via local intent", async () => {
+  const chat = createChatHandler({
+    loadSession: async () => ({ session: SESSION }),
+    env: { GROQ_API_KEY: "groq-secret-do-not-leak", GEN_DEFAULT_CITY: "Taboão da Serra" },
+    store: createMemoryHouseStore(),
+    routineStore: createMemoryRoutineStore(),
+    loadPrefs: async () => true,
+    chatLimiter: createRateLimiter({ limit: 20, windowMs: 60_000 }),
+    ipLimiter: createRateLimiter({ limit: 20, windowMs: 60_000 }),
+    commandLimiter: createRateLimiter({ limit: 20, windowMs: 60_000 }),
+    now: () => Date.parse("2026-11-09T01:00:00.000Z"),
+    fetchImpl: async (url) => {
+      const href = String(url);
+      if (href.includes("open-meteo")) {
+        if (href.includes("geocoding")) {
+          return new Response(JSON.stringify({
+            results: [{ name: "Taboão da Serra", latitude: -23.6, longitude: -46.78, country_code: "BR" }],
+          }), { status: 200 });
+        }
+        return new Response(JSON.stringify({
+          current: { temperature_2m: 18, relative_humidity_2m: 70, weather_code: 3, wind_speed_10m: 10 },
+          hourly: { precipitation_probability: [15] },
+        }), { status: 200 });
+      }
+      return new Response("down", { status: 503 });
+    },
+  });
+  const res = mockRes();
+  await chat({
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: { text: "preciso sair, qual o clima em Taboão da Serra?" },
+  }, res);
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body.actions[0].tool, "get_weather");
+  assert.match(res.body.reply_text, /Taboão da Serra|18/);
+  assert.equal(JSON.stringify(res.body).includes("groq-secret-do-not-leak"), false);
+});
+
 test("Groq 429 after retry falls back to Gemini flash lite keys", async () => {
   assert.deepEqual(geminiKeys({
     GEMINI_API_KEY: "k1",
