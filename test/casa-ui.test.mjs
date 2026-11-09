@@ -97,6 +97,72 @@ test("casa page wires a real mic button and does not leak secrets", () => {
   assert.doesNotMatch(js, /SUPABASE_SERVICE_ROLE|GROQ_API_KEY|GEMINI_API_KEY/);
 });
 
+test("casa lights are per-device glows, not rectangular room fills", () => {
+  const html = fs.readFileSync(new URL("../casa.html", import.meta.url), "utf8");
+  const css = fs.readFileSync(new URL("../casa.css", import.meta.url), "utf8");
+  const js = fs.readFileSync(new URL("../js/casa.js", import.meta.url), "utf8");
+  assert.match(html, /id="casa-lights"/);
+  assert.doesNotMatch(html, /overlay-quarto/);
+  assert.doesNotMatch(css, /clip-path:\s*polygon/);
+  assert.match(css, /mix-blend-mode:\s*screen/);
+  assert.match(css, /mix-blend-mode:\s*soft-light/);
+  assert.match(css, /mix-blend-mode:\s*color-dodge/);
+  assert.match(css, /prefers-reduced-motion/);
+  assert.match(css, /casa-tv-flicker/);
+  assert.match(js, /lightLayersFor/);
+  assert.match(js, /lightLayerStyle/);
+  assert.match(js, /demoLightsFromScene/);
+
+  ["Zen", "Cyber", "Excentrico", "Acolhedor"].forEach((profile) => {
+    const layers = View.lightLayersFor(profile);
+    const devices = new Set(layers.map((layer) => layer.device));
+    ["sala_luz", "quarto_luz", "abajur", "fita_led", "tv", "ambiente", "ar_condicionado"].forEach((id) => {
+      assert.equal(devices.has(id), true, profile + " missing " + id);
+    });
+    assert.ok(layers.some((layer) => layer.device === "fita_led" && layer.kind === "strip"));
+    assert.ok(layers.some((layer) => layer.device === "tv" && layer.kind === "tv"));
+    layers.forEach((layer) => {
+      assert.ok(layer.x >= 0 && layer.x <= 100);
+      assert.ok(layer.y >= 0 && layer.y <= 100);
+      assert.ok(layer.w > 0 && layer.h > 0);
+    });
+  });
+
+  const on = { id: "sala_luz", on: true, color: "#FF1A1A", intensity: 0.9 };
+  const off = { id: "sala_luz", on: false, color: "#FF1A1A", intensity: 0.9 };
+  const bloom = View.lightLayersFor("Acolhedor").find((layer) => layer.id === "sala-lantern");
+  const lit = View.lightLayerStyle(bloom, on, { dark: false, brightness: 0.8 });
+  const dark = View.lightLayerStyle(bloom, off, { dark: true, brightness: 0.38 });
+  assert.ok(Number(lit.opacity) > 0.4);
+  assert.equal(dark.opacity, "0");
+  assert.match(lit.background, /radial-gradient/);
+  assert.match(lit.background, /255,\s*26,\s*26/);
+
+  const strip = View.lightLayersFor("Acolhedor").find((layer) => layer.kind === "strip");
+  const purple = View.lightLayerStyle(strip, { on: true, color: "#7C3AED", intensity: 0.85 });
+  assert.match(purple.background, /linear-gradient/);
+
+  const ambientOff = View.frameAmbient([{ id: "sala_luz", on: false, intensity: 0.9 }]);
+  const ambientOn = View.frameAmbient([{ id: "sala_luz", on: true, intensity: 0.9 }]);
+  assert.equal(ambientOff.dark, true);
+  assert.ok(ambientOff.brightness < ambientOn.brightness);
+
+  const sala = View.demoLightsFromScene("sala_red");
+  assert.equal(sala.sala_luz.on, true);
+  assert.equal(sala.sala_luz.color, "#FF1A1A");
+  assert.equal(sala.abajur.on, false);
+  const warm = View.demoLightsFromScene("abajur_warm");
+  assert.equal(warm.abajur.on, true);
+  assert.equal(warm.abajur.color, "#FFAA00");
+  const led = View.demoLightsFromScene("led_purple");
+  assert.equal(led.fita_led.on, true);
+  assert.equal(led.fita_led.color, "#7C3AED");
+  const allOff = View.demoLightsFromScene("off");
+  assert.equal(allOff.sala_luz.on, false);
+  assert.equal(allOff.tv.on, false);
+  assert.equal(allOff.ar_condicionado.on, false);
+});
+
 test("brand mark uses the felt crow icon set", () => {
   const html = fs.readFileSync(new URL("../casa.html", import.meta.url), "utf8");
   const landing = fs.readFileSync(new URL("../index.html", import.meta.url), "utf8");
