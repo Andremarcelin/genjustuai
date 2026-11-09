@@ -68,8 +68,36 @@ test("quotes truncate and rejected commands are skipped", () => {
   assert.equal(visit.devices.find((d) => d.id === "sala_luz").name, "Luz da sala");
   assert.equal(visit.devices.find((d) => d.id === "ar_condicionado").value, "20 °C");
   assert.deepEqual(visit.music, ["rock"]);
-  assert.deepEqual(visit.routines, ["Jogo"]);
+  assert.equal(visit.routines[0].name, "Jogo");
   assert.ok(visit.durationLabel);
+  assert.equal(visit.devices.find((d) => d.id === "sala_luz").changes, 1);
+});
+
+test("insights stay deterministic and omit guesses", () => {
+  const visit = summarizeVisit({
+    profileId: "Zen",
+    history: [
+      { kind: "transcript", role: "visitor", source: "chat", body: "qual o clima em Taboão?", created_at: "2026-11-09T10:00:00Z" },
+      { kind: "transcript", role: "visitor", source: "chat", body: "e o jogo do Corinthians?", created_at: "2026-11-09T10:00:10Z" },
+      { kind: "transcript", role: "visitor", source: "chat", body: "clima de novo", created_at: "2026-11-09T10:00:20Z" },
+      { kind: "transcript", role: "visitor", source: "chat", body: "me acorda às 7h", created_at: "2026-11-09T10:00:30Z" },
+      { kind: "action", source: "chat", tool: "get_weather", args: { city: "Taboão da Serra" }, created_at: "2026-11-09T10:00:05Z" },
+      { kind: "action", source: "chat", tool: "create_routine", args: { name: "Alarme 7h", hour: 7 }, created_at: "2026-11-09T10:00:40Z" },
+    ],
+    commands: [
+      { tool: "set_device", status: "accepted", args: { device_id: "ar_condicionado", on: true, temp: 20 }, created_at: "2026-11-09T10:01:00Z" },
+      { tool: "set_device", status: "accepted", args: { device_id: "ar_condicionado", on: true, temp: 20 }, created_at: "2026-11-09T10:01:10Z" },
+      { tool: "set_device", status: "accepted", args: { device_id: "ar_condicionado", on: true, temp: 21 }, created_at: "2026-11-09T10:01:20Z" },
+      { tool: "set_device", status: "accepted", args: { device_id: "ar_condicionado", on: true, temp: 20 }, created_at: "2026-11-09T10:01:30Z" },
+      { tool: "set_device", status: "accepted", args: { device_id: "sala_luz", on: true, intensity: 0.2 }, created_at: "2026-11-09T10:01:40Z" },
+      { tool: "set_device", status: "accepted", args: { device_id: "sala_luz", on: true, intensity: 0.25 }, created_at: "2026-11-09T10:01:50Z" },
+    ],
+  });
+  const texts = visit.insights.map((i) => i.text).join(" ");
+  assert.match(texts, /fresco|luz baixa|chat|clima|rotina|Zen/i);
+  assert.ok(visit.insights.every((i) => i.basis));
+  assert.ok(visit.insights.length <= 4);
+  assert.equal(visit.questions.some((q) => /Taboão/i.test(q)), true);
 });
 
 test("empty visit copy payload", () => {
@@ -121,7 +149,7 @@ test("GET /api/session?code= attaches a visit summary via the service role and h
     assert.equal(res.body.visit.conversations, 2);
     assert.equal(res.body.visit.devices.some((d) => d.id === "tv"), false);
     assert.equal(res.body.visit.devices.find((d) => d.id === "sala_luz").name, "Luz da sala");
-    assert.deepEqual(res.body.visit.routines, ["Alarme 7h"]);
+    assert.equal(res.body.visit.routines[0].name, "Alarme 7h");
     assert.ok(urls.some((u) => u.url.includes("house_commands?session_id=eq.LRANG5") && u.auth === `Bearer ${SERVICE}`));
     assert.ok(urls.some((u) => u.url.includes("gen_history?session_code=eq.LRANG5") && u.auth === `Bearer ${SERVICE}`));
     assert.ok(urls.some((u) => u.url.includes("session_summaries") && u.auth === `Bearer ${ANON}`));

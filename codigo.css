@@ -49,7 +49,8 @@ body.page-codigo {
 .ready[hidden],
 .visit-card[hidden],
 .visit-body[hidden],
-.visit-empty[hidden] {
+.visit-empty[hidden],
+.visit-insight[hidden] {
   display: none !important;
 }
 
@@ -534,6 +535,40 @@ h1 {
   background: rgba(224, 40, 40, 0.08);
   border-radius: 999px;
   padding: 0.22rem 0.55rem;
+}
+
+.visit-kicker {
+  font-family: Oswald, sans-serif;
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--red);
+  margin: 0.65rem 0 0.25rem;
+}
+
+.visit-insight li {
+  list-style: none;
+  margin: 0 0 0.7rem;
+  padding: 0 0 0.55rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.visit-insight li:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.visit-insight .said {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.35;
+}
+
+.visit-insight .basis {
+  margin: 0.2rem 0 0;
+  color: var(--muted);
+  font-size: 0.75rem;
 }
 
 @media (min-width: 768px) {

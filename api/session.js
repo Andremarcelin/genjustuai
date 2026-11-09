@@ -95,7 +95,7 @@ async function restVisit(path) {
   return Array.isArray(result.json) ? result.json : [];
 }
 
-export async function loadVisitSummary(code) {
+export async function loadVisitSummary(code, profile) {
   const sessionCode = String(code || "").toUpperCase();
   const [history, commands, routines] = await Promise.all([
     restVisit(
@@ -108,7 +108,7 @@ export async function loadVisitSummary(code) {
       `house_routines?session_id=eq.${encodeURIComponent(sessionCode)}&select=name,created_at&order=created_at.asc`
     ),
   ]);
-  return summarizeVisit({ history, commands, routines });
+  return summarizeVisit({ history, commands, routines, profileId: profile || "" });
 }
 
 export async function loadSessionForUser(userId) {
@@ -201,7 +201,7 @@ export default async function handler(req, res) {
     }
     let visit;
     try {
-      visit = await loadVisitSummary(code);
+      visit = await loadVisitSummary(code, found.data.profile_id);
     } catch {
       visit = summarizeVisit({});
     }

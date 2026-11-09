@@ -22,32 +22,7 @@ const MIME = {
   ".webmanifest": "application/manifest+json",
 };
 
-const VISIT = {
-  session_code: "LRANG5",
-  visit: {
-    empty: false,
-    conversations: 85,
-    quotes: [
-      "preciso sair, qual o clima em Taboão da Serra?",
-      "aumenta o ar na hora do jogo e muda a luz pras cores do time",
-      "Oi Gen",
-    ],
-    devices: [
-      { id: "sala_luz", name: "Luz da sala", value: "apagada" },
-      { id: "quarto_luz", name: "Luz do quarto", value: "80%" },
-      { id: "fita_led", name: "Fita LED", value: "90%" },
-      { id: "tv", name: "TV", value: "acesa" },
-      { id: "ar_condicionado", name: "Ar-condicionado", value: "24 °C" },
-    ],
-    music: ["rock"],
-    routines: ["Ligar luz da sala"],
-    firstAt: "2026-11-09T16:04:25.414Z",
-    lastAt: "2026-11-09T19:52:40.412Z",
-    durationLabel: "3 h 48 min",
-  },
-};
-
-const SESSION = {
+const FULL = {
   session: {
     session_code: "LRANG5",
     id: "LRANG5",
@@ -56,7 +31,84 @@ const SESSION = {
     archetype: "Zen",
     status: "ready",
   },
-  visit: VISIT.visit,
+  visit: {
+    empty: false,
+    conversations: 85,
+    quotes: [
+      "preciso sair, qual o clima em Taboão da Serra?",
+      "aumenta o ar na hora do jogo e muda a luz pras cores do time",
+      "Oi Gen",
+    ],
+    channels: { chat: 85, quest: 6, house: 32 },
+    commandTotal: 90,
+    devices: [
+      { id: "sala_luz", name: "Luz da sala", changes: 4, value: "apagada" },
+      { id: "quarto_luz", name: "Luz do quarto", changes: 2, value: "80%" },
+      { id: "fita_led", name: "Fita LED", changes: 3, value: "90%" },
+      { id: "tv", name: "TV", changes: 1, value: "acesa" },
+      { id: "ar_condicionado", name: "Ar-condicionado", changes: 22, value: "24 °C" },
+    ],
+    mostUsed: { id: "ar_condicionado", name: "Ar-condicionado", changes: 22 },
+    averageAc: "22 °C",
+    averageLight: "62%",
+    music: ["rock"],
+    videos: [],
+    questions: ["clima em Taboão da Serra"],
+    dojos: [],
+    routines: [{ name: "Ligar luz da sala", when: "às 7h" }],
+    firstLabel: "13h04",
+    lastLabel: "16h52",
+    durationLabel: "3 h 48 min",
+    insights: [
+      {
+        text: "Prefere ambiente fresco.",
+        basis: "ar em ≤ 22 °C em 4 de 5 ajustes",
+      },
+      {
+        text: "Conversa mais pelo chat do site.",
+        basis: "85 falas no chat · 6 no Quest · 32 nos botões",
+      },
+      {
+        text: "Os temas da conversa giram em torno de clima e futebol.",
+        basis: "clima 12× · futebol 4×",
+      },
+      {
+        text: "Seu perfil Zen combina com o ar fresco e a casa mais quieta.",
+        basis: "perfil Zen + o que você fez nesta sessão",
+      },
+    ],
+  },
+};
+
+const SPARSE = {
+  session: {
+    session_code: "VDMLMG",
+    id: "VDMLMG",
+    display_name: "QA Redesign",
+    profile_id: "Zen",
+    archetype: "Zen",
+    status: "ready",
+  },
+  visit: {
+    empty: false,
+    conversations: 0,
+    quotes: [],
+    channels: { chat: 0, quest: 0, house: 1 },
+    commandTotal: 1,
+    devices: [{ id: "sala_luz", name: "Luz da sala", changes: 1, value: "acesa" }],
+    mostUsed: { id: "sala_luz", name: "Luz da sala", changes: 1 },
+    averageAc: null,
+    averageLight: null,
+    music: [],
+    videos: [],
+    questions: [],
+    dojos: [],
+    routines: [],
+    firstLabel: "10h12",
+    lastLabel: "10h12",
+    durationLabel: "alguns instantes",
+    insights: [],
+  },
 };
 
 function serve() {
@@ -64,8 +116,9 @@ function serve() {
     const server = http.createServer((req, res) => {
       const url = new URL(req.url, "http://127.0.0.1");
       if (url.pathname === "/api/session") {
+        const code = String(url.searchParams.get("code") || "").toUpperCase();
         res.writeHead(200, { "content-type": "application/json" });
-        res.end(JSON.stringify(SESSION));
+        res.end(JSON.stringify(code === "VDMLMG" ? SPARSE : FULL));
         return;
       }
       let file = url.pathname === "/" || url.pathname === "/codigo" || url.pathname === "/codigo/"
@@ -90,19 +143,20 @@ const browser = await pw.chromium.launch({
 });
 const server = await serve();
 const port = server.address().port;
-const url = `http://127.0.0.1:${port}/codigo?c=LRANG5`;
 
-async function shot(width, height, name) {
+async function shot(code, width, height, name, waitChips) {
   const page = await browser.newPage({ viewport: { width, height }, deviceScaleFactor: 2 });
-  await page.goto(url, { waitUntil: "networkidle" });
+  await page.goto(`http://127.0.0.1:${port}/codigo?c=${code}`, { waitUntil: "networkidle" });
   await page.waitForSelector("#visit-card:not([hidden])");
-  await page.waitForSelector(".visit-chips");
+  if (waitChips) await page.waitForSelector(".visit-chips");
   await page.screenshot({ path: path.join(outDir, name), fullPage: true });
   await page.close();
 }
 
-await shot(412, 915, "codigo-visit-412.png");
-await shot(1440, 900, "codigo-visit-1440.png");
+await shot("LRANG5", 412, 915, "codigo-visit-412.png", true);
+await shot("LRANG5", 1440, 900, "codigo-visit-1440.png", true);
+await shot("VDMLMG", 412, 915, "codigo-visit-sparse-412.png", true);
+await shot("VDMLMG", 1440, 900, "codigo-visit-sparse-1440.png", true);
 await browser.close();
 server.close();
 console.log(outDir);
