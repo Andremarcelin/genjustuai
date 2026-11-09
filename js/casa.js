@@ -1,5 +1,6 @@
 (function () {
   var View = window.GenjutsuCasaView || {};
+  var Voice = window.GenjutsuCasaVoice || {};
   var DEVICES = [
     { id: "sala_luz", label: "Luz Sala", room: "Sala", kind: "light", overlay: "sala", icon: "bulb" },
     { id: "quarto_luz", label: "Luz Quarto", room: "Quarto", kind: "light", overlay: "quarto", icon: "lamp" },
@@ -9,12 +10,6 @@
     { id: "ambiente", label: "Ambiente", room: "Casa", kind: "ambience", overlay: "casa", icon: "fan" }
   ];
   var SWATCHES = ["#FF1A1A", "#FFF4E0", "#3B82F6", "#7C3AED"];
-  var HOUSE_IMG = {
-    Zen: "/assets/casa/zen.jpg",
-    Cyber: "/assets/casa/cyber.jpg",
-    Excentrico: "/assets/casa/excentrico.jpg",
-    Acolhedor: "/assets/casa/acolhedor.jpg"
-  };
   var ICONS = {
     bulb: '<svg viewBox="0 0 24 24" width="22" height="22"><path d="M9 18h6M10 21h4M8 10a4 4 0 1 1 8 0c0 2-1 3-2 4H10c-1-1-2-2-2-4z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',
     lamp: '<svg viewBox="0 0 24 24" width="22" height="22"><path d="M8 21h8M12 21V10M7 10h10L12 4z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
@@ -32,6 +27,8 @@
   var channel = null;
   var roomFilter = "";
   var suggestions = [];
+  var recognition = null;
+  var listening = false;
 
   function hex(value) {
     return /^#[0-9A-Fa-f]{6}$/.test(String(value || "")) ? String(value).toUpperCase() : "#FF1A1A";
@@ -60,17 +57,28 @@
       : ((session && session.display_name) ? "Casa de " + String(session.display_name).trim() : "Sua casa");
     var profile = session && session.profile_id;
     var photo = $("casa-photo");
-    photo.src = HOUSE_IMG[profile] || HOUSE_IMG.Acolhedor;
+    photo.src = View.houseImageFor ? View.houseImageFor(profile) : "/assets/casa/acolhedor.jpg";
     $("casa-frame").dataset.profile = profile || "";
     $("casa-profile-caption").textContent = profile ? "Perfil " + profile : "";
     var badges = $("casa-badges");
     badges.replaceChildren();
-    ["Zen", "Cyber", "Excentrico", "Acolhedor"].forEach(function (id) {
+    var copy = $("casa-understood-copy");
+    var understood = View.understoodFor ? View.understoodFor(profile) : null;
+    if (!understood) {
+      copy.textContent = "Responda o questionário para a casa entender o seu ritmo.";
+      return;
+    }
+    var badge = document.createElement("span");
+    badge.className = "casa-badge is-on";
+    badge.textContent = understood.label;
+    badges.appendChild(badge);
+    understood.traits.forEach(function (trait) {
       var el = document.createElement("span");
-      el.className = "casa-badge" + (id === profile ? " is-on" : "");
-      el.textContent = id === "Excentrico" ? "Excêntrico" : id;
+      el.className = "casa-trait";
+      el.textContent = trait;
       badges.appendChild(el);
     });
+    copy.textContent = understood.summary;
   }
 
   function overlayFor(room) {
@@ -86,7 +94,7 @@
     }
     var mix = on[0];
     var color = mix.color;
-    var alpha = 0.32 + mix.intensity * 0.55;
+    var alpha = 0.4 + mix.intensity * 0.5;
     el.style.background = "radial-gradient(circle at 50% 40%, " + color + " 0%, transparent 70%)";
     el.style.opacity = String(alpha);
     if (room === "sala") {
@@ -107,12 +115,29 @@
   }
 
   function matchesFilters(item) {
-    var q = ($("device-search").value || "").trim().toLowerCase();
-    var kind = $("device-kind").value;
-    if (roomFilter && item.room !== roomFilter) return false;
-    if (kind && item.kind !== kind) return false;
-    if (q && item.label.toLowerCase().indexOf(q) < 0) return false;
-    return true;
+    var filters = {
+      query: $("device-search").value,
+      kind: $("device-kind").value,
+      room: roomFilter
+    };
+    return View.matchesDeviceFilters ? View.matchesDeviceFilters(item, filters) : true;
+  }
+
+  function paintGroupSelection() {
+    document.querySelectorAll(".casa-group").forEach(function (btn) {
+      var on = roomFilter === btn.getAttribute("data-room");
+      btn.classList.toggle("is-selected", on);
+      btn.setAttribute("aria-pressed", on ? "true" : "false");
+    });
+  }
+
+  function showAllDevices() {
+    roomFilter = "";
+    $("device-search").value = "";
+    $("device-kind").value = "";
+    paintGroupSelection();
+    paintDevices();
+    $("device-list").scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   function paintDevices() {
@@ -144,6 +169,7 @@
   function paint() {
     paintHeader();
     paintOverlays();
+    paintGroupSelection();
     paintDevices();
   }
 
@@ -180,17 +206,36 @@
     thread.scrollTop = thread.scrollHeight;
   }
 
-  async function sendChat(text) {
-    if (!text) return;
-    appendBubble("you", text);
-    var res = await fetch("/api/gen/chat", {
-      method: "POST",
-      headers: await authHeaders(),
-      body: JSON.stringify({ text: text })
+  function setVoiceStatus(text, recording) {
+    var status = $("casa-voice-status");
+    if (status) status.textContent = text || "";
+    [$("casa-dock-voice"), $("casa-voice")].forEach(function (btn) {
+      if (!btn) return;
+      btn.classList.toggle("is-recording", !!recording);
+      btn.setAttribute("aria-pressed", recording ? "true" : "false");
     });
-    var json = await res.json().catch(function () { return null; });
+  }
+
+  async function sendChat(text, opts) {
+    if (!text) return;
+    var speak = opts && opts.speak;
+    openSheet();
+    appendBubble("you", text);
+    var json = null;
+    try {
+      var res = await fetch("/api/gen/chat", {
+        method: "POST",
+        headers: await authHeaders(),
+        body: JSON.stringify({ text: text })
+      });
+      json = await res.json().catch(function () { return null; });
+    } catch (err) {
+      json = null;
+    }
     if (json && json.state) take(json.state);
-    appendBubble("gen", (json && json.reply_text) || "Não consegui falar agora.");
+    var reply = (json && json.reply_text) || "Não consegui falar agora.";
+    appendBubble("gen", reply);
+    if (speak && Voice.speakReply) Voice.speakReply(window.speechSynthesis, reply);
   }
 
   function paintChips() {
@@ -247,7 +292,9 @@
   }
 
   function demoState() {
-    session = { id: "DEMO01", display_name: "André", profile_id: "Acolhedor" };
+    var profile = new URLSearchParams(location.search).get("profile") || "Acolhedor";
+    if (!View.HOUSE_IMG || !View.HOUSE_IMG[profile]) profile = "Acolhedor";
+    session = { id: "DEMO01", display_name: "André", profile_id: profile };
     state = {
       session_id: "DEMO01",
       version: 1,
@@ -262,7 +309,7 @@
         lanterns: { intensity: 0, color: "#FF1A1A" }
       }
     };
-    suggestions = window.GenjutsuCasaSuggestions.suggestionsFor("Acolhedor", new Date());
+    suggestions = window.GenjutsuCasaSuggestions.suggestionsFor(profile, new Date());
     paint();
     paintChips();
     if (suggestions[0]) appendBubble("gen", suggestions[0].message);
@@ -331,10 +378,13 @@
   $("device-sort").addEventListener("change", paintDevices);
   document.querySelectorAll(".casa-group").forEach(function (btn) {
     btn.addEventListener("click", function () {
-      roomFilter = roomFilter === btn.getAttribute("data-room") ? "" : btn.getAttribute("data-room");
+      var room = btn.getAttribute("data-room");
+      roomFilter = roomFilter === room ? "" : room;
+      paintGroupSelection();
       paintDevices();
     });
   });
+  $("btn-groups-all").addEventListener("click", showAllDevices);
   $("casa-ask").addEventListener("click", openSheet);
   $("casa-sheet-close").addEventListener("click", closeSheet);
   $("casa-form").addEventListener("submit", function (event) {
@@ -343,9 +393,68 @@
     $("casa-text").value = "";
     sendChat(text);
   });
-  $("casa-voice").addEventListener("click", function () {
-    openSheet();
-    $("casa-text").placeholder = "Fale ou escreva para o Gen";
+
+  function stopListening() {
+    listening = false;
+    if (recognition) {
+      try { recognition.stop(); } catch (err) {}
+    }
+    setVoiceStatus("", false);
+  }
+
+  async function startVoice() {
+    if (listening) {
+      stopListening();
+      return;
+    }
+    if (!Voice.isSupported || !Voice.isSupported(window)) {
+      setVoiceStatus(Voice.voiceErrorMessage("unsupported"), false);
+      return;
+    }
+    try {
+      await Voice.requestMic(navigator.mediaDevices);
+    } catch (err) {
+      var code = (err && (err.name || err.message)) || "not-allowed";
+      setVoiceStatus(Voice.voiceErrorMessage(code), false);
+      return;
+    }
+    var Ctor = Voice.recognitionCtor(window);
+    recognition = new Ctor();
+    recognition.lang = "pt-BR";
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+    recognition.onstart = function () {
+      listening = true;
+      setVoiceStatus("Ouvindo…", true);
+    };
+    recognition.onerror = function (event) {
+      listening = false;
+      setVoiceStatus(Voice.voiceErrorMessage(event && event.error), false);
+    };
+    recognition.onend = function () {
+      listening = false;
+      setVoiceStatus("", false);
+    };
+    recognition.onresult = function (event) {
+      var text = Voice.pickTranscript(event);
+      stopListening();
+      if (text) sendChat(text, { speak: true });
+      else setVoiceStatus(Voice.voiceErrorMessage("no-speech"), false);
+    };
+    try {
+      recognition.start();
+    } catch (err) {
+      setVoiceStatus(Voice.voiceErrorMessage(err && err.name), false);
+    }
+  }
+
+  $("casa-dock-voice").addEventListener("click", function (event) {
+    event.stopPropagation();
+    startVoice();
+  });
+  $("casa-voice").addEventListener("click", function (event) {
+    event.preventDefault();
+    startVoice();
   });
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);

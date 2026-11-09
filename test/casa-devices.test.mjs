@@ -17,7 +17,7 @@ import { readSupabaseConfig } from "../lib/supabase-rest.cjs";
 import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
 const { suggestionsFor } = require("../js/casa-suggestions.js");
-const { houseTitle, overlayLights } = require("../js/casa-view.js");
+const { houseTitle, overlayLights, houseImageFor } = require("../js/casa-view.js");
 
 const SESSION = {
   id: "AB3K7Q",
@@ -232,6 +232,13 @@ test("header uses the full typed name", () => {
   assert.equal(houseTitle("André Teste"), "Casa de André Teste");
   assert.equal(houseTitle("  André   Teste  "), "Casa de André Teste");
   assert.equal(houseTitle(""), "Sua casa");
+});
+
+test("Zen casa image is the furnished house, not a generic ofuro hero path", () => {
+  assert.equal(houseImageFor("Zen"), "/assets/casa/zen.jpg");
+  const js = fs.readFileSync(new URL("../js/casa.js", import.meta.url), "utf8");
+  assert.match(js, /dataset\.profile/);
+  assert.match(js, /houseImageFor/);
 });
 
 test("visitor session lookup uses the anon key and does not require a service role", async () => {
