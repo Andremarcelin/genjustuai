@@ -43,7 +43,7 @@ test("lookup uses public /api/session and never mentions the service role", () =
   assert.match(js, /scope\.GenjutsuPersonality/);
   assert.doesNotMatch(js, /var P = root\.GenjutsuPersonality/);
   assert.match(js, /\/api\/session\?code=/);
-  assert.match(js, /\/api\/codigo\/summary\?code=/);
+  assert.match(js, /found\.visit/);
   assert.match(html, /Sua passagem pela casa/);
   assert.match(html, /Ainda sem registros da Gen nesta sessão/);
   assert.match(css, /#visit-title|visit-card h2/);

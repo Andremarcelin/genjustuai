@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { summarizeVisit, truncateQuote, isRejectedCommand } from "../lib/gen/visit-summary.js";
-import summaryHandler from "../api/codigo/summary.js";
+import sessionHandler from "../api/session.js";
 
 const HOST = "ahzsvjimyfzjcfuhgdgw.supabase.co";
+const ANON = "sb_test_anon_key_do_not_leak";
 const SERVICE = "sb_test_service_role_do_not_leak";
 
 function mockRes() {
@@ -78,12 +79,21 @@ test("empty visit copy payload", () => {
   assert.equal(visit.devices.length, 0);
 });
 
-test("GET /api/codigo/summary uses the service role and hides rejected commands", async () => {
+test("GET /api/session?code= attaches a visit summary via the service role and hides rejected commands", async () => {
   const urls = [];
   global.fetch = async (url, options) => {
     urls.push({ url: String(url), auth: options.headers.Authorization });
     const path = String(url);
-    if (path.includes("session_summaries")) return jsonResponse([{ session_code: "LRANG5" }]);
+    if (path.includes("session_summaries")) {
+      return jsonResponse([{
+        session_code: "LRANG5",
+        display_name: "QA Prod26",
+        personality_text: "ok",
+        archetype: "Zen",
+        profile_id: "Zen",
+        status: "ready",
+      }]);
+    }
     if (path.includes("gen_history")) {
       return jsonResponse([
         { kind: "transcript", role: "visitor", body: "Oi Gen", created_at: "2026-11-09T19:00:00Z" },
@@ -101,34 +111,34 @@ test("GET /api/codigo/summary uses the service role and hides rejected commands"
   };
   await withEnv({
     SUPABASE_URL: `https://${HOST}`,
-    SUPABASE_ANON_KEY: "anon-must-not-be-used",
+    SUPABASE_ANON_KEY: ANON,
     SUPABASE_SERVICE_ROLE: SERVICE,
   }, async () => {
     const res = mockRes();
-    await summaryHandler({ method: "GET", url: "/api/codigo/summary?code=lrang5", query: { code: "lrang5" }, headers: {} }, res);
+    await sessionHandler({ method: "GET", url: "/api/session?code=lrang5", query: { code: "lrang5" }, headers: {} }, res);
     assert.equal(res.statusCode, 200);
-    assert.equal(res.body.session_code, "LRANG5");
+    assert.equal(res.body.session.session_code, "LRANG5");
     assert.equal(res.body.visit.conversations, 2);
     assert.equal(res.body.visit.devices.some((d) => d.id === "tv"), false);
     assert.equal(res.body.visit.devices.find((d) => d.id === "sala_luz").name, "Luz da sala");
     assert.deepEqual(res.body.visit.routines, ["Alarme 7h"]);
-    assert.ok(urls.every((u) => u.auth === `Bearer ${SERVICE}`));
-    assert.ok(urls.some((u) => u.url.includes("house_commands?session_id=eq.LRANG5")));
-    assert.ok(urls.some((u) => u.url.includes("gen_history?session_code=eq.LRANG5")));
+    assert.ok(urls.some((u) => u.url.includes("house_commands?session_id=eq.LRANG5") && u.auth === `Bearer ${SERVICE}`));
+    assert.ok(urls.some((u) => u.url.includes("gen_history?session_code=eq.LRANG5") && u.auth === `Bearer ${SERVICE}`));
+    assert.ok(urls.some((u) => u.url.includes("session_summaries") && u.auth === `Bearer ${ANON}`));
     const dumped = JSON.stringify(res.body);
     assert.equal(dumped.includes(SERVICE), false);
     assert.equal(dumped.includes(HOST), false);
   });
 });
 
-test("invalid or missing session codes fail closed", async () => {
+test("invalid or missing session codes fail closed before visit lookup", async () => {
   global.fetch = async () => jsonResponse([]);
-  await withEnv({ SUPABASE_URL: `https://${HOST}`, SUPABASE_SERVICE_ROLE: SERVICE }, async () => {
+  await withEnv({ SUPABASE_URL: `https://${HOST}`, SUPABASE_ANON_KEY: ANON, SUPABASE_SERVICE_ROLE: SERVICE }, async () => {
     const bad = mockRes();
-    await summaryHandler({ method: "GET", url: "/api/codigo/summary?code=NOPE", query: { code: "NOPE" }, headers: {} }, bad);
+    await sessionHandler({ method: "GET", url: "/api/session?code=NOPE", query: { code: "NOPE" }, headers: {} }, bad);
     assert.equal(bad.statusCode, 400);
     const missing = mockRes();
-    await summaryHandler({ method: "GET", url: "/api/codigo/summary?code=AB3K7Q", query: { code: "AB3K7Q" }, headers: {} }, missing);
+    await sessionHandler({ method: "GET", url: "/api/session?code=AB3K7Q", query: { code: "AB3K7Q" }, headers: {} }, missing);
     assert.equal(missing.statusCode, 404);
   });
 });

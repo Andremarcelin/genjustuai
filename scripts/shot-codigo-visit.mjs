@@ -56,6 +56,7 @@ const SESSION = {
     archetype: "Zen",
     status: "ready",
   },
+  visit: VISIT.visit,
 };
 
 function serve() {
@@ -65,11 +66,6 @@ function serve() {
       if (url.pathname === "/api/session") {
         res.writeHead(200, { "content-type": "application/json" });
         res.end(JSON.stringify(SESSION));
-        return;
-      }
-      if (url.pathname === "/api/codigo/summary") {
-        res.writeHead(200, { "content-type": "application/json" });
-        res.end(JSON.stringify(VISIT));
         return;
       }
       let file = url.pathname === "/" || url.pathname === "/codigo" || url.pathname === "/codigo/"

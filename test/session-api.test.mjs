@@ -162,7 +162,7 @@ test("unknown profile_id is returned as null and a missing column falls back", a
   await withEnv({ SUPABASE_URL: "https://example.supabase.co", SUPABASE_ANON_KEY: ANON }, async () => {
     const res = mockRes();
     await sessionHandler({ method: "GET", query: { code: "AB3K7Q" }, headers: {} }, res);
-    assert.equal(calls, 3);
+    assert.ok(calls >= 3);
     assert.equal(res.statusCode, 200);
     assert.equal(res.body.session.profile_id, null);
     assert.equal(res.body.session.archetype, "Ritmo ativo");

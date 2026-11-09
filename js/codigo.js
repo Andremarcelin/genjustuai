@@ -93,16 +93,7 @@
     if (!res.ok || !body.session) {
       return { error: errorFor(res.status, body.error) };
     }
-    return { session: body.session };
-  }
-
-  async function fetchVisit(code, fetchImpl) {
-    var fetchFn = fetchImpl || fetch;
-    var res = await fetchFn("/api/codigo/summary?code=" + encodeURIComponent(normalizeCode(code)), { cache: "no-store" });
-    var body = {};
-    try { body = await res.json(); } catch (e) { body = {}; }
-    if (!res.ok || !body.visit) return { error: true };
-    return { visit: body.visit };
+    return { session: body.session, visit: body.visit || null };
   }
 
   function el(tag, className, text) {
@@ -279,11 +270,8 @@
         paintReady(found.session, P, Z);
         if (lookup) lookup.hidden = true;
         if (ready) ready.hidden = false;
-        hideVisit();
-        try {
-          var visit = await fetchVisit(code);
-          if (visit.visit) paintVisit(visit.visit);
-        } catch (e) { /* card stays hidden */ }
+        if (found.visit) paintVisit(found.visit);
+        else hideVisit();
       } catch (e) {
         setStatus(errorFor(503, "supabase_unreachable"));
       } finally {
@@ -321,7 +309,6 @@
     errorFor: errorFor,
     recordRows: recordRows,
     fetchSession: fetchSession,
-    fetchVisit: fetchVisit,
     paintVisit: paintVisit,
     codeFromLocation: codeFromLocation,
     writeBoxes: writeBoxes,
