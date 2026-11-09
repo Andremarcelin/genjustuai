@@ -61,6 +61,10 @@ export function createVoiceHandler(deps = {}) {
         res.status(503).json({ error: "missing_config", hint: token.hint });
         return;
       }
+      if (token.error === "gemini_unavailable") {
+        res.status(502).json({ error: "gemini_unavailable", fallback: "groq" });
+        return;
+      }
       if (token.error) {
         res.status(502).json({ error: "provider_unreachable", provider: "gemini" });
         return;
