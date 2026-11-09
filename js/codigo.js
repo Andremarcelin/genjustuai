@@ -93,7 +93,122 @@
     if (!res.ok || !body.session) {
       return { error: errorFor(res.status, body.error) };
     }
-    return { session: body.session };
+    return { session: body.session, visit: body.visit || null };
+  }
+
+  function el(tag, className, text) {
+    var node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text) node.textContent = text;
+    return node;
+  }
+
+  function addStat(parent, label, value) {
+    if (!value && value !== 0) return;
+    var row = el("div", "visit-stat");
+    row.appendChild(el("dt", "", label));
+    row.appendChild(el("dd", "", String(value)));
+    parent.appendChild(row);
+  }
+
+  function channelLine(ch) {
+    if (!ch) return "";
+    var parts = [];
+    if (ch.chat) parts.push("chat " + ch.chat);
+    if (ch.quest) parts.push("voz Quest " + ch.quest);
+    if (ch.house) parts.push("botões " + ch.house);
+    return parts.join(" · ");
+  }
+
+  function paintVisit(visit) {
+    var card = document.getElementById("visit-card");
+    var empty = document.getElementById("visit-empty");
+    var body = document.getElementById("visit-body");
+    var insight = document.getElementById("visit-insight");
+    var insightBody = document.getElementById("insight-body");
+    if (!card) return;
+    card.hidden = false;
+    if (insight) insight.hidden = true;
+    if (!visit || visit.empty) {
+      if (empty) empty.hidden = false;
+      if (body) {
+        body.hidden = true;
+        body.replaceChildren();
+      }
+      return;
+    }
+    if (empty) empty.hidden = true;
+    if (!body) return;
+    body.hidden = false;
+    body.replaceChildren();
+    var dl = el("dl");
+    addStat(dl, "Conversas com a Gen", visit.conversations || 0);
+    addStat(dl, "Canais", channelLine(visit.channels));
+    addStat(dl, "Comandos", visit.commandTotal || 0);
+    if (visit.firstLabel || visit.lastLabel) {
+      addStat(dl, "Primeiro → último", (visit.firstLabel || "—") + " → " + (visit.lastLabel || "—"));
+    }
+    addStat(dl, "Tempo na casa", visit.durationLabel);
+    addStat(dl, "Ar médio", visit.averageAc);
+    addStat(dl, "Luz média", visit.averageLight);
+    if (visit.mostUsed) {
+      addStat(dl, "Mais usado", visit.mostUsed.name + " · " + visit.mostUsed.changes + "×");
+    }
+    body.appendChild(dl);
+    if (visit.quotes && visit.quotes.length) {
+      body.appendChild(el("p", "visit-kicker", "O que você disse"));
+      var quotes = el("ul", "visit-quotes");
+      visit.quotes.forEach(function (q) {
+        quotes.appendChild(el("li", "", "“" + q + "”"));
+      });
+      body.appendChild(quotes);
+    }
+    if (visit.devices && visit.devices.length) {
+      body.appendChild(el("p", "visit-kicker", "Dispositivos"));
+      var chips = el("div", "visit-chips");
+      visit.devices.forEach(function (d) {
+        var times = d.changes ? d.changes + "× · " : "";
+        chips.appendChild(el("span", "", d.name + " · " + times + (d.value || "ajustado")));
+      });
+      body.appendChild(chips);
+    }
+    if (visit.music && visit.music.length) addStat(body, "Música", visit.music.join(" · "));
+    if (visit.videos && visit.videos.length) addStat(body, "Vídeos", visit.videos.join(" · "));
+    if (visit.questions && visit.questions.length) addStat(body, "Perguntas na web", visit.questions.join(" · "));
+    if (visit.dojos && visit.dojos.length) addStat(body, "Dojo / casa", visit.dojos.join(" · "));
+    if (visit.routines && visit.routines.length) {
+      addStat(body, "Rotinas", visit.routines.map(function (r) {
+        return typeof r === "string" ? r : (r.name + (r.when ? " " + r.when : ""));
+      }).join(" · "));
+    }
+    if (insight && insightBody && visit.insights && visit.insights.length) {
+      insight.hidden = false;
+      insightBody.replaceChildren();
+      var list = el("ul");
+      visit.insights.forEach(function (item) {
+        var li = el("li");
+        li.appendChild(el("p", "said", item.text));
+        if (item.basis) li.appendChild(el("p", "basis", item.basis));
+        list.appendChild(li);
+      });
+      insightBody.appendChild(list);
+    }
+  }
+
+  function hideVisit() {
+    var card = document.getElementById("visit-card");
+    var empty = document.getElementById("visit-empty");
+    var body = document.getElementById("visit-body");
+    var insight = document.getElementById("visit-insight");
+    var insightBody = document.getElementById("insight-body");
+    if (card) card.hidden = true;
+    if (insight) insight.hidden = true;
+    if (empty) empty.hidden = false;
+    if (body) {
+      body.hidden = true;
+      body.replaceChildren();
+    }
+    if (insightBody) insightBody.replaceChildren();
   }
 
   function paintReady(session, P, Z) {
@@ -193,6 +308,8 @@
         paintReady(found.session, P, Z);
         if (lookup) lookup.hidden = true;
         if (ready) ready.hidden = false;
+        if (found.visit) paintVisit(found.visit);
+        else hideVisit();
       } catch (e) {
         setStatus(errorFor(503, "supabase_unreachable"));
       } finally {
@@ -208,6 +325,7 @@
       other.addEventListener("click", function () {
         if (ready) ready.hidden = true;
         if (lookup) lookup.hidden = false;
+        hideVisit();
         setStatus("");
         inputs[0].focus();
       });
@@ -229,6 +347,7 @@
     errorFor: errorFor,
     recordRows: recordRows,
     fetchSession: fetchSession,
+    paintVisit: paintVisit,
     codeFromLocation: codeFromLocation,
     writeBoxes: writeBoxes,
     readBoxes: readBoxes,

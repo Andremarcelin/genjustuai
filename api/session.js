@@ -1,5 +1,6 @@
 import { supabaseRest } from "../lib/supabase-rest.cjs";
 import { userIdFromBearer } from "../lib/gen/http.js";
+import { summarizeVisit } from "../lib/gen/visit-summary.js";
 
 const PROFILE_IDS = new Set(["Zen", "Cyber", "Excentrico", "Acolhedor"]);
 const SESSION_STATUSES = new Set(["ready", "active", "ended"]);
@@ -8,7 +9,7 @@ export function sanitizeProfileId(value) {
   return PROFILE_IDS.has(value) ? value : null;
 }
 
-const CODE_RE = /^[A-HJ-NP-Z2-9]{6}$/i;
+export const CODE_RE = /^[A-HJ-NP-Z2-9]{6}$/i;
 const SUMMARY_FIELDS = ["session_code", "display_name", "personality_text", "archetype", "profile_id", "status"];
 
 function cors(res) {
@@ -83,6 +84,31 @@ async function summaryFor(code, fallbackStatus) {
     return { error: publicError(result), status: result.status || 503 };
   }
   return { error: "supabase_unreachable", status: 503 };
+}
+
+async function restVisit(path) {
+  const result = await supabaseRest(path, {
+    serviceRoleOnly: true,
+    headers: { Range: "0-999" },
+  });
+  if (!result.ok) return [];
+  return Array.isArray(result.json) ? result.json : [];
+}
+
+export async function loadVisitSummary(code, profile) {
+  const sessionCode = String(code || "").toUpperCase();
+  const [history, commands, routines] = await Promise.all([
+    restVisit(
+      `gen_history?session_code=eq.${encodeURIComponent(sessionCode)}&select=kind,role,source,tool,args,body,created_at&order=created_at.asc`
+    ),
+    restVisit(
+      `house_commands?session_id=eq.${encodeURIComponent(sessionCode)}&select=tool,args,status,created_at&order=created_at.asc`
+    ),
+    restVisit(
+      `house_routines?session_id=eq.${encodeURIComponent(sessionCode)}&select=name,created_at&order=created_at.asc`
+    ),
+  ]);
+  return summarizeVisit({ history, commands, routines, profileId: profile || "" });
 }
 
 export async function loadSessionForUser(userId) {
@@ -173,7 +199,13 @@ export default async function handler(req, res) {
       sendError(res, found.status, found.error);
       return;
     }
-    res.status(200).json({ session: found.data });
+    let visit;
+    try {
+      visit = await loadVisitSummary(code, found.data.profile_id);
+    } catch {
+      visit = summarizeVisit({});
+    }
+    res.status(200).json({ session: found.data, visit });
   } catch {
     if (!res.headersSent) sendError(res, 503, "supabase_unreachable");
   }
