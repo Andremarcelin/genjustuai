@@ -26,6 +26,9 @@ test("codigo page copy matches the mock and is not in main nav", () => {
   assert.equal((html.match(/<input /g) || []).length, 6);
   assert.match(css, /safe-area-inset-top/);
   assert.match(css, /Oswald/);
+  assert.match(css, /overflow-x:\s*hidden/);
+  assert.match(css, /\.ready[\s\S]*max-width:\s*100%/);
+  assert.match(css, /\.scroll-roll[\s\S]*max-width:\s*100%/);
   assert.match(vercel, /"\/codigo"/);
   assert.match(vercel, /"\/codigo\/"/);
   assert.doesNotMatch(landing, /href="\/codigo"/);
@@ -34,6 +37,9 @@ test("codigo page copy matches the mock and is not in main nav", () => {
 });
 
 test("lookup uses public /api/session and never mentions the service role", () => {
+  assert.match(js, /factory\(root\)/);
+  assert.match(js, /scope\.GenjutsuPersonality/);
+  assert.doesNotMatch(js, /var P = root\.GenjutsuPersonality/);
   assert.match(js, /\/api\/session\?code=/);
   assert.doesNotMatch(js, /SERVICE_ROLE|service_role|serviceRole/);
   assert.equal(C.errorFor(404, "not_found"), "Não achei esse código. Confere as letras?");

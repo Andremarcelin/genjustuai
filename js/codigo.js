@@ -1,12 +1,12 @@
 (function (root, factory) {
-  var api = factory();
+  var api = factory(root);
   if (typeof module === "object" && module.exports) module.exports = api;
   root.GenjutsuCodigo = api;
   if (typeof document !== "undefined") {
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", api.mount);
     else api.mount();
   }
-})(typeof globalThis !== "undefined" ? globalThis : this, function () {
+})(typeof globalThis !== "undefined" ? globalThis : this, function (root) {
   var LOOKUP_ERROR = "Não achei esse código. Confere as letras?";
 
   function normalizeCode(raw) {
@@ -159,8 +159,9 @@
     var other = document.getElementById("btn-other");
     if (!boxes || !form) return;
     var inputs = wireBoxes(boxes);
-    var P = root.GenjutsuPersonality;
-    var Z = root.GenjutsuZcea;
+    var scope = root || (typeof window !== "undefined" ? window : globalThis);
+    var P = scope.GenjutsuPersonality;
+    var Z = scope.GenjutsuZcea;
 
     function setStatus(text) {
       if (status) status.textContent = text || "";
@@ -174,6 +175,7 @@
     }
 
     async function openCode(raw) {
+      await loadBank();
       var code = normalizeCode(raw);
       writeBoxes(inputs, code);
       if (code.length !== 6) {

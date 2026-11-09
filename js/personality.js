@@ -234,6 +234,7 @@
     avatarFor: avatarFor,
     formatArchetype: formatArchetype,
     phraseFor: phraseFor,
+    profileIdFrom: profileIdFrom,
     proverbFor: proverbFor,
     hashMod: hashMod,
     setProverbBank: setProverbBank,
