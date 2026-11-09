@@ -1,303 +1,906 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GenJutsu AI — Smart Home Cognitiva</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Genjutsu AI · A casa que se molda a você</title>
+<!-- site chrome (non-visual) -->
 <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png">
 <link rel="apple-touch-icon" sizes="180x180" href="/assets/apple-touch-icon.png">
 <link rel="manifest" href="/site.webmanifest">
 <link rel="canonical" href="https://genjutsuai.vercel.app/">
 <meta name="application-name" content="GenJutsu AI">
-<meta name="theme-color" content="#050505">
-<meta name="description" content="GenJutsu AI é a Smart Home Cognitiva para o Meta Quest 3S. Continue com Google (agenda, YouTube, contatos e tarefas, sem Gmail) ou sem conta, só com o clima da casa. ExpoTech / UniFECAF.">
+<meta name="theme-color" content="#070707">
 <meta property="og:site_name" content="GenJutsu AI">
-<meta property="og:title" content="GenJutsu AI — Smart Home Cognitiva">
-<meta property="og:description" content="Entre com Google ou continue como visitante. O clima da casa e o código da sessão seguem para o Meta Quest 3S.">
+<meta property="og:title" content="Genjutsu AI · A casa que se molda a você">
+<meta property="og:description" content="Casa inteligente cognitiva. Responde um questionário, entra no dojo no headset e fala com a Gen: luz, ar, música, rotinas e busca com fontes.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://genjutsuai.vercel.app/">
 <meta property="og:image" content="https://genjutsuai.vercel.app/assets/og-logo.jpg">
 <meta property="og:image:alt" content="Corvo de feltro preto com olhos sharingan vermelhos diante de um torii neon">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://genjutsuai.vercel.app/assets/og-logo.jpg">
+<meta name="description" content="Casa inteligente cognitiva. Responde um questionário, entra no dojo no headset e fala com a Gen: luz, ar, música, rotinas e busca com fontes.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Noto+Serif+JP:wght@600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/site.css">
-<link rel="stylesheet" href="/portal.css">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Serif+JP:wght@500;600&family=Oswald:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#070707; --ink:#F7F3EE; --muted:#D2CBC3; --red:#E02828; --red-soft:#B81C1C;
+  --red-glow:rgba(224,40,40,.45); --panel:#101010; --line:rgba(224,40,40,.38);
+  --max:1160px; --card:#141414;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body>*:not(.haze){position:relative;z-index:1}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.55 Inter,system-ui,sans-serif;overflow-x:hidden}
+img{max-width:100%;display:block;height:auto}
+a{color:inherit;text-decoration:none}
+.wrap{width:min(100% - 2.5rem,var(--max));margin-inline:auto}
+.haze{pointer-events:none;position:fixed;inset:0;z-index:0;overflow:hidden}
+.haze i{position:absolute;border-radius:50%;filter:blur(70px);opacity:.22;background:radial-gradient(circle,rgba(224,40,40,.55),transparent 70%);animation:hazeDrift 28s ease-in-out infinite alternate}
+.haze i:nth-child(1){width:42vw;height:42vw;left:-8%;top:10%}
+.haze i:nth-child(2){width:36vw;height:36vw;right:-10%;top:40%;animation-duration:36s}
+.haze i:nth-child(3){width:28vw;height:28vw;left:30%;bottom:-5%;animation-duration:40s}
+@keyframes hazeDrift{0%{transform:translate3d(0,0,0) scale(1)}100%{transform:translate3d(4%,-6%,0) scale(1.12)}}
+
+/* NAV — keep x1 */
+.nav{position:sticky;top:0;z-index:40;backdrop-filter:blur(14px);background:rgba(7,7,7,.82);border-bottom:1px solid rgba(255,255,255,.08)}
+.nav-inner{display:flex;align-items:center;justify-content:center;min-height:64px;padding:.6rem 0}
+.brand{display:inline-flex;align-items:center;gap:.7rem}
+.brand img{width:36px;height:36px;border-radius:50%;object-fit:cover;box-shadow:0 0 0 1px rgba(224,40,40,.5)}
+.brand-text{display:flex;flex-direction:column;align-items:flex-start;gap:.12rem;line-height:1.05}
+.brand-name{font-family:Oswald,sans-serif;font-weight:700;letter-spacing:.06em;text-transform:uppercase;font-size:1.1rem}
+.brand-kanji{font-family:"Noto Serif JP",serif;font-size:.78rem;color:var(--red);letter-spacing:.2em}
+
+.cta{display:inline-flex;align-items:center;justify-content:center;padding:.85rem 1.35rem;border-radius:999px;background:linear-gradient(180deg,#F03535,var(--red));color:#fff;font-weight:600;box-shadow:0 0 0 1px rgba(255,255,255,.1),0 12px 40px rgba(224,40,40,.4);transition:transform .2s,box-shadow .2s}
+.cta:hover{transform:translateY(-1px);box-shadow:0 0 0 1px rgba(255,255,255,.14),0 16px 48px rgba(224,40,40,.5)}
+.cta.ghost{background:transparent;border:1px solid rgba(255,255,255,.55);box-shadow:none;color:var(--ink)}
+.cta.ghost:hover{border-color:#fff;background:rgba(255,255,255,.04)}
+.js .cta-pulse{animation:ctaPulse 2.8s ease-in-out infinite}
+@keyframes ctaPulse{0%,100%{box-shadow:0 0 0 1px rgba(255,255,255,.1),0 12px 40px rgba(224,40,40,.4)}50%{box-shadow:0 0 0 1px rgba(255,255,255,.16),0 14px 52px rgba(224,40,40,.62)}}
+
+/* HERO — keep x1 */
+.hero{position:relative;min-height:100svh;display:flex;align-items:flex-end;overflow:hidden;isolation:isolate}
+.hero-bg{position:absolute;inset:0;z-index:-2}
+.hero-bg img{width:100%;height:100%;object-fit:cover;object-position:center 28%;transform:scale(1.06)}
+.hero-veil{position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(7,7,7,.3) 0%,rgba(7,7,7,.12) 35%,rgba(7,7,7,.82) 78%,#070707 100%),radial-gradient(80% 60% at 70% 40%,rgba(224,40,40,.28),transparent 60%)}
+.hero-kanji{position:absolute;right:clamp(.5rem,4vw,3.5rem);top:50%;transform:translateY(-50%);display:flex;flex-direction:column;align-items:center;gap:.05em;font-size:clamp(4.5rem,14vw,9.5rem);line-height:1.05;color:rgba(224,40,40,.16);pointer-events:none;font-family:"Noto Serif JP",serif;font-weight:500;z-index:0}
+.hero-copy{position:relative;z-index:2;padding:0 0 clamp(4.5rem,12vh,8rem);width:min(32.2vw,420px);max-width:42%;margin-right:auto}
+.kicker,.label{font-family:Oswald,sans-serif;font-weight:600;font-size:.9rem;letter-spacing:.22em;text-transform:uppercase;color:#E8A0A0}
+h1.hero-title{margin:.55rem 0 1.1rem;width:100%;max-width:none!important;color:#F7F3EE;font-family:Oswald,sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:-.02em;display:flex;flex-direction:column}
+h1.hero-title .line{display:inline-block;white-space:nowrap;max-width:none;font-family:Oswald,sans-serif;font-weight:700;text-transform:uppercase;color:#F7F3EE;line-height:.92;letter-spacing:-.02em;font-size:clamp(1.55rem,3.1vw,2.55rem);margin:0}
+.hero-actions{display:flex;flex-direction:column;align-items:stretch;gap:.65rem;max-width:280px}
+.fine{margin-top:.85rem;font-size:.78rem;color:rgba(210,203,195,.75);max-width:36ch}
+.fine a{text-decoration:underline;text-underline-offset:2px}
+
+/* SHARED SECTION CHROME */
+.sec{padding:clamp(4.5rem,9vw,7.5rem) 0;position:relative;overflow:hidden}
+.sec + .sec{border-top:1px solid rgba(255,255,255,.05)}
+.sec-head{display:grid;grid-template-columns:auto 1fr auto;gap:1rem;align-items:end;margin-bottom:2.25rem}
+.sec-num{font-family:Oswald,sans-serif;font-weight:700;font-size:clamp(2.4rem,5vw,3.6rem);line-height:1;color:var(--red);letter-spacing:.04em}
+.sec-head .label{margin:0 0 .4rem}
+.sec h2{margin:0;font-family:Oswald,sans-serif;font-weight:700;font-size:clamp(1.85rem,4vw,3rem);line-height:1.05;letter-spacing:.02em;text-transform:uppercase;color:var(--ink);max-width:22ch;text-shadow:0 2px 24px rgba(0,0,0,.45)}
+.sec .lead,.sec > .wrap > p,.chapter-p{margin:.85rem 0 0;color:var(--muted);max-width:52ch;font-size:1.05rem;font-family:Inter,system-ui,sans-serif;font-weight:400}
+.stroke-bg{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-family:Oswald,sans-serif;font-weight:700;font-size:clamp(6rem,18vw,14rem);letter-spacing:.04em;text-transform:uppercase;color:transparent;-webkit-text-stroke:1px rgba(224,40,40,.18);pointer-events:none;white-space:nowrap;z-index:0;user-select:none}
+.panel{position:relative;background:linear-gradient(180deg,#161616,#0e0e0e);border:1px solid var(--line);border-radius:18px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.4),0 0 40px rgba(224,40,40,.08)}
+.panel::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;box-shadow:inset 0 0 0 1px rgba(255,255,255,.04)}
+.glow{position:absolute;inset:auto;width:70%;height:70%;border-radius:50%;filter:blur(50px);opacity:.35;background:radial-gradient(circle,rgba(224,40,40,.7),transparent 70%);pointer-events:none;z-index:0}
+.tag{display:inline-flex;align-items:center;gap:.4rem;padding:.28rem .65rem;border-radius:6px;background:var(--red);color:#fff;font-family:Oswald,sans-serif;font-size:.72rem;letter-spacing:.14em;text-transform:uppercase}
+.hud{font-family:Oswald,sans-serif;font-size:.68rem;letter-spacing:.16em;text-transform:uppercase;color:rgba(224,40,40,.7)}
+
+/* 01 WHAT */
+.what-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:1.5rem;align-items:stretch;margin-top:1.5rem}
+.what-copy{display:flex;flex-direction:column;gap:1rem}
+.what-copy .panel{padding:1.35rem 1.4rem}
+.what-copy h3{margin:0 0 .45rem;font-family:Oswald,sans-serif;font-weight:700;font-size:1.15rem;letter-spacing:.06em;text-transform:uppercase}
+.what-copy p{margin:0;color:var(--muted);font-size:.98rem}
+.what-visual{position:relative;min-height:420px}
+.what-visual .glow{right:-10%;top:10%;width:80%;height:80%}
+.what-visual .panel{height:100%;isolation:isolate}
+.what-visual img{width:100%;height:100%;object-fit:cover;object-position:center 20%;filter:saturate(1.05)}
+.what-visual .rim{position:absolute;inset:0;box-shadow:inset -18px 0 40px rgba(224,40,40,.35),inset 0 -30px 50px rgba(0,0,0,.55);pointer-events:none;border-radius:18px}
+.what-visual .cap{position:absolute;left:14px;bottom:14px;z-index:2}
+
+/* 02 STEPS */
+.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-top:1.75rem;position:relative}
+.steps::before{content:"";position:absolute;left:8%;right:8%;top:38px;height:1px;background:linear-gradient(90deg,transparent,var(--line),transparent);z-index:0}
+.step{position:relative;z-index:1;background:linear-gradient(180deg,#151515,#0d0d0d);border:1px solid var(--line);border-radius:16px;overflow:hidden;display:flex;flex-direction:column;min-height:100%;box-shadow:0 16px 40px rgba(0,0,0,.35)}
+.step-bar{display:flex;align-items:center;justify-content:space-between;padding:.55rem .85rem;background:rgba(224,40,40,.92);color:#fff}
+.step-bar .n{font-family:Oswald,sans-serif;font-weight:700;letter-spacing:.08em}
+.step-bar .t{font-family:Oswald,sans-serif;font-size:.78rem;letter-spacing:.12em;text-transform:uppercase}
+.step-media{position:relative;aspect-ratio:4/3;background:#0a0a0a;overflow:hidden}
+.step-media .glow{left:50%;top:60%;transform:translate(-50%,-50%);width:90%;height:90%;opacity:.4}
+.step-media img{position:relative;z-index:1;width:100%;height:100%;object-fit:cover}
+.step-body{padding:1rem 1rem 1.15rem;flex:1}
+.step-body p{margin:0;color:var(--muted);font-size:.92rem}
+
+/* 03 GEN EM AÇÃO — app chat */
+.gen-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;margin-top:1.5rem;align-items:stretch}
+.gen-app,.house-live{height:100%;min-height:520px;display:flex;flex-direction:column;border:1px solid var(--line);border-radius:20px;overflow:hidden;background:linear-gradient(180deg,#141414,#0b0b0b);box-shadow:0 22px 60px rgba(0,0,0,.5),0 0 40px rgba(224,40,40,.08)}
+.gen-app-head{display:flex;align-items:center;gap:.75rem;padding:.85rem 1rem;border-bottom:1px solid rgba(255,255,255,.08);background:rgba(224,40,40,.08);flex:none}
+.gen-app-head img{width:40px;height:40px;border-radius:50%;object-fit:cover;box-shadow:0 0 0 2px rgba(224,40,40,.55)}
+.gen-app-head .meta{display:flex;flex-direction:column;gap:.15rem;min-width:0}
+.gen-app-head .name{font-family:Oswald,sans-serif;font-weight:700;letter-spacing:.06em;text-transform:uppercase;font-size:1.05rem}
+.gen-app-head .status{display:inline-flex;align-items:center;gap:.4rem;font-size:.78rem;color:var(--muted)}
+.gen-app-head .dot{width:8px;height:8px;border-radius:50%;background:#3DDF6A;box-shadow:0 0 10px rgba(61,223,106,.7)}
+.gen-msgs{flex:1;display:flex;flex-direction:column;gap:.7rem;padding:1rem 1rem .5rem;overflow:auto;min-height:0}
+.bubble{max-width:88%;padding:.75rem .95rem;border-radius:16px;font-size:.94rem;line-height:1.45;font-family:Inter,system-ui,sans-serif;opacity:0;transform:translateY(10px);transition:opacity .55s ease,transform .55s ease}
+.bubble.in{opacity:1;transform:none}
+.bubble.you{align-self:flex-end;background:#1d1d1d;border:1px solid rgba(255,255,255,.12);border-bottom-right-radius:6px}
+.bubble.gen{align-self:flex-start;background:rgba(224,40,40,.1);border:1px solid rgba(224,40,40,.45);box-shadow:0 0 20px rgba(224,40,40,.12);border-bottom-left-radius:6px}
+.bubble .who{display:block;font-family:Oswald,sans-serif;font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:var(--red);margin-bottom:.28rem}
+.typing{align-self:flex-start;display:inline-flex;gap:5px;padding:.7rem .9rem;border-radius:16px;border:1px solid rgba(224,40,40,.35);background:rgba(224,40,40,.08);opacity:0;transition:opacity .3s}
+.typing.show{opacity:1}
+.typing i{width:6px;height:6px;border-radius:50%;background:var(--red);opacity:.55;animation:typeDot 1s ease-in-out infinite}
+.typing i:nth-child(2){animation-delay:.15s}.typing i:nth-child(3){animation-delay:.3s}
+@keyframes typeDot{0%,80%,100%{transform:translateY(0);opacity:.4}40%{transform:translateY(-3px);opacity:1}}
+.gen-chips{display:flex;flex-wrap:wrap;gap:.45rem;padding:.35rem 1rem .75rem;flex:none}
+.gen-chips button{appearance:none;border:1px solid rgba(224,40,40,.4);background:rgba(224,40,40,.08);color:var(--ink);font:500 .78rem/1 Inter,system-ui,sans-serif;padding:.45rem .7rem;border-radius:999px;cursor:default}
+.gen-input{display:flex;align-items:center;gap:.55rem;padding:.7rem .85rem;border-top:1px solid rgba(255,255,255,.08);background:#0e0e0e;flex:none}
+.gen-input .field{flex:1;display:flex;align-items:center;min-height:42px;padding:0 .9rem;border-radius:999px;border:1px solid rgba(255,255,255,.1);background:#161616;color:rgba(210,203,195,.55);font-size:.88rem}
+.gen-input .mic{width:42px;height:42px;border-radius:50%;border:1px solid rgba(224,40,40,.55);background:linear-gradient(180deg,#F03535,var(--red));display:grid;place-items:center;color:#fff;flex:none;box-shadow:0 8px 24px rgba(224,40,40,.35)}
+.gen-input .mic svg{width:18px;height:18px;fill:currentColor}
+.house-live{position:relative;isolation:isolate}
+.house-live .glow{position:absolute;right:-15%;bottom:-15%;width:80%;height:70%;border-radius:50%;filter:blur(50px);opacity:.4;background:radial-gradient(circle,rgba(224,40,40,.75),transparent 70%);pointer-events:none;z-index:0}
+.house-live img{position:relative;z-index:1;width:100%;height:100%;object-fit:cover;flex:1;min-height:0}
+.hud-stack{position:absolute;left:12px;top:12px;z-index:3;display:flex;flex-direction:column;gap:.45rem;max-width:min(90%,260px)}
+.hud-chip{opacity:0;transform:translateY(6px);transition:opacity .45s ease,transform .45s ease;padding:.4rem .7rem;border-radius:10px;background:rgba(0,0,0,.72);border:1px solid rgba(224,40,40,.55);backdrop-filter:blur(8px);font-family:Oswald,sans-serif;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:#F7F3EE;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+.hud-chip.in{opacity:1;transform:none}
+.hud-chip b{color:var(--red);font-weight:700}
+@media (prefers-reduced-motion:reduce){
+  .bubble,.hud-chip{opacity:1!important;transform:none!important;transition:none!important}
+  .typing i{animation:none!important}
+}
+
+/* 04 PROFILES — rental-style cards */
+.profiles{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-top:1.75rem}
+.prof{position:relative;border:1px solid var(--line);border-radius:16px;overflow:hidden;background:#0d0d0d;display:flex;flex-direction:column;box-shadow:0 18px 50px rgba(0,0,0,.4)}
+.prof-media{position:relative;aspect-ratio:3/4;overflow:hidden}
+.prof-media .glow{left:50%;bottom:-20%;transform:translateX(-50%);width:100%;height:70%;opacity:.5}
+.prof-media img{position:relative;z-index:1;width:100%;height:100%;object-fit:cover}
+.prof-bar{display:flex;align-items:center;justify-content:space-between;padding:.7rem .9rem;border-top:1px solid rgba(255,255,255,.06);background:linear-gradient(180deg,#161616,#101010)}
+.prof-bar strong{font-family:Oswald,sans-serif;font-weight:700;letter-spacing:.1em;text-transform:uppercase;font-size:.95rem}
+.prof-bar span{font-size:.78rem;color:var(--muted)}
+.prof p{margin:0;padding:0 .9rem 1rem;color:var(--muted);font-size:.88rem}
+
+/* 05 PROBLEMA — contraste + imagens */
+.contrast{display:grid;grid-template-columns:1fr auto 1fr;gap:1rem;margin-top:1.75rem;align-items:stretch;position:relative}
+.contrast-card{position:relative;padding:0;border:1px solid var(--line);border-radius:16px;background:linear-gradient(180deg,#151515,#0e0e0e);overflow:hidden;box-shadow:0 18px 50px rgba(0,0,0,.35);display:flex;flex-direction:column}
+.contrast-card.common{border-color:rgba(160,170,180,.22)}
+.contrast-card.ours{border-color:rgba(224,40,40,.55);box-shadow:0 0 40px rgba(224,40,40,.14),0 18px 50px rgba(0,0,0,.4)}
+.contrast-media{position:relative;aspect-ratio:16/10;overflow:hidden;background:#0a0a0a;flex:none}
+.contrast-media img{width:100%;height:100%;object-fit:cover;display:block}
+.contrast-card.common .contrast-media{background:#12151a}
+.contrast-card.common .contrast-media img{filter:grayscale(.5) saturate(.45) brightness(.88) contrast(.95);opacity:.95}
+.contrast-card.common .contrast-media::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(40,55,70,.18),rgba(10,10,12,.55));pointer-events:none}
+.contrast-card.ours .contrast-media .glow{left:50%;bottom:-25%;transform:translateX(-50%);width:95%;height:70%;opacity:.55;background:radial-gradient(circle,rgba(224,40,40,.75),transparent 70%)}
+.contrast-card.ours .contrast-media img{position:relative;z-index:1;filter:saturate(1.08);object-position:center 42%}
+.contrast-card.ours .rim{position:absolute;inset:0;z-index:2;pointer-events:none;box-shadow:inset 0 0 0 1px rgba(224,40,40,.35),inset -14px 0 36px rgba(224,40,40,.28),inset 0 -24px 40px rgba(0,0,0,.45)}
+.contrast-body{padding:1.2rem 1.25rem 1.4rem;flex:1;display:flex;flex-direction:column}
+.contrast-card .hud{display:inline-block;margin-bottom:.65rem;font-family:Oswald,sans-serif;font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;color:rgba(224,40,40,.85)}
+.contrast-card.common .hud{color:rgba(170,180,190,.7)}
+.contrast-card h3{margin:0 0 .85rem;font-family:Oswald,sans-serif;font-weight:700;font-size:clamp(1.1rem,2.3vw,1.4rem);letter-spacing:.04em;text-transform:uppercase;line-height:1.15;max-width:18ch}
+.contrast-card ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:.6rem}
+.contrast-card li{position:relative;padding-left:1.1rem;color:var(--muted);font-size:.93rem;line-height:1.45}
+.contrast-card li::before{content:"";position:absolute;left:0;top:.55em;width:6px;height:6px;border-radius:1px;background:rgba(255,255,255,.28)}
+.contrast-card.ours li::before{background:var(--red);box-shadow:0 0 8px rgba(224,40,40,.6)}
+.contrast-vs{display:grid;place-items:center;align-self:center;z-index:2}
+.contrast-vs span{display:grid;place-items:center;width:52px;height:52px;border-radius:50%;background:linear-gradient(180deg,#F03535,var(--red));color:#fff;font-family:Oswald,sans-serif;font-weight:700;font-size:.95rem;letter-spacing:.08em;box-shadow:0 0 0 4px rgba(7,7,7,.95),0 0 28px rgba(224,40,40,.55)}
+
+/* 06 DADOS → CASA */
+.flow{display:grid;grid-template-columns:repeat(3,1fr);gap:.85rem;margin-top:1.75rem;position:relative}
+.flow-step{position:relative;padding:0;border:1px solid var(--line);border-radius:14px;background:linear-gradient(180deg,#141414,#0e0e0e);overflow:hidden;display:flex;flex-direction:column;box-shadow:0 16px 40px rgba(0,0,0,.35)}
+.flow-media{position:relative;aspect-ratio:16/11;background:#0a0a0a;overflow:hidden;flex:none}
+.flow-media img{width:100%;height:100%;object-fit:cover;display:block}
+.flow-media .glow{left:50%;bottom:-30%;transform:translateX(-50%);width:90%;height:80%;opacity:.4}
+.flow-body{padding:1rem 1.1rem 1.2rem;flex:1}
+.flow-step .n{font-family:Oswald,sans-serif;font-weight:700;font-size:1.35rem;color:var(--red);letter-spacing:.06em;margin-bottom:.3rem}
+.flow-step h3{margin:0 0 .35rem;font-family:Oswald,sans-serif;font-weight:700;font-size:1.05rem;letter-spacing:.06em;text-transform:uppercase}
+.flow-step p{margin:0;color:var(--muted);font-size:.9rem}
+.flow-arrow{display:none}
+/* quiz card visual — mirrors real site quiz (nome + 3 perguntas) */
+.flow-step.dados .flow-media{aspect-ratio:16/14}
+.viz-quiz{position:absolute;inset:0;padding:.72rem .8rem .7rem;display:flex;flex-direction:column;gap:.4rem;background:radial-gradient(80% 70% at 70% 10%,rgba(224,40,40,.2),transparent 55%),linear-gradient(160deg,#141010,#0b0b0b 55%,#0a0808)}
+.viz-quiz .vq-head{display:flex;align-items:center;justify-content:space-between;flex:none}
+.viz-quiz .vq-label{font-family:Oswald,sans-serif;font-size:.58rem;letter-spacing:.14em;text-transform:uppercase;color:#E8A0A0}
+.viz-quiz .vq-bar{height:3px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden;flex:none}
+.viz-quiz .vq-bar i{display:block;width:66%;height:100%;background:linear-gradient(90deg,var(--red),#F06A3A);border-radius:99px;box-shadow:0 0 12px rgba(224,40,40,.5)}
+.viz-quiz .vq-name{display:flex;align-items:center;gap:.45rem;padding:.38rem .55rem;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:rgba(0,0,0,.35);flex:none}
+.viz-quiz .vq-name em{font:500 .58rem/1 Oswald,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:rgba(210,203,195,.45);font-style:normal;flex:none}
+.viz-quiz .vq-name b{font:600 .72rem/1.1 Inter,system-ui,sans-serif;color:rgba(247,243,238,.9);letter-spacing:.01em}
+.viz-quiz .vq-q{margin:0;font:500 .78rem/1.3 Inter,system-ui,sans-serif;color:rgba(247,243,238,.92);flex:none}
+.viz-quiz .vq-opts{display:flex;flex-direction:column;gap:.28rem;margin-top:.1rem;flex:1;min-height:0}
+.viz-quiz .vq-opts span{flex:1;display:flex;align-items:center;padding:.42rem .55rem;border-radius:9px;border:1px solid rgba(224,40,40,.38);background:rgba(224,40,40,.05);font:400 .62rem/1.3 Inter,system-ui,sans-serif;color:rgba(210,203,195,.78);text-align:left}
+.viz-quiz .vq-opts span.on{border-color:rgba(255,255,255,.85);background:rgba(224,40,40,.16);color:#fff;box-shadow:0 0 0 1px rgba(224,40,40,.35),0 0 18px rgba(224,40,40,.28)}
+/* pattern timeline visual */
+.viz-pat{position:absolute;inset:0;padding:.75rem .9rem;display:flex;flex-direction:column;gap:.38rem;background:radial-gradient(70% 60% at 30% 80%,rgba(224,40,40,.2),transparent 55%),linear-gradient(160deg,#121212,#0b0b0b)}
+.viz-pat .vp-label{font-family:Oswald,sans-serif;font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;color:#E8A0A0}
+.viz-pat .vp-row{display:grid;grid-template-columns:28px 1fr;gap:.45rem;align-items:center}
+.viz-pat .vp-day{font-family:Oswald,sans-serif;font-size:.62rem;letter-spacing:.06em;color:rgba(210,203,195,.55)}
+.viz-pat .vp-track{position:relative;height:11px;border-radius:99px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.06)}
+.viz-pat .vp-track i{position:absolute;top:50%;width:8px;height:8px;border-radius:50%;transform:translate(-50%,-50%);background:rgba(255,255,255,.18)}
+.viz-pat .vp-track i.hit{width:10px;height:10px;background:var(--red);box-shadow:0 0 10px rgba(224,40,40,.85),0 0 18px rgba(224,40,40,.4)}
+.viz-pat .vp-foot{margin-top:auto;display:flex;align-items:center;justify-content:space-between;font-family:Oswald,sans-serif;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;color:rgba(210,203,195,.55)}
+.viz-pat .vp-foot b{color:var(--red);font-weight:700}
+.flow-step.mold .flow-media .rim{position:absolute;inset:0;z-index:2;pointer-events:none;box-shadow:inset 0 0 0 1px rgba(224,40,40,.3),inset 0 -20px 36px rgba(0,0,0,.4)}
+/* exemplo + phone mock */
+.example{margin-top:1.35rem;padding:0;border:1px solid rgba(224,40,40,.42);border-radius:16px;background:linear-gradient(135deg,rgba(224,40,40,.12),rgba(0,0,0,.25) 50%,rgba(212,168,80,.06));position:relative;overflow:hidden;display:grid;grid-template-columns:1.15fr .85fr;gap:0;align-items:stretch}
+.example-copy{padding:1.35rem 1.4rem 1.45rem}
+.example .hud{display:block;margin-bottom:.5rem;font-family:Oswald,sans-serif;font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;color:#E8A0A0}
+.example p{margin:0;color:var(--ink);font-size:1.02rem;max-width:42ch;line-height:1.5}
+.example-phone{display:flex;align-items:center;justify-content:center;padding:1.1rem 1.2rem;background:radial-gradient(60% 70% at 70% 40%,rgba(224,40,40,.18),transparent 65%)}
+.phone-noti{width:min(100%,280px);border-radius:18px;border:1px solid rgba(224,40,40,.5);background:linear-gradient(180deg,#1a1212,#100c0c);box-shadow:0 18px 50px rgba(0,0,0,.45),0 0 30px rgba(224,40,40,.15);overflow:hidden}
+.phone-noti .pn-top{display:flex;align-items:center;gap:.55rem;padding:.7rem .85rem .45rem;border-bottom:1px solid rgba(255,255,255,.06)}
+.phone-noti .pn-top img{width:28px;height:28px;border-radius:50%;object-fit:cover;box-shadow:0 0 0 1px rgba(224,40,40,.5)}
+.phone-noti .pn-top .who{display:flex;flex-direction:column;gap:.1rem;min-width:0}
+.phone-noti .pn-top strong{font-family:Oswald,sans-serif;font-size:.78rem;letter-spacing:.08em;text-transform:uppercase}
+.phone-noti .pn-top span{font-size:.68rem;color:var(--muted)}
+.phone-noti .pn-body{padding:.75rem .85rem;font-size:.88rem;line-height:1.45;color:var(--ink)}
+.phone-noti .pn-acts{display:grid;grid-template-columns:1fr 1fr;gap:.45rem;padding:0 .85rem .85rem}
+.phone-noti .pn-acts button{appearance:none;border-radius:999px;padding:.55rem .6rem;font:600 .78rem/1 Inter,system-ui,sans-serif;cursor:default}
+.phone-noti .pn-acts .yes{border:0;background:linear-gradient(180deg,#F03535,var(--red));color:#fff;box-shadow:0 8px 20px rgba(224,40,40,.35)}
+.phone-noti .pn-acts .no{border:1px solid rgba(255,255,255,.2);background:transparent;color:var(--muted)}
+/* benefits with tint */
+.benefits{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-top:1.5rem}
+.ben{position:relative;padding:1.3rem 1.25rem 1.4rem;border:1px solid var(--line);border-radius:16px;background:linear-gradient(180deg,#151515,#0e0e0e);overflow:hidden}
+.ben::after{content:"";position:absolute;left:0;top:0;width:4px;height:100%;background:var(--red);box-shadow:0 0 18px var(--red-glow)}
+.ben .glow{right:-25%;top:-35%;width:70%;height:70%;opacity:.28}
+.ben .ben-ico{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;margin-bottom:.75rem;border:1px solid rgba(224,40,40,.4);background:rgba(224,40,40,.12);color:var(--red)}
+.ben .ben-ico svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.ben .ben-ico svg.filled{fill:currentColor;stroke:none}
+.ben .tag{margin-bottom:.65rem}
+.ben h3{margin:0 0 .4rem;font-family:Oswald,sans-serif;font-weight:700;font-size:1.1rem;letter-spacing:.05em;text-transform:uppercase}
+.ben p{margin:0;color:var(--muted);font-size:.92rem}
+.ben.b1{background:linear-gradient(145deg,rgba(212,168,80,.1),#121212 42%,#0e0e0e);border-color:rgba(212,168,80,.28)}
+.ben.b1::after{background:linear-gradient(180deg,#E8B84A,var(--red))}
+.ben.b1 .ben-ico{border-color:rgba(212,168,80,.5);background:rgba(212,168,80,.12);color:#E8B84A}
+.ben.b1 .glow{background:radial-gradient(circle,rgba(212,168,80,.55),transparent 70%);opacity:.32}
+.ben.b2{background:linear-gradient(145deg,rgba(224,40,40,.14),#121212 45%,#0e0e0e)}
+.ben.b2 .glow{opacity:.34}
+.ben.b3{background:linear-gradient(145deg,rgba(60,200,210,.1),#121212 42%,#0e0e0e);border-color:rgba(60,200,210,.28)}
+.ben.b3::after{background:linear-gradient(180deg,#3CC8D2,var(--red))}
+.ben.b3 .ben-ico{border-color:rgba(60,200,210,.5);background:rgba(60,200,210,.12);color:#3CC8D2}
+.ben.b3 .glow{background:radial-gradient(circle,rgba(60,200,210,.5),transparent 70%);opacity:.3}
+
+/* 07 TECH */
+.tech{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-top:1.75rem}
+.tech-card{position:relative;padding:1.25rem 1.1rem 1.35rem;border:1px solid var(--line);border-radius:14px;background:#0f0f0f;text-align:left;overflow:hidden}
+.tech-card .n{font-family:Oswald,sans-serif;font-weight:700;font-size:1.6rem;color:var(--red);letter-spacing:.06em;margin-bottom:.5rem}
+.tech-card h3{margin:0 0 .4rem;font-family:Oswald,sans-serif;font-weight:700;font-size:1rem;letter-spacing:.08em;text-transform:uppercase}
+.tech-card p{margin:0;color:var(--muted);font-size:.88rem}
+.tech-card .glow{right:-30%;top:-30%;width:80%;height:80%;opacity:.22}
+
+/* 08 CTA */
+.cta-final{position:relative;padding:clamp(5rem,12vw,8rem) 0;text-align:center;overflow:hidden;isolation:isolate}
+.cta-final .kanji-bg{position:absolute;left:50%;top:50%;transform:translate(-50%,-52%);font-family:"Noto Serif JP",serif;font-size:clamp(8rem,28vw,20rem);color:var(--red);opacity:.14;pointer-events:none;line-height:1;z-index:0}
+.cta-final .wrap{position:relative;z-index:1}
+.cta-final h2{margin:.4rem auto 0;max-width:14ch;font-family:Oswald,sans-serif;font-weight:700;font-size:clamp(2.4rem,6vw,4.2rem);letter-spacing:.02em;text-transform:uppercase;line-height:1.02}
+.cta-final p{margin:1rem auto 1.5rem;color:var(--muted);max-width:40ch}
+.cta-row{display:flex;flex-wrap:wrap;gap:.75rem;justify-content:center}
+
+/* TEAM — keep, small harmonization */
+.team{padding:clamp(4.5rem,9vw,7rem) 0 3rem;border-top:1px solid rgba(255,255,255,.05)}
+.team .label{margin:0 0 .4rem}
+.team h2{margin:0;font-family:Oswald,sans-serif;font-weight:700;font-size:clamp(1.85rem,4vw,3rem);letter-spacing:.02em;text-transform:uppercase}
+.team .lead{margin:.85rem 0 0;color:var(--muted);max-width:42ch}
+.team-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-top:2rem}
+.member{position:relative;display:block;border-radius:16px;overflow:hidden;aspect-ratio:3/4.2;border:1px solid var(--line);background:#0a0a0a;box-shadow:0 16px 40px rgba(0,0,0,.4)}
+.member .av{width:100%;height:100%;object-fit:cover}
+.member .shade{position:absolute;inset:0;background:linear-gradient(180deg,transparent 45%,rgba(0,0,0,.85) 100%),radial-gradient(80% 60% at 85% 30%,rgba(224,40,40,.22),transparent 55%)}
+.member .meta{position:absolute;left:0;right:0;bottom:0;display:flex;align-items:flex-end;justify-content:space-between;gap:.5rem;padding:1rem;z-index:2}
+.member strong{display:block;font-family:Oswald,sans-serif;font-weight:700;letter-spacing:.04em;text-transform:uppercase;font-size:.95rem}
+.member .role{display:block;min-height:1em;font-size:.78rem;color:rgba(210,203,195,.75)}
+.li{width:20px;height:20px;opacity:.9;flex:none}
+
+footer{border-top:1px solid rgba(255,255,255,.08);padding:1.25rem 0 2rem;color:var(--muted);font-size:.85rem}
+footer .wrap{display:flex;flex-wrap:wrap;gap:.75rem 1.5rem;justify-content:space-between}
+
+/* reveals */
+.reveal{opacity:1;transform:none;filter:none}
+.js .reveal{opacity:0;transform:translate3d(0,24px,0);transition:opacity .9s cubic-bezier(.22,1,.36,1),transform .9s cubic-bezier(.22,1,.36,1);transition-delay:calc(var(--d,0)*.08s)}
+.js .reveal.heading{filter:blur(6px);transition:opacity 1s cubic-bezier(.22,1,.36,1),transform 1s cubic-bezier(.22,1,.36,1),filter 1s ease}
+.js .reveal.in{opacity:1;transform:none;filter:none}
+
+@media(max-width:980px){
+  .what-grid,.gen-grid,.benefits,.contrast,.flow{grid-template-columns:1fr}
+  .contrast{grid-template-columns:1fr}
+  .contrast-vs{display:none}
+  .example{grid-template-columns:1fr}
+  .gen-app,.house-live{min-height:420px}
+  .house-live{min-height:380px}
+  .house-live img{min-height:320px}
+  .steps,.profiles,.tech,.team-grid{grid-template-columns:1fr 1fr}
+  .steps::before{display:none}
+  .hero-copy{width:min(78vw,420px);max-width:78%}
+  .what-visual{min-height:340px}
+}
+@media(max-width:640px){
+  .steps,.profiles,.tech,.team-grid{grid-template-columns:1fr}
+  .sec-head{grid-template-columns:1fr;gap:.35rem}
+  .sec-num{font-size:2rem}
+  .hero-copy{width:min(88vw,420px);max-width:90%;padding-bottom:clamp(3.5rem,10vh,6rem)}
+  h1.hero-title .line{font-size:clamp(1.55rem,7.2vw,2.2rem)}
+  .hero-actions{max-width:100%}
+  .cta-row{flex-direction:column;align-items:stretch}
+  .cta-row .cta{width:100%}
+}
+@media(min-width:901px) and (max-height:820px){
+  .hero-copy.wrap{padding-bottom:clamp(4rem,13vh,9rem)}
+  .fine{display:none}
+}
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  .haze i,.js .cta-pulse{animation:none!important}
+  .js .reveal{opacity:1;transform:none;filter:none;transition:none}
+}
+</style>
 </head>
 <body>
-<a class="skip" href="#entrada">Ir para a entrada</a>
-<div class="landing" id="landing">
-<div class="stage">
-  <nav class="landing-nav">
-    <div class="nav-mark">
-      <picture>
-        <source type="image/webp" srcset="/assets/logo-crow.webp">
-        <img src="/assets/logo-crow.png" width="36" height="36" alt="">
-      </picture>
-      GenJutsu AI
-    </div>
-    <div class="nav-actions">
-      <a class="text-link nav-gen" href="/casa">Casa</a>
-      <a class="text-link nav-gen" href="/gen">Falar com a Gen</a>
-      <button class="cta ghost nav-cta" id="btn-nav-login" type="button">Entrar</button>
-    </div>
-  </nav>
+<script>
+(function(){
+  var h = String(location.hash || "").replace(/^#/, "").toLowerCase();
+  if (h === "entrada") {
+    location.replace("/entrada" + location.search);
+  }
+})();
+</script>
 
-  <section class="hero">
-    <div class="hero-copy">
-      <picture>
-        <source type="image/webp" srcset="/assets/logo-crow.webp">
-        <img class="crow-mark" src="/assets/logo-crow.png" width="88" height="88" alt="Corvo GenJutsu de feltro, olhos sharingan e torii neon">
-      </picture>
-      <p class="eyebrow">Smart Home Cognitiva · Quest 3S</p>
-      <h1>A casa que reconhece quem chega</h1>
-      <p>Responda três perguntas e salve sem conta. O código da sessão e o perfil do Quest aparecem na hora. Google fica opcional e só sincroniza a rotina.</p>
-      <div class="fork" id="entrada">
-        <button class="cta cta-guest" id="btn-guest" type="button">Continuar sem conta</button>
-        <button class="cta cta-google" id="btn-google" type="button">Continuar com Google</button>
-      </div>
-      <button class="text-link" id="btn-scroll-more" type="button">Como funciona</button>
-      <p class="fine">Sem conta: você salva como visitante e recebe o código. Com Google: agenda, YouTube, contatos e tarefas, sem Gmail nem Drive. <a href="/privacy">Privacidade</a> · <a href="/terms">Termos</a></p>
-    </div>
-    <figure class="hero-visual">
-      <img src="/assets/og-hero.jpg" alt="Corvo com olhos vermelhos em uma smart home, torii neon e cidade ao fundo">
-      <div class="house-veil" id="house-veil" hidden></div>
-    </figure>
-  </section>
+<div class="haze" aria-hidden="true"><i></i><i></i><i></i></div>
 
-  <section class="landing-section" id="como-funciona">
-    <h2>Dois caminhos, a mesma casa</h2>
-    <div class="pillars">
-      <article class="pillar">
-        <h3>Perfil do Quest</h3>
-        <p>O nome e três perguntas inferem Zen, Cyber, Excêntrico ou Acolhedor. Ninguém escolhe a casa. O Quest lê o profile_id estável: Zen, Cyber, Excentrico ou Acolhedor.</p>
-      </article>
-      <article class="pillar">
-        <h3>Google ou visitante</h3>
-        <p>O visitante escreve o nome, responde e salva sem conta. Não chama as APIs do Google e fica sem e-mail. Google continua opcional.</p>
-      </article>
-      <article class="pillar">
-        <h3>Passagem ao Quest</h3>
-        <p>O código da sessão segue para o headset. O resumo público não mostra agenda nem contatos.</p>
-      </article>
-    </div>
-  </section>
-
-  <section class="landing-section">
-    <h2>A jornada</h2>
-    <div class="steps-row">
-      <div class="step-card"><span>01</span>Continue sem conta — Google é opcional</div>
-      <div class="step-card"><span>02</span>Sincronize o rastro — o visitante pula esta etapa</div>
-      <div class="step-card"><span>03</span>Escreva o nome e responda as três perguntas</div>
-      <div class="step-card"><span>04</span>Vista o Quest e entre no genjutsu</div>
-    </div>
-  </section>
-
-  <div class="cta-band">
-    <h2>Pronto para entrar</h2>
-    <p>O caminho principal é salvar como visitante. Google só entra se você quiser a rotina.</p>
-    <div class="fork">
-      <button class="cta cta-guest" id="btn-guest-bottom" type="button">Continuar sem conta</button>
-      <button class="cta cta-google" id="btn-google-bottom" type="button">Continuar com Google</button>
-    </div>
-    <p class="fine"><a href="/privacy">Política de Privacidade</a> · <a href="/terms">Termos de Serviço</a></p>
+<header class="nav">
+  <div class="wrap nav-inner">
+    <a class="brand" href="/">
+      <img src="/assets/crow-logo.webp" alt="">
+      <span class="brand-text">
+        <span class="brand-name">Genjutsu AI</span>
+        <span class="brand-kanji" lang="ja">幻術</span>
+      </span>
+    </a>
   </div>
-</div>
-</div>
+</header>
 
-<div class="phone hidden" id="app">
-  <ol class="dojo-progress" id="dojo-progress" aria-label="Progresso da jornada, passos 1 a 4">
-    <li data-step="1"><b>1</b> Entrada</li>
-    <li data-step="2"><b>2</b> <span data-step-label>Rastro</span></li>
-    <li data-step="3"><b>3</b> Perfil</li>
-    <li data-step="4"><b>4</b> Quest</li>
-  </ol>
-
-  <section class="screen" id="screen-login">
-    <h2 class="screen-title">Como você entra</h2>
-    <div id="logged-out">
-      <p class="section-label">Salvar sem conta é o caminho principal. Google é opcional. Microsoft fica à parte.</p>
-      <div class="oauth">
-        <div class="oauth-main">
-          <button class="cta cta-google" id="btn-login" type="button" disabled>Continuar com Google</button>
-          <button class="cta cta-guest" id="btn-guest-login" type="button" disabled>Continuar sem conta</button>
-        </div>
-        <button class="oauth-tertiary" id="btn-login-ms" type="button" disabled>ou Microsoft</button>
-      </div>
-      <div class="status" id="status-auth" role="status"></div>
-      <p class="privacy">Visitante: só preferências e código. Google: agenda, YouTube, contatos e tarefas, sem Gmail. <a href="/privacy">Privacidade</a> · <a href="/terms">Termos</a></p>
+<section class="hero">
+  <div class="hero-bg" data-parallax="hero"><img src="/assets/hero-andre-person.webp" alt="André com headset em sala vermelha"></div>
+  <div class="hero-veil"></div>
+  <p class="hero-kanji" lang="ja" aria-hidden="true"><span>幻</span><span>術</span></p>
+  <div class="wrap hero-copy">
+    <h1 class="reveal heading hero-title" data-d="1" aria-label="GENJUTSU A CASA QUE SE MOLDA A VOCÊ.">
+      <span class="line">GENJUTSU</span>
+      <span class="line">A CASA QUE SE</span>
+      <span class="line">MOLDA A VOCÊ.</span>
+    </h1>
+    <div class="hero-actions reveal" data-d="3">
+      <a class="cta cta-pulse" href="/entrada?via=guest">Continuar sem conta</a>
+      <a class="cta ghost" href="/entrada?via=google">Continuar com Google</a>
     </div>
-    <div id="logged-in" class="hidden">
-      <div class="card">
-        <div class="profile-row">
-          <img id="avatar" src="/assets/guest-avatar.jpg" alt="">
-          <div>
-            <div class="name" id="user-name"></div>
-            <div class="email" id="user-email"></div>
+    <p class="fine reveal" data-d="4">Visitante salva o perfil e o código da sessão. Google é opcional. <a href="/privacy">Privacidade</a></p>
+  </div>
+</section>
+
+<!-- 01 O QUE É -->
+<section class="sec" id="o-que-e">
+  <span class="stroke-bg" aria-hidden="true">CASA</span>
+  <div class="wrap">
+    <div class="sec-head">
+      <div>
+        <p class="label reveal" data-d="0">O que é</p>
+        <h2 class="reveal heading" data-d="1">Uma casa cognitiva em realidade virtual</h2>
+      </div>
+      <span class="sec-num reveal" data-d="1">01</span>
+    </div>
+    <p class="lead reveal" data-d="2">Genjutsu AI é uma casa inteligente que se adapta a você. Você responde um questionário curto no site, recebe um dos quatro perfis de casa e entra nesse dojo no headset. A Gen, a IA com voz e chat, controla a casa em português.</p>
+    <div class="what-grid">
+      <div class="what-copy">
+        <article class="panel reveal" data-d="0">
+          <span class="hud">PROTOCOLO · PERFIL</span>
+          <h3>Quatro climas</h3>
+          <p>Zen, Cyber, Excêntrico ou Acolhedor. O questionário fecha um perfil. A casa já chega moldada, sem painel de configuração.</p>
+        </article>
+        <article class="panel reveal" data-d="1">
+          <span class="hud">PROTOCOLO · GEN</span>
+          <h3>A Gen mexe na casa</h3>
+          <p>Luz liga/desliga e muda de cor, ar-condicionado, música e ambiência, rotinas e alarmes, busca na web com fontes. Voz ou texto.</p>
+        </article>
+        <article class="panel reveal" data-d="2">
+          <span class="hud">PROTOCOLO · ESTADO</span>
+          <h3>Um estado em três lugares</h3>
+          <p>Site (página Casa), celular e headset leem a mesma sessão. O histórico da conversa fica por usuário.</p>
+        </article>
+      </div>
+      <div class="what-visual reveal" data-d="2">
+        <div class="glow" aria-hidden="true"></div>
+        <div class="panel">
+          <img src="/assets/person-d.webp" alt="Pessoa com headset e luz vermelha">
+          <div class="rim" aria-hidden="true"></div>
+          <span class="cap tag">Headset · dojo</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 02 COMO FUNCIONA -->
+<section class="sec" id="como-funciona">
+  <div class="wrap">
+    <div class="sec-head">
+      <div>
+        <p class="label reveal" data-d="0">Como funciona</p>
+        <h2 class="reveal heading" data-d="1">Quatro passos até a casa</h2>
+      </div>
+      <span class="sec-num reveal" data-d="1">02</span>
+    </div>
+    <p class="lead reveal" data-d="2">Do site ao headset. Sem conta se quiser: o visitante já gera o código da sessão.</p>
+    <div class="steps">
+      <article class="step reveal" data-d="0">
+        <div class="step-bar"><span class="n">01</span><span class="t">Responde</span></div>
+        <div class="step-media"><div class="glow" aria-hidden="true"></div><img src="/assets/quiz-real.webp" alt="Questionário real do site"></div>
+        <div class="step-body"><p>Três perguntas no site. Em poucos minutos o sistema fecha um perfil ZCEA.</p></div>
+      </article>
+      <article class="step reveal" data-d="1">
+        <div class="step-bar"><span class="n">02</span><span class="t">Recebe o perfil</span></div>
+        <div class="step-media"><div class="glow" aria-hidden="true"></div><img src="/assets/dojo-a.webp" alt="Render do dojo Acolhedor"></div>
+        <div class="step-body"><p>Zen, Cyber, Excêntrico ou Acolhedor. A casa já abre nesse clima.</p></div>
+      </article>
+      <article class="step reveal" data-d="2">
+        <div class="step-bar"><span class="n">03</span><span class="t">Entra no dojo</span></div>
+        <div class="step-media"><div class="glow" aria-hidden="true"></div><img src="/assets/gen-quest-wearer.webp" alt="Pessoa entrando com o headset"></div>
+        <div class="step-body"><p>Leva o código da sessão pro headset e entra na casa do seu perfil.</p></div>
+      </article>
+      <article class="step reveal" data-d="3">
+        <div class="step-bar"><span class="n">04</span><span class="t">Fala com a Gen</span></div>
+        <div class="step-media"><div class="glow" aria-hidden="true"></div><img src="/assets/phone-screen-devices.webp" alt="Controles da casa no celular"></div>
+        <div class="step-body"><p>Voz ou chat em português. Luz, ar, música, rotinas: a casa responde.</p></div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- 03 GEN EM AÇÃO -->
+<section class="sec" id="gen-acao">
+  <span class="stroke-bg" aria-hidden="true">GEN</span>
+  <div class="wrap">
+    <div class="sec-head">
+      <div>
+        <p class="label reveal" data-d="0">Gen em ação</p>
+        <h2 class="reveal heading" data-d="1">Fala com a casa de verdade</h2>
+      </div>
+      <span class="sec-num reveal" data-d="1">03</span>
+    </div>
+    <p class="lead reveal" data-d="2">Você fala do seu jeito. A Gen entende, mexe na casa e te avisa.</p>
+    <div class="gen-grid">
+      <div class="gen-app reveal" data-d="1" id="gen-app">
+        <div class="gen-app-head">
+          <img src="/assets/crow-logo.webp" alt="">
+          <div class="meta">
+            <span class="name">Gen</span>
+            <span class="status"><span class="dot" aria-hidden="true"></span> online</span>
           </div>
         </div>
-        <div class="session-box">
-          <div class="lbl">Código da sessão</div>
-          <div class="code" data-session-code>—</div>
-          <img class="session-qr" alt="QR da sessão para o Quest">
-          <a class="session-link" href="#" target="_blank" rel="noopener">Abrir resumo</a>
+        <div class="gen-msgs" id="gen-msgs" aria-live="polite">
+          <div class="bubble you" data-step="0"><span class="who">Você</span>deixa a sala vermelha</div>
+          <div class="bubble gen" data-step="1"><span class="who">Gen</span>Feito: luz da sala no vermelho. Quer que eu ligue o ar em 22?</div>
+          <div class="bubble you" data-step="2"><span class="who">Você</span>liga o ar em 22 e põe uma música calma</div>
+          <div class="bubble gen" data-step="3"><span class="who">Gen</span>Ar em 22. Tô tocando uma faixa livre, bem leve. Monto uma rotina pra repetir isso todo dia às 20h?</div>
+          <div class="bubble you" data-step="4"><span class="who">Você</span>pode montar</div>
+          <div class="bubble gen" data-step="5"><span class="who">Gen</span>Rotina criada: todo dia 20h, sala vermelha + ar 22 + música. Se quiser mudar, é só falar.</div>
+          <div class="typing" id="gen-typing" aria-hidden="true"><i></i><i></i><i></i></div>
         </div>
-        <div class="stack">
-          <button class="cta ghost" id="btn-logout" type="button">Sair</button>
-          <button class="oauth-tertiary" id="btn-upgrade-google" type="button" data-guest-only hidden>ou entrar com Google</button>
+        <div class="gen-chips" aria-hidden="true">
+          <button type="button">deixa a sala vermelha</button>
+          <button type="button">liga o ar em 22</button>
+          <button type="button">toca uma música calma</button>
         </div>
-      </div>
-    </div>
-  </section>
-
-  <section class="screen" id="screen-sync">
-    <div class="progress-track" aria-hidden="true"><div class="progress-bar" id="sync-bar"></div></div>
-    <h2 class="screen-title">Sincronização</h2>
-    <p id="sync-user" class="sync-user"></p>
-    <p id="sync-mail" class="privacy sync-mail"></p>
-    <div class="session-box">
-      <div class="lbl">Código único desta sessão</div>
-      <div class="code" data-session-code>—</div>
-      <img class="session-qr" alt="QR da sessão para o Quest">
-    </div>
-    <p id="sync-status" class="status" role="status">Conectando…</p>
-    <div class="stack">
-      <button class="cta cta-google" id="btn-skip-sync" type="button">Continuar para a casa</button>
-      <button class="cta ghost" id="btn-relogin" type="button">Refazer login com Google</button>
-      <button class="oauth-tertiary" id="btn-relogin-ms" type="button">ou Microsoft</button>
-    </div>
-  </section>
-
-  <section class="screen" id="screen-questionnaire">
-    <h2 class="screen-title">Seu nome e três situações</h2>
-    <p class="guest-save-note" id="guest-save-note">Sem conta. Dá para salvar como visitante: escreva o nome e responda as três perguntas. A casa é inferida — você não escolhe o dojo. O Google não é necessário.</p>
-    <label class="section-label" for="visitor-name">Como você quer ser chamado?</label>
-    <input type="text" id="visitor-name" name="visitor-name" maxlength="40" autocomplete="name" required aria-describedby="visitor-name-hint" placeholder="Seu nome">
-    <p class="field-hint" id="visitor-name-hint">O nome entra na frase da sessão. Pelo menos 2 letras.</p>
-    <p class="section-label" id="label-folga">Num fim de semana livre, você…</p>
-    <div class="option-col" role="group" aria-labelledby="label-folga">
-      <button type="button" class="option" data-field="folga" data-value="ordem" aria-pressed="false">organiza o dia em silêncio e segue o plano</button>
-      <button type="button" class="option" data-field="folga" data-value="sistema" aria-pressed="false">abre um aparelho ou um sistema só para ver como funciona</button>
-      <button type="button" class="option" data-field="folga" data-value="impulso" aria-pressed="false">sai sem roteiro atrás de algo que nunca fez</button>
-      <button type="button" class="option" data-field="folga" data-value="gente" aria-pressed="false">chama alguém e cuida do almoço e da conversa</button>
-    </div>
-    <p class="section-label" id="label-problema">Quando surge um problema difícil, você…</p>
-    <div class="option-col" role="group" aria-labelledby="label-problema">
-      <button type="button" class="option" data-field="problema" data-value="respira" aria-pressed="false">respira, ordena os fatos e resolve um passo de cada vez</button>
-      <button type="button" class="option" data-field="problema" data-value="modelo" aria-pressed="false">monta um modelo, testa hipóteses e escolhe a jogada</button>
-      <button type="button" class="option" data-field="problema" data-value="atalho" aria-pressed="false">tenta um atalho ousado antes de abrir o manual</button>
-      <button type="button" class="option" data-field="problema" data-value="junto" aria-pressed="false">chama quem está perto e segura o clima enquanto resolvem</button>
-    </div>
-    <p class="section-label" id="label-festa">Numa festa onde conhece pouca gente, você…</p>
-    <div class="option-col" role="group" aria-labelledby="label-festa">
-      <button type="button" class="option" data-field="festa" data-value="canto" aria-pressed="false">fica num canto calmo, observa e entra só quando faz sentido</button>
-      <button type="button" class="option" data-field="festa" data-value="mapa" aria-pressed="false">lê a sala, vê quem decide o quê e escolhe com quem falar</button>
-      <button type="button" class="option" data-field="festa" data-value="pista" aria-pressed="false">puxa a conversa, improvisa e vira o centro sem planejar</button>
-      <button type="button" class="option" data-field="festa" data-value="anel" aria-pressed="false">percebe quem está sozinho e puxa essa pessoa para o círculo</button>
-    </div>
-    <div class="quest-profile" id="quiz-profile" hidden></div>
-    <button class="cta cta-guest" id="btn-save-questionnaire" type="button">Salvar sem conta e gerar o código</button>
-    <div class="status" id="status-questionnaire" role="status"></div>
-  </section>
-
-  <section class="screen" id="screen-ready">
-    <h2 class="screen-title">A casa leu você</h2>
-    <article class="makimono" id="ready-scroll">
-      <div class="makimono-roller" aria-hidden="true"><span></span></div>
-      <div class="parchment" aria-labelledby="ready-kicker">
-      <p class="parchment-kicker" id="ready-kicker">O que a casa entendeu de você</p>
-      <p class="parchment-name" id="ready-name"></p>
-      <div class="seal-row">
-        <p class="hanko" id="ready-kanji" aria-hidden="true"></p>
-        <div>
-          <p class="parchment-sign" id="ready-profile" hidden></p>
-          <p class="seal-title" id="ready-title"></p>
+        <div class="gen-input" aria-hidden="true">
+          <div class="field">Fala com a Gen…</div>
+          <div class="mic" title="Microfone"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z"/></svg></div>
         </div>
       </div>
-      <p class="parchment-phrase" id="ready-phrase"></p>
-      <h3 class="parchment-sub">O alvo</h3>
-      <div class="alvo-wrap">
-        <div class="alvo" id="ready-alvo" role="img" aria-label="Alvo dos quatro perfis"></div>
-        <ul class="trait-bars" id="ready-traits"></ul>
+      <div class="house-live reveal" data-d="2">
+        <div class="glow" aria-hidden="true"></div>
+        <img src="/assets/houses/sala-vermelha.webp" alt="Dojo do jogo com a sala em vermelho">
+        <div class="hud-stack" id="gen-hud">
+          <div class="hud-chip" data-hud="0"><b>Luz sala:</b> vermelho</div>
+          <div class="hud-chip" data-hud="1"><b>Ar:</b> 22°C</div>
+          <div class="hud-chip" data-hud="2"><b>Música:</b> tocando</div>
+        </div>
       </div>
-      <div class="sumi" id="ready-sumi" data-profile="" aria-hidden="true">
-        <svg class="sumi-zen" viewBox="0 0 240 120"><path d="M28 78c18-28 48-42 92-42 40 0 70 16 92 42" fill="none" stroke="#2a2118" stroke-width="1.4" opacity=".8"/><circle cx="168" cy="36" r="14" fill="none" stroke="#2a2118" stroke-width="1.6"/><path d="M46 92c8-18 10-28 8-40M54 90c6-14 8-22 6-32M40 96h28" fill="none" stroke="#1c140e" stroke-width="1.8" stroke-linecap="round"/></svg>
-        <svg class="sumi-cyber" viewBox="0 0 240 120"><path d="M30 90 L70 40 L110 70 L150 28 L210 28" fill="none" stroke="#1c140e" stroke-width="1.6"/><path d="M150 28 v24 M110 70 v18 M70 40 v16" fill="none" stroke="#1c140e" stroke-width="1.2"/><circle cx="210" cy="28" r="3" fill="#1c140e"/></svg>
-        <svg class="sumi-excentrico" viewBox="0 0 240 120"><path d="M36 96c20-8 28-30 48-34 18-4 22 16 40 14 20-2 24-28 46-36 16-6 28 4 40 2" fill="none" stroke="#1c140e" stroke-width="2" stroke-linecap="round"/><path d="M150 40c10-16 18-18 28-8" fill="none" stroke="#1c140e" stroke-width="1.4"/></svg>
-        <svg class="sumi-acolhedor" viewBox="0 0 240 120"><path d="M78 78c0-22 18-36 42-36s42 14 42 36" fill="none" stroke="#1c140e" stroke-width="1.8"/><path d="M74 78h92" stroke="#1c140e" stroke-width="1.6"/><path d="M120 42c-2-14 2-22 8-28" fill="none" stroke="#1c140e" stroke-width="1.1" stroke-linecap="round"/><path d="M40 96c24-6 136-6 160 0" fill="none" stroke="#2a2118" stroke-width="1.2" opacity=".7"/></svg>
-      </div>
-      <h3 class="parchment-sub">Como sua casa vai responder</h3>
-      <ul class="house-rows">
-        <li>
-          <span class="house-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="22" height="22"><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-          </span>
-          <span class="house-key">Luz</span>
-          <span class="house-val" id="ready-luz"></span>
-        </li>
-        <li>
-          <span class="house-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="22" height="22"><path d="M4 10v4M8 7v10M12 4v16M16 7v10M20 10v4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-          </span>
-          <span class="house-key">Som</span>
-          <span class="house-val" id="ready-som"></span>
-        </li>
-        <li>
-          <span class="house-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="22" height="22"><path d="M3 14c2.5-4 5-4 7.5 0s5 4 7.5 0 4-4 3 0" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M4 18h16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-          </span>
-          <span class="house-key">Clima</span>
-          <span class="house-val" id="ready-clima"></span>
-        </li>
-      </ul>
-      <h3 class="parchment-sub">O que aconteceu com a casa</h3>
-      <ol class="history" id="ready-timeline"></ol>
-      <p class="quest-step">Sua sessão está pronta — coloque o Quest</p>
-      <p class="quest-code" id="ready-quest-code" data-session-code>—</p>
-      </div>
-      <div class="makimono-roller" aria-hidden="true"><span></span></div>
-    </article>
-    <section class="session-record" aria-labelledby="record-title">
-      <h3 id="record-title">Registros desta sessão</h3>
-      <p class="guest-save-note" id="ready-guest-note">Salvo sem conta, como visitante.</p>
-      <dl id="ready-records"></dl>
-      <div class="session-box parchment-pass">
-        <div class="lbl">Mostre este código ao staff para o Quest</div>
-        <div class="code" data-session-code>—</div>
-        <img class="session-qr" alt="QR da sessão para o Quest">
-        <a class="session-link" href="#" target="_blank" rel="noopener">Abrir resumo</a>
-      </div>
-      <p class="record-foot">Esta sessão passa a ser a do Quest. O admin ainda pode trocar o código em /admin.</p>
-    </section>
-    <a class="cta cta-google" id="btn-goto-casa" href="/casa">Ir para a minha Casa</a>
-    <button class="cta ghost" id="btn-leave-ready" type="button">Sair e escolher de novo</button>
-  </section>
-</div>
-
-<div id="screen-config" class="config-fallback" hidden>
-  <div class="config-panel card">
-    <h2 class="screen-title">Ajuste local</h2>
-    <label class="section-label" for="input-url">SUPABASE_URL</label>
-    <input type="text" id="input-url" placeholder="https://seu-projeto.supabase.co" autocomplete="off">
-    <label class="section-label" for="input-key">SUPABASE_ANON_KEY</label>
-    <input type="password" id="input-key" placeholder="chave anon" autocomplete="off">
-    <div class="stack">
-      <button class="cta cta-google" id="btn-save-config" type="button">Salvar e conectar</button>
-      <button class="cta ghost" id="btn-clear-config" type="button">Limpar</button>
-      <button class="cta ghost" id="btn-close-config" type="button">Voltar</button>
     </div>
-    <div class="status" id="status-config" role="status"></div>
   </div>
-</div>
+</section>
 
-<script src="/js/history-view.js"></script>
-<script src="/js/zcea-profile.js"></script>
-<script src="/js/personality.js"></script>
-<script src="/js/guest-save.js"></script>
-<script src="/js/portal.js"></script>
-<script src="/js/house-state.js"></script>
+<!-- 04 PERFIS -->
+<section class="sec" id="perfis">
+  <div class="wrap">
+    <div class="sec-head">
+      <div>
+        <p class="label reveal" data-d="0">Perfis de casa</p>
+        <h2 class="reveal heading" data-d="1">Zen · Cyber · Excêntrico · Acolhedor</h2>
+      </div>
+      <span class="sec-num reveal" data-d="1">04</span>
+    </div>
+    <p class="lead reveal" data-d="2">Cada visita cai em um desses climas.</p>
+    <div class="profiles">
+      <article class="prof reveal" data-d="0">
+        <div class="prof-media"><div class="glow" aria-hidden="true"></div><img src="/assets/houses/zen.webp" alt="Casa Zen"></div>
+        <div class="prof-bar"><strong>Zen</strong><span class="hud">Z</span></div>
+        <p>Calmo, limpo, poucos estímulos. A casa respira junto com você.</p>
+      </article>
+      <article class="prof reveal" data-d="1">
+        <div class="prof-media"><div class="glow" aria-hidden="true"></div><img src="/assets/houses/cyber.webp" alt="Casa Cyber"></div>
+        <div class="prof-bar"><strong>Cyber</strong><span class="hud">C</span></div>
+        <p>Neon, contraste, ritmo. Painéis e luzes respondem ao sistema.</p>
+      </article>
+      <article class="prof reveal" data-d="2">
+        <div class="prof-media"><div class="glow" aria-hidden="true"></div><img src="/assets/houses/excentrico.webp" alt="Casa Excêntrico"></div>
+        <div class="prof-bar"><strong>Excêntrico</strong><span class="hud">E</span></div>
+        <p>Cor e movimento. A casa não fica quieta se você também não fica.</p>
+      </article>
+      <article class="prof reveal" data-d="3">
+        <div class="prof-media"><div class="glow" aria-hidden="true"></div><img src="/assets/houses/acolhedor.webp" alt="Casa Acolhedor"></div>
+        <div class="prof-bar"><strong>Acolhedor</strong><span class="hud">A</span></div>
+        <p>Calor, gente perto, luz baixa. O clima segura quem chega.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- 05 O PROBLEMA -->
+<section class="sec" id="estado">
+  <span class="stroke-bg" aria-hidden="true">VS</span>
+  <div class="wrap">
+    <div class="sec-head">
+      <div>
+        <p class="label reveal" data-d="0">O problema</p>
+        <h2 class="reveal heading" data-d="1">Sua casa obedece. A nossa entende.</h2>
+      </div>
+      <span class="sec-num reveal" data-d="1">05</span>
+    </div>
+    <p class="lead reveal" data-d="2">Assistente de voz comum só espera ordem. Você configura tudo e a casa continua igual pra qualquer pessoa. Genjutsu lê o seu perfil e aprende o jeito que você usa a casa.</p>
+    <div class="contrast">
+      <article class="contrast-card common reveal" data-d="0">
+        <div class="contrast-media">
+          <img src="/assets/sec56/assistente-comum.webp" alt="Sala genérica fria com assistente de voz" width="1280" height="720" loading="lazy">
+        </div>
+        <div class="contrast-body">
+          <span class="hud">Assistente comum</span>
+          <h3>Espera ordem. Casa genérica.</h3>
+          <ul>
+            <li>Você manda ligar a luz, desligar o ar, tocar música. Sem contexto.</li>
+            <li>A mesma casa serve pra todo mundo. Nada muda com o perfil.</li>
+            <li>Rotina? Você monta na mão, item por item.</li>
+          </ul>
+        </div>
+      </article>
+      <div class="contrast-vs reveal" data-d="1" aria-hidden="true"><span>VS</span></div>
+      <article class="contrast-card ours reveal" data-d="1">
+        <div class="contrast-media">
+          <div class="glow" aria-hidden="true"></div>
+          <img src="/assets/sec56/genjutsu-warm.webp" alt="Dojo Genjutsu com luz vermelha personalizada" width="1024" height="1024" loading="lazy">
+          <span class="rim" aria-hidden="true"></span>
+        </div>
+        <div class="contrast-body">
+          <span class="hud">Genjutsu</span>
+          <h3>Lê você. Sugere antes.</h3>
+          <ul>
+            <li>O questionário fecha Zen, Cyber, Excêntrico ou Acolhedor. A casa já abre nesse clima.</li>
+            <li>A Gen vê horário, cor da luz, ar e música que você repete.</li>
+            <li>Quando o padrão aparece, ela sugere virar rotina. Você só confirma.</li>
+          </ul>
+        </div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- 06 DADOS → CASA -->
+<section class="sec" id="beneficios">
+  <span class="stroke-bg" aria-hidden="true">FLUXO</span>
+  <div class="wrap">
+    <div class="sec-head">
+      <div>
+        <p class="label reveal" data-d="0">Como a casa se molda</p>
+        <h2 class="reveal heading" data-d="1">Dados, padrões, casa no seu jeito</h2>
+      </div>
+      <span class="sec-num reveal" data-d="1">06</span>
+    </div>
+    <p class="lead reveal" data-d="2">Do questionário até a rotina automática: a IA usa o que você fez de verdade, não um painel genérico.</p>
+    <div class="flow">
+      <article class="flow-step dados reveal" data-d="0">
+        <div class="flow-media" aria-hidden="true">
+          <div class="viz-quiz">
+            <div class="vq-head"><span class="vq-label">Seu nome e três situações</span><span class="vq-label">02 / 03</span></div>
+            <div class="vq-bar"><i></i></div>
+            <div class="vq-name"><em>Nome</em><b>André</b></div>
+            <p class="vq-q">Quando surge um problema difícil, você…</p>
+            <div class="vq-opts">
+              <span class="on">respira, ordena os fatos e resolve um passo de cada vez</span>
+              <span>monta um modelo, testa hipóteses e escolhe a jogada</span>
+              <span>tenta um atalho ousado antes de abrir o manual</span>
+              <span>chama quem está perto e segura o clima enquanto resolvem</span>
+            </div>
+          </div>
+        </div>
+        <div class="flow-body">
+          <div class="n">01</div>
+          <h3>Dados</h3>
+          <p>Respostas do quiz, horário, cor da luz, temperatura do ar, músicas pedidas.</p>
+        </div>
+      </article>
+      <article class="flow-step reveal" data-d="1">
+        <div class="flow-media" aria-hidden="true">
+          <div class="viz-pat">
+            <span class="vp-label">Últimos 7 dias · 23h</span>
+            <div class="vp-row"><span class="vp-day">SEG</span><div class="vp-track"><i style="left:88%" class="hit"></i></div></div>
+            <div class="vp-row"><span class="vp-day">TER</span><div class="vp-track"><i style="left:86%" class="hit"></i></div></div>
+            <div class="vp-row"><span class="vp-day">QUA</span><div class="vp-track"><i style="left:90%" class="hit"></i></div></div>
+            <div class="vp-row"><span class="vp-day">QUI</span><div class="vp-track"><i style="left:40%"></i></div></div>
+            <div class="vp-row"><span class="vp-day">SEX</span><div class="vp-track"><i style="left:87%" class="hit"></i></div></div>
+            <div class="vp-row"><span class="vp-day">SÁB</span><div class="vp-track"><i style="left:92%" class="hit"></i></div></div>
+            <div class="vp-row"><span class="vp-day">DOM</span><div class="vp-track"><i style="left:89%" class="hit"></i></div></div>
+            <div class="vp-foot"><span>Luz off · Ar 22°</span><b>padrão 6/7</b></div>
+          </div>
+        </div>
+        <div class="flow-body">
+          <div class="n">02</div>
+          <h3>Padrões</h3>
+          <p>A Gen nota o que se repete: toda noite a luz da sala apaga e o ar fica em 22.</p>
+        </div>
+      </article>
+      <article class="flow-step mold reveal" data-d="2">
+        <div class="flow-media">
+          <div class="glow" aria-hidden="true"></div>
+          <img src="/assets/sec56/casa-moldada.webp" alt="Casa moldada ao perfil, luz quente" width="1024" height="1024" loading="lazy">
+          <span class="rim" aria-hidden="true"></span>
+        </div>
+        <div class="flow-body">
+          <div class="n">03</div>
+          <h3>Casa moldada</h3>
+          <p>Perfil ZCEA na entrada. Rotinas sugeridas. O mesmo estado no site, no celular e no headset.</p>
+        </div>
+      </article>
+    </div>
+    <div class="example reveal" data-d="2">
+      <div class="example-copy">
+        <span class="hud">Exemplo real</span>
+        <p>Toda noite às 23h você apaga a sala e liga o ar em 22. A Gen sugere virar rotina. Se você topa, no outro dia ela já faz sozinha.</p>
+      </div>
+      <div class="example-phone" aria-hidden="true">
+        <div class="phone-noti">
+          <div class="pn-top">
+            <img src="/assets/crow-logo.webp" alt="">
+            <div class="who"><strong>Gen</strong><span>agora</span></div>
+          </div>
+          <div class="pn-body">Percebi que toda noite às 23h você apaga a sala e liga o ar em 22. Quer virar rotina?</div>
+          <div class="pn-acts">
+            <button type="button" class="yes">Aceitar</button>
+            <button type="button" class="no">Agora não</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="benefits">
+      <article class="ben b1 reveal" data-d="0">
+        <div class="glow" aria-hidden="true"></div>
+        <div class="ben-ico" aria-hidden="true"><svg class="filled" viewBox="0 0 24 24"><path d="M12 3.2l2.1 4.25 4.7.68-3.4 3.32.8 4.7L12 13.9l-4.2 2.25.8-4.7-3.4-3.32 4.7-.68L12 3.2z"/></svg></div>
+        <span class="tag">01</span>
+        <h3>Perfil na entrada</h3>
+        <p>Zen, Cyber, Excêntrico ou Acolhedor. A casa abre no seu clima, sem você montar painel.</p>
+      </article>
+      <article class="ben b2 reveal" data-d="1">
+        <div class="glow" aria-hidden="true"></div>
+        <div class="ben-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7.2"/><path d="M12 8.2v4.1l2.6 1.55"/></svg></div>
+        <span class="tag">02</span>
+        <h3>Rotina que nasce do uso</h3>
+        <p>Luz, ar e música que você repete viram sugestão. Alexa espera o comando; a Gen oferece o atalho.</p>
+      </article>
+      <article class="ben b3 reveal" data-d="2">
+        <div class="glow" aria-hidden="true"></div>
+        <div class="ben-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="2.8" y="5" width="6.2" height="14" rx="1.2"/><rect x="10.5" y="3.8" width="10.2" height="12.5" rx="1.2"/><path d="M13.2 19.5h5.2M15.8 19.5v1.2"/></svg></div>
+        <span class="tag">03</span>
+        <h3>Um estado em três lugares</h3>
+        <p>Muda no celular, vê no site e no headset. A sessão é a mesma.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- 07 TECH -->
+<section class="sec" id="por-dentro">
+  <div class="wrap">
+    <div class="sec-head">
+      <div>
+        <p class="label reveal" data-d="0">Por dentro</p>
+        <h2 class="reveal heading" data-d="1">O que a gente aprendeu e colocou na casa</h2>
+      </div>
+      <span class="sec-num reveal" data-d="1">07</span>
+    </div>
+    <p class="lead reveal" data-d="2">Matérias do curso que aparecem no protótipo: NLP, aprendizado de máquina, GenAI e engenharia de software com IA.</p>
+    <div class="tech">
+      <article class="tech-card reveal" data-d="0">
+        <div class="glow" aria-hidden="true"></div>
+        <div class="n">01</div>
+        <h3>NLP</h3>
+        <p>Comandos em português viram ações na casa: luz, ar, mídia, rotina.</p>
+      </article>
+      <article class="tech-card reveal" data-d="1">
+        <div class="glow" aria-hidden="true"></div>
+        <div class="n">02</div>
+        <h3>ML / DL</h3>
+        <p>O questionário mapeia preferências no perfil ZCEA que o headset lê.</p>
+      </article>
+      <article class="tech-card reveal" data-d="2">
+        <div class="glow" aria-hidden="true"></div>
+        <div class="n">03</div>
+        <h3>GenAI &amp; Prompt</h3>
+        <p>A Gen usa ferramentas com confirmação: só afirma o que a API aceitou.</p>
+      </article>
+      <article class="tech-card reveal" data-d="3">
+        <div class="glow" aria-hidden="true"></div>
+        <div class="n">04</div>
+        <h3>Eng. de software com IA</h3>
+        <p>Site, API, sessão, Casa e headset no mesmo estado. Um protótipo só.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- 08 CTA -->
+<section class="cta-final" id="entrar">
+  <p class="kanji-bg" lang="ja" aria-hidden="true">幻術</p>
+  <div class="wrap">
+    <p class="label reveal" data-d="0">Pronto</p>
+    <h2 class="reveal heading" data-d="1">Bora testar</h2>
+    <p class="reveal" data-d="2">Entra como visitante, gera o código e leva pro headset.</p>
+    <div class="cta-row reveal" data-d="3">
+      <a class="cta cta-pulse" href="/entrada?via=guest">Continuar sem conta</a>
+      <a class="cta ghost" href="/entrada?via=google">Continuar com Google</a>
+    </div>
+  </div>
+</section>
+
+<section class="team" id="time">
+  <div class="wrap">
+    <p class="label reveal" data-d="0">Time</p>
+    <h2 class="reveal heading" data-d="1">Quem fez isso</h2>
+    <p class="lead reveal" data-d="2">Quatro pessoas por trás da casa.</p>
+    <div class="team-grid">
+      <a class="member reveal" data-d="0" href="https://www.linkedin.com/in/andr%C3%A9-marcelino-264b4135b" target="_blank" rel="noopener">
+        <img class="av" src="/assets/team/1-andre-marcelino.webp" alt="André Marcelino" width="768" height="1376">
+        <span class="shade" aria-hidden="true"></span>
+        <div class="meta"><div><strong>André Marcelino</strong><span class="role"></span></div><svg class="li" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M4.98 3.5C4.98 4.88 3.86 6 2.5 6S0 4.88 0 3.5 1.12 1 2.5 1s2.48 1.12 2.48 2.5zM.5 8.5h4V23h-4V8.5zM8.5 8.5h3.8v2h.05c.53-1 1.82-2.05 3.75-2.05 4 0 4.75 2.64 4.75 6.07V23h-4v-6.6c0-1.57-.03-3.6-2.2-3.6-2.2 0-2.54 1.72-2.54 3.5V23h-4V8.5z"/></svg></div>
+      </a>
+      <a class="member reveal" data-d="1" href="https://www.linkedin.com/in/thucosta" target="_blank" rel="noopener">
+        <img class="av" src="/assets/team/2-arthur-costa.webp" alt="Arthur Costa" width="768" height="1376">
+        <span class="shade" aria-hidden="true"></span>
+        <div class="meta"><div><strong>Arthur Costa</strong><span class="role"></span></div><svg class="li" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M4.98 3.5C4.98 4.88 3.86 6 2.5 6S0 4.88 0 3.5 1.12 1 2.5 1s2.48 1.12 2.48 2.5zM.5 8.5h4V23h-4V8.5zM8.5 8.5h3.8v2h.05c.53-1 1.82-2.05 3.75-2.05 4 0 4.75 2.64 4.75 6.07V23h-4v-6.6c0-1.57-.03-3.6-2.2-3.6-2.2 0-2.54 1.72-2.54 3.5V23h-4V8.5z"/></svg></div>
+      </a>
+      <a class="member reveal" data-d="2" href="https://www.linkedin.com/in/thiago-meneses-de-araujo" target="_blank" rel="noopener">
+        <img class="av" src="/assets/team/3-thiago-menezes.webp" alt="Thiago Meneses" width="768" height="1376">
+        <span class="shade" aria-hidden="true"></span>
+        <div class="meta"><div><strong>Thiago Meneses</strong><span class="role"></span></div><svg class="li" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M4.98 3.5C4.98 4.88 3.86 6 2.5 6S0 4.88 0 3.5 1.12 1 2.5 1s2.48 1.12 2.48 2.5zM.5 8.5h4V23h-4V8.5zM8.5 8.5h3.8v2h.05c.53-1 1.82-2.05 3.75-2.05 4 0 4.75 2.64 4.75 6.07V23h-4v-6.6c0-1.57-.03-3.6-2.2-3.6-2.2 0-2.54 1.72-2.54 3.5V23h-4V8.5z"/></svg></div>
+      </a>
+      <a class="member reveal" data-d="3" href="https://www.linkedin.com/in/gustavo-vizeu-75098b262" target="_blank" rel="noopener">
+        <img class="av" src="/assets/team/4-gustavo-vizeu.webp" alt="Gustavo Vizeu" width="768" height="1376">
+        <span class="shade" aria-hidden="true"></span>
+        <div class="meta"><div><strong>Gustavo Vizeu</strong><span class="role"></span></div><svg class="li" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M4.98 3.5C4.98 4.88 3.86 6 2.5 6S0 4.88 0 3.5 1.12 1 2.5 1s2.48 1.12 2.48 2.5zM.5 8.5h4V23h-4V8.5zM8.5 8.5h3.8v2h.05c.53-1 1.82-2.05 3.75-2.05 4 0 4.75 2.64 4.75 6.07V23h-4v-6.6c0-1.57-.03-3.6-2.2-3.6-2.2 0-2.54 1.72-2.54 3.5V23h-4V8.5z"/></svg></div>
+      </a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span>Genjutsu AI</span>
+    <span><a href="/privacy">Privacidade</a> · <a href="/terms">Termos</a></span>
+  </div>
+</footer>
+
+<script>
+(function(){
+  function fitLine(line, target){
+    line.style.transform='none';
+    line.style.display='inline-block';
+    line.style.maxWidth='none';
+    line.style.whiteSpace='nowrap';
+    line.style.letterSpacing='-0.02em';
+    var lo=18, hi=target>=400?78:(target>=300?56:48);
+    for(var i=0;i<28;i++){
+      var mid=(lo+hi)/2;
+      line.style.fontSize=mid+'px';
+      if(line.scrollWidth<=target) lo=mid; else hi=mid;
+    }
+    line.style.fontSize=lo+'px';
+    var rem=target-line.scrollWidth;
+    var chars=Math.max(1,(line.textContent||'').length-1);
+    if(rem>0.4){
+      var base=lo*-0.02;
+      line.style.letterSpacing=(base+rem/chars)+'px';
+    }
+  }
+  function fitTitle(){
+    var h1=document.querySelector('h1.hero-title');
+    if(!h1) return;
+    h1.style.width='100%';
+    var target=Math.round(h1.getBoundingClientRect().width);
+    if(target<40) return;
+    var lines=h1.querySelectorAll('.line');
+    lines.forEach(function(line){fitLine(line,target);});
+    lines.forEach(function(line,i){
+      if(i===lines.length-1){line.style.marginBottom='0px';return;}
+      var fs=parseFloat(line.style.fontSize)||parseFloat(getComputedStyle(line).fontSize);
+      line.style.marginBottom=Math.max(4,fs*0.08)+'px';
+    });
+  }
+  function runFit(){fitTitle();requestAnimationFrame(fitTitle);}
+  if(document.fonts&&document.fonts.ready) document.fonts.ready.then(runFit); else window.addEventListener('load',runFit);
+  window.addEventListener('resize',function(){clearTimeout(window.__fitTitleT);window.__fitTitleT=setTimeout(runFit,80);});
+  runFit();
+
+  var reduce=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  document.documentElement.classList.add('js');
+  document.querySelectorAll('.reveal').forEach(function(el){el.style.setProperty('--d',el.getAttribute('data-d')||'0');});
+  document.querySelectorAll('.hero-copy .reveal').forEach(function(el){el.classList.add('in');});
+  if(reduce){document.querySelectorAll('.reveal').forEach(function(el){el.classList.add('in');});return;}
+  var io=new IntersectionObserver(function(entries){
+    entries.forEach(function(e){if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}});
+  },{threshold:0.12,rootMargin:'0px 0px -8% 0px'});
+  document.querySelectorAll('.reveal:not(.in)').forEach(function(el){io.observe(el);});
+
+  /* Gen chat staged reveal */
+  (function(){
+    var app=document.getElementById('gen-app');
+    if(!app) return;
+    var bubbles=[].slice.call(document.querySelectorAll('#gen-msgs .bubble'));
+    var typing=document.getElementById('gen-typing');
+    var hud=[].slice.call(document.querySelectorAll('#gen-hud .hud-chip'));
+    var started=false;
+    function showAll(){
+      bubbles.forEach(function(b){b.classList.add('in');});
+      hud.forEach(function(h){h.classList.add('in');});
+      if(typing) typing.classList.remove('show');
+    }
+    function run(){
+      if(started) return; started=true;
+      if(reduce){showAll();return;}
+      var i=0;
+      function next(){
+        if(i>=bubbles.length){
+          if(typing) typing.classList.remove('show');
+          return;
+        }
+        var b=bubbles[i];
+        var isGen=b.classList.contains('gen');
+        if(isGen && typing){ typing.classList.add('show'); }
+        setTimeout(function(){
+          if(typing) typing.classList.remove('show');
+          b.classList.add('in');
+          var step=+b.getAttribute('data-step');
+          if(step===1 && hud[0]) hud[0].classList.add('in');
+          if(step===3){ if(hud[1]) hud[1].classList.add('in'); if(hud[2]) hud[2].classList.add('in'); }
+          i++;
+          setTimeout(next, isGen?520:380);
+        }, isGen?520:80);
+      }
+      next();
+    }
+    var cio=new IntersectionObserver(function(entries){
+      entries.forEach(function(e){ if(e.isIntersecting){ run(); cio.disconnect(); }});
+    },{threshold:0.35});
+    cio.observe(app);
+  })();
+
+  var heroImg=document.querySelector('[data-parallax="hero"] img');
+  var ticking=false;
+  window.addEventListener('scroll',function(){
+    if(ticking) return; ticking=true;
+    requestAnimationFrame(function(){
+      var y=window.scrollY||0;
+      if(heroImg) heroImg.style.transform='scale(1.06) translate3d(0,'+(y*0.1)+'px,0)';
+      ticking=false;
+    });
+  },{passive:true});
+})();
+</script>
 </body>
 </html>

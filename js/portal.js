@@ -98,16 +98,30 @@
     });
   }
 
+  function onEntryRoute() {
+    var path = (location.pathname || "").replace(/\/+$/, "") || "/";
+    return path === "/entrada";
+  }
+
+  function goHome() {
+    if (location.pathname === "/" || location.pathname === "") return;
+    location.href = "/";
+  }
+
   function revealApp() {
-    $("landing").classList.add("hidden");
-    $("app").classList.remove("hidden");
-    $("screen-config").hidden = true;
+    if ($("landing")) $("landing").classList.add("hidden");
+    if ($("app")) $("app").classList.remove("hidden");
+    if ($("screen-config")) $("screen-config").hidden = true;
   }
 
   function showLanding() {
-    $("landing").classList.remove("hidden");
-    $("app").classList.add("hidden");
-    $("screen-config").hidden = true;
+    if (onEntryRoute() || ($("landing") && $("landing").dataset.role === "shell")) {
+      goHome();
+      return;
+    }
+    if ($("landing")) $("landing").classList.remove("hidden");
+    if ($("app")) $("app").classList.add("hidden");
+    if ($("screen-config")) $("screen-config").hidden = true;
   }
 
   function showScreen(id) {
@@ -130,8 +144,8 @@
   }
 
   function openConfigFallback(message) {
-    $("landing").classList.add("hidden");
-    $("app").classList.add("hidden");
+    if ($("landing")) $("landing").classList.add("hidden");
+    if ($("app")) $("app").classList.add("hidden");
     $("screen-config").hidden = false;
     if (message) setStatus("status-config", message, true);
     var title = $("screen-config").querySelector(".screen-title");
@@ -837,17 +851,23 @@
     });
   });
 
-  $("btn-google").addEventListener("click", startGoogle);
-  $("btn-guest").addEventListener("click", startGuest);
-  $("btn-google-bottom").addEventListener("click", startGoogle);
-  $("btn-guest-bottom").addEventListener("click", startGuest);
-  $("btn-nav-login").addEventListener("click", async function () {
+  function on(id, ev, fn) {
+    var el = $(id);
+    if (el) el.addEventListener(ev, fn);
+  }
+
+  on("btn-google", "click", startGoogle);
+  on("btn-guest", "click", startGuest);
+  on("btn-google-bottom", "click", startGoogle);
+  on("btn-guest-bottom", "click", startGuest);
+  on("btn-nav-login", "click", async function () {
     if (!(await requireClient())) return;
     revealApp();
     showScreen("screen-login");
   });
-  $("btn-scroll-more").addEventListener("click", function () {
-    $("como-funciona").scrollIntoView({ behavior: "smooth" });
+  on("btn-scroll-more", "click", function () {
+    var more = $("como-funciona");
+    if (more && more.scrollIntoView) more.scrollIntoView({ behavior: "smooth" });
   });
 
   $("btn-login").addEventListener("click", startGoogle);
@@ -977,5 +997,18 @@
   configReady = (async function main() {
     var config = await loadConfig();
     if (config) setupSupabaseClient(config.supabaseUrl, config.supabaseAnonKey, config.source);
+    if (!onEntryRoute()) return;
+    revealApp();
+    var params = new URLSearchParams(location.search);
+    var via = (params.get("via") || "").toLowerCase();
+    if (via === "google") {
+      await startGoogle();
+      return;
+    }
+    if (via === "guest") {
+      await startGuest();
+      return;
+    }
+    showScreen("screen-login");
   })();
 })();
