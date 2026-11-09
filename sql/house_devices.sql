@@ -77,6 +77,14 @@ $$;
 
 revoke all on function genjutsu_internal.lights_valid(jsonb) from public, anon, authenticated;
 
+-- service_role must EXECUTE validators used by CHECK constraints.
+-- Without this, INSERT/UPDATE returns 403 and the API maps it to missing_config.
+grant usage on schema genjutsu_internal to service_role;
+grant execute on function genjutsu_internal.default_lights() to service_role;
+grant execute on function genjutsu_internal.device_cell_valid(jsonb) to service_role;
+grant execute on function genjutsu_internal.lights_valid(jsonb) to service_role;
+grant execute on function genjutsu_internal.default_ambience() to service_role;
+
 alter table public.house_state
   drop constraint if exists house_state_lights_check;
 
