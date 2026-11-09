@@ -22,6 +22,7 @@
   var saveInProgress = false;
   var guestIntent = false;
   var configReady = Promise.resolve();
+  var READY_STORE = "genjutsu_ready_v1";
 
   function randomSessionCode() {
     var out = "";
@@ -415,7 +416,12 @@
     }
     journeyUserId = user.id;
     await loadStoredDossier(user);
+    applyPersistedReady(user);
     paintIdentity(user);
+    if (quizComplete(globalDossie)) {
+      restoreReady(user);
+      return;
+    }
     if (P.isGuest(user)) {
       journeyPhase = "quiz";
       globalDossie.fonte = "convidado";
@@ -603,11 +609,12 @@
   }
 
   function compactRecordLabel(label) {
-    var raw = String(label || "");
+    var raw = String(label || "").toLowerCase();
+    if (raw === "nome") return "Nome";
+    if (raw === "profile_id") return "profile_id";
     if (raw.indexOf("fim de semana") !== -1) return "Fim de semana";
     if (raw.indexOf("problema difícil") !== -1) return "Problema difícil";
     if (raw.indexOf("festa") !== -1) return "Festa";
-    if (raw === "Nome" || raw === "profile_id") return raw;
     return "";
   }
 
@@ -615,19 +622,89 @@
     var dl = $("ready-records");
     if (!dl) return;
     dl.replaceChildren();
+    var order = ["Nome", "Fim de semana", "Problema difícil", "Festa", "profile_id"];
+    var byLabel = {};
     (fields || []).forEach(function (pair) {
       var label = compactRecordLabel(pair[0]);
       if (!label) return;
       var value = String(pair[1] || "");
-      var short = value.match(/\(([a-z]+)\)\s*$/);
-      if (short) value = short[1];
+      var short = value.match(/\(([a-z_]+)\)\s*$/i);
+      if (short && label !== "Nome" && label !== "profile_id") value = short[1];
+      byLabel[label] = value;
+    });
+    order.forEach(function (label) {
+      if (!byLabel[label]) return;
+      var row = document.createElement("div");
+      row.className = "record-row";
       var dt = document.createElement("dt");
       dt.textContent = label;
       var dd = document.createElement("dd");
-      dd.textContent = value;
-      dl.appendChild(dt);
-      dl.appendChild(dd);
+      dd.textContent = byLabel[label];
+      row.appendChild(dt);
+      row.appendChild(dd);
+      dl.appendChild(row);
     });
+  }
+
+  function quizComplete(dossie) {
+    var pref = (dossie && dossie.preferencias) || {};
+    return !!(pref.folga && pref.problema && pref.festa);
+  }
+
+  function persistReadySnapshot(saved) {
+    try {
+      localStorage.setItem(READY_STORE, JSON.stringify({
+        sessionCode: (saved && saved.sessionCode) || sessionCode || "",
+        userId: saved && saved.user ? saved.user.id : "",
+        profile_id: saved && saved.profile ? saved.profile.profile_id : "",
+        preferencias: (globalDossie && globalDossie.preferencias) || {},
+        nome: saved && saved.persona ? saved.persona.displayName : "",
+        guest: !!(saved && saved.guest)
+      }));
+    } catch (e) { /* storage opcional */ }
+  }
+
+  function applyPersistedReady(user) {
+    try {
+      var raw = localStorage.getItem(READY_STORE);
+      if (!raw) return;
+      var snap = JSON.parse(raw);
+      if (!snap || typeof snap !== "object") return;
+      if (user && snap.userId && snap.userId !== user.id) return;
+      if (snap.sessionCode && !sessionCode) renderSessionCode(snap.sessionCode);
+      if (snap.preferencias) {
+        globalDossie.preferencias = Object.assign({}, snap.preferencias, globalDossie.preferencias || {});
+      }
+      if (snap.nome && !globalDossie.nome_exibicao) globalDossie.nome_exibicao = snap.nome;
+    } catch (e) { /* snapshot inválido */ }
+  }
+
+  function restoreReady(user) {
+    applyPersistedReady(user);
+    var pref = globalDossie.preferencias || {};
+    var resolved = G && G.selection ? G.selection(pref.folga, pref.problema, pref.festa) : null;
+    var persona = P.buildPersonality(user, globalDossie, sessionCode);
+    var profileId = (resolved && resolved.profile_id) || persona.profile_id || pref.profile_id;
+    var fields = P.sessionFields({
+      display_name: persona.displayName,
+      preferencias: pref,
+      profile_id: profileId,
+      session_code: sessionCode,
+      fonte: globalDossie.fonte || (P.isGuest(user) ? "convidado" : "")
+    });
+    guestIntent = P.isGuest(user);
+    journeyUserId = user && user.id ? user.id : journeyUserId;
+    journeyPhase = "ready";
+    currentPaintUser = user;
+    paintReady({
+      user: user,
+      persona: persona,
+      profile: resolved || { profile_id: profileId, scores: pref.scores || {} },
+      fields: fields,
+      sessionCode: sessionCode,
+      guest: guestIntent
+    });
+    showScreen("screen-ready");
   }
 
   function paintQuizBar() {
@@ -791,14 +868,18 @@
     if (who) who.textContent = name && meta ? (name + " · perfil " + meta.archetype) : (name || "");
     var code = (saved && saved.sessionCode) || sessionCode || "";
     var proverb = P.proverbFor ? P.proverbFor(profile && profile.profile_id, code) : "";
-    if ($("ready-phrase")) $("ready-phrase").textContent = proverb || (saved && saved.persona ? saved.persona.phrase : "") || "";
+    if ($("ready-phrase")) $("ready-phrase").textContent = proverb || "";
     var sign = $("ready-profile");
     if (sign) {
       sign.hidden = !meta;
       sign.textContent = meta ? meta.archetype : "";
     }
     var kanji = $("ready-kanji");
-    if (kanji) kanji.textContent = "幻術";
+    if (kanji) {
+      var mark = kanji.querySelector("span");
+      if (mark) mark.textContent = "幻術";
+      else kanji.textContent = "幻術";
+    }
     var title = $("ready-title");
     if (title) title.textContent = "Sua sessão está pronta";
     paintTraits(profile && profile.scores);
@@ -810,11 +891,9 @@
     var codeEl = $("ready-quest-code");
     if (codeEl) codeEl.textContent = code || "—";
     renderSessionFields(saved && saved.fields);
-    var readyNote = $("ready-guest-note");
-    if (readyNote) {
-      readyNote.hidden = false;
-      readyNote.textContent = saved && saved.guest ? "Salvo sem conta" : "Salvo na conta";
-    }
+    var titleEl = $("record-title");
+    if (titleEl) titleEl.textContent = saved && saved.guest === false ? "Salvo na conta" : "Salvo sem conta";
+    persistReadySnapshot(saved);
     var thumb = $("ready-house-thumb");
     if (thumb && profile && profile.profile_id) {
       thumb.src = "/assets/casa/" + String(profile.profile_id).toLowerCase() + ".jpg";
@@ -833,10 +912,7 @@
       el.textContent = label;
     }
     var readyNote = $("ready-guest-note");
-    if (readyNote) {
-      var guest = guestIntent || (currentPaintUser && P.isGuest(currentPaintUser));
-      readyNote.hidden = !guest;
-    }
+    if (readyNote) readyNote.hidden = true;
   }
 
   function selectedValue(field) {
@@ -858,11 +934,17 @@
       var session = existing && existing.data && existing.data.session;
       var user = session && session.user;
       guestIntent = !user || P.isGuest(user);
-      journeyPhase = "quiz";
       if (user) {
         journeyUserId = user.id;
         paintIdentity(user);
+        await loadStoredDossier(user);
+        applyPersistedReady(user);
+        if (quizComplete(globalDossie)) {
+          restoreReady(user);
+          return;
+        }
       }
+      journeyPhase = "quiz";
       revealApp();
       showScreen("screen-questionnaire");
       setStatus("status-questionnaire", guestIntent
@@ -875,6 +957,7 @@
 
   async function leaveJourney() {
     journeyPhase = "leaving";
+    try { localStorage.removeItem(READY_STORE); } catch (e) {}
     try {
       if (sb) await sb.auth.signOut();
     } catch (e) {}
@@ -1052,6 +1135,12 @@
     revealApp();
     var params = new URLSearchParams(location.search);
     var via = (params.get("via") || "").toLowerCase();
+    var existing = sb ? await sb.auth.getSession() : null;
+    var user = existing && existing.data && existing.data.session && existing.data.session.user;
+    if (user) {
+      await showLoggedIn(user);
+      if (journeyPhase === "ready") return;
+    }
     if (via === "google") {
       await startGoogle();
       return;

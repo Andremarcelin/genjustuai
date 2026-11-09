@@ -25,7 +25,7 @@ body.page-casa {
   display: grid;
   grid-template-columns: 1fr;
   min-height: 100vh;
-  padding-bottom: calc(120px + env(safe-area-inset-bottom));
+  padding-bottom: calc(168px + env(safe-area-inset-bottom));
 }
 
 .casa-rail {
@@ -508,6 +508,7 @@ body.page-casa {
   gap: 8px;
   overflow: visible;
   padding: 10px 0 8px;
+  margin: 0 0 56px;
   position: relative;
   z-index: 1;
 }
@@ -764,7 +765,7 @@ body.page-casa {
 @media (min-width: 960px) {
   .casa-app {
     grid-template-columns: 72px 1fr;
-    padding-bottom: 0;
+    padding-bottom: calc(168px + env(safe-area-inset-bottom));
   }
 
   .casa-rail {
@@ -837,7 +838,7 @@ body.page-casa {
     grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.9fr);
     gap: 20px;
     padding-right: 16px;
-    padding-bottom: 120px;
+    padding-bottom: 168px;
   }
 
   .casa-frame {

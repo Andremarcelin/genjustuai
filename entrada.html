@@ -167,9 +167,8 @@
       <p class="parchment-name vis-hide" id="ready-name"></p>
       <p class="who" id="ready-who"></p>
       <p class="parchment-sign vis-hide" id="ready-profile" hidden></p>
-      <p class="seal-title vis-hide" id="ready-title"></p>
+      <p class="seal-title vis-hide" id="ready-title">Sua sessão está pronta</p>
       <p class="parchment-phrase horoscope" id="ready-phrase"></p>
-      <p class="hanko" id="ready-kanji" aria-hidden="true" lang="ja">幻術</p>
       <p class="quest-code scroll-code" id="ready-quest-code" data-session-code>—</p>
       <p class="hint">Código da sessão · leve pro headset</p>
       <p class="quest-step vis-hide">Sua sessão está pronta — coloque o Quest</p>
@@ -213,6 +212,7 @@
       <ol class="history" id="ready-timeline"></ol>
       </div>
       </div>
+      <div class="hanko" id="ready-kanji" aria-hidden="true"><span lang="ja">幻術</span></div>
       <div class="scroll-roll bot makimono-roller" aria-hidden="true"></div>
     </article>
     <section class="session-record card" aria-labelledby="record-title">
@@ -220,7 +220,7 @@
         <div>
           <p class="hud">Registros desta sessão</p>
           <h3 id="record-title">Salvo sem conta</h3>
-          <p class="guest-save-note" id="ready-guest-note">Salvo sem conta, como visitante.</p>
+          <p class="guest-save-note vis-hide" id="ready-guest-note">Salvo sem conta, como visitante.</p>
         </div>
         <img id="ready-house-thumb" alt="" width="64" height="64">
       </div>
@@ -229,14 +229,14 @@
         <div><strong>Clima</strong><span id="ready-clima-card"></span></div>
       </div>
       <dl id="ready-records"></dl>
-      <div class="session-box parchment-pass">
+      <a class="cta cta-google" id="btn-goto-casa" href="/casa">Abrir a Casa</a>
+      <a class="session-link ready-summary-link" href="#" target="_blank" rel="noopener">Abrir resumo</a>
+      <div class="session-box parchment-pass vis-hide">
         <div class="lbl">Mostre este código ao staff para o Quest</div>
         <div class="code" data-session-code>—</div>
         <img class="session-qr" alt="QR da sessão para o Quest">
-        <a class="session-link" href="#" target="_blank" rel="noopener">Abrir resumo</a>
       </div>
-      <p class="record-foot">Esta sessão passa a ser a do Quest. O admin ainda pode trocar o código em /admin.</p>
-      <a class="cta cta-google" id="btn-goto-casa" href="/casa">Abrir a Casa</a>
+      <p class="record-foot vis-hide">Esta sessão passa a ser a do Quest. O admin ainda pode trocar o código em /admin.</p>
       <span class="vis-hide">Ir para a minha Casa. O que a casa entendeu de você</span>
     </section>
     <button class="cta ghost" id="btn-leave-ready" type="button">Sair e escolher de novo</button>

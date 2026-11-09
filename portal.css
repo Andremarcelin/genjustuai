@@ -950,7 +950,7 @@ body.page-entrada .hud {
 }
 
 body.page-entrada .phone {
-  width: min(420px, 100%);
+  width: min(440px, 100%);
   border: 1px solid rgba(224, 40, 40, 0.45);
   border-radius: 22px;
   background: rgba(8, 6, 6, 0.78);
@@ -959,7 +959,7 @@ body.page-entrada .phone {
   min-height: auto;
   margin: 24px auto 48px;
   padding: 0 0 24px;
-  overflow: hidden;
+  overflow: visible;
 }
 
 body.page-entrada .landing-nav {
@@ -1080,10 +1080,17 @@ body.page-entrada .cta {
   background: linear-gradient(180deg, #F03535, #E02828);
 }
 
+body.page-entrada #screen-ready {
+  padding: 0.35rem 1.05rem 0.4rem;
+  overflow: visible;
+}
+
 body.page-entrada .scroll {
   position: relative;
-  padding: 1.65rem 1.35rem 1.9rem;
-  margin: 0.55rem 0 1rem;
+  width: 100%;
+  padding: 1.65rem 1.15rem 1.9rem;
+  margin: 0.85rem 0 1.1rem;
+  overflow: visible;
 }
 
 body.page-entrada .scroll-paper {
@@ -1099,13 +1106,30 @@ body.page-entrada .scroll-paper {
 
 body.page-entrada .scroll-roll {
   position: absolute;
-  left: -6px;
-  right: -6px;
+  left: -8px;
+  right: -8px;
   height: 22px;
   border-radius: 11px;
   background: linear-gradient(180deg, #5a2e1c, #3a1810 55%, #2a100a);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 200, 150, 0.2);
   z-index: 2;
 }
+
+body.page-entrada .scroll-roll::before,
+body.page-entrada .scroll-roll::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #c9a06a, #6a3a1e 60%, #2a140a);
+  transform: translateY(-50%);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+
+body.page-entrada .scroll-roll::before { left: 4px; }
+body.page-entrada .scroll-roll::after { right: 4px; }
 
 body.page-entrada .scroll-roll.top { top: -11px; }
 body.page-entrada .scroll-roll.bot { bottom: -11px; }
@@ -1167,8 +1191,9 @@ body.page-entrada .hint {
 
 body.page-entrada .hanko {
   position: absolute;
-  right: 8px;
-  bottom: 4px;
+  right: 10px;
+  bottom: 18px;
+  z-index: 3;
   width: 54px;
   height: 54px;
   border-radius: 6px;
@@ -1177,10 +1202,15 @@ body.page-entrada .hanko {
   display: grid;
   place-items: center;
   transform: rotate(-8deg);
+  box-shadow: 0 0 0 1px rgba(184, 28, 28, 0.25), 2px 3px 0 rgba(58, 36, 22, 0.15);
+}
+
+body.page-entrada .hanko span {
   font-family: "Noto Serif JP", serif;
   font-weight: 700;
   font-size: 1.15rem;
   color: #b81c1c;
+  line-height: 1;
 }
 
 body.page-entrada .ready-extra { display: none; }
@@ -1192,7 +1222,8 @@ body.page-entrada .session-record.card {
   padding: 1.15rem 1.2rem 1.25rem;
   position: relative;
   overflow: hidden;
-  margin: 0 1.05rem;
+  margin: 0;
+  width: 100%;
 }
 
 body.page-entrada .session-record.card::before {
@@ -1253,24 +1284,35 @@ body.page-entrada .meta strong {
 body.page-entrada .meta span { color: #D2CBC3; font-size: 0.82rem; }
 
 body.page-entrada #ready-records {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 0.2rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+}
+
+body.page-entrada #ready-records .record-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.75rem;
+  padding: 0.45rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 0.82rem;
 }
 
 body.page-entrada #ready-records dt {
   color: #D2CBC3;
   font-weight: 500;
   border: 0;
-  padding: 0.35rem 0;
+  padding: 0;
+  margin: 0;
 }
 
 body.page-entrada #ready-records dd {
   text-align: right;
   color: #fff;
   margin: 0;
-  padding: 0.35rem 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 0;
+  font-style: normal;
 }
 
 body.page-entrada .session-box.parchment-pass {
@@ -1296,7 +1338,15 @@ body.page-entrada #btn-goto-casa {
   color: #fff;
 }
 
+body.page-entrada .ready-summary-link {
+  display: block;
+  text-align: center;
+  margin-top: 0.55rem;
+  font-size: 0.78rem;
+  color: #E8A0A0;
+}
+
 body.page-entrada #btn-leave-ready {
-  margin: 12px 1.05rem 0;
-  width: calc(100% - 2.1rem);
+  margin: 12px 0 0;
+  width: 100%;
 }
