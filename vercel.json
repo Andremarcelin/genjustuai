@@ -3,7 +3,7 @@
   "outputDirectory": ".",
   "trailingSlash": false,
   "crons": [
-    { "path": "/api/routines/run", "schedule": "*/5 * * * *" }
+    { "path": "/api/routines", "schedule": "0 10 * * *" }
   ],
   "rewrites": [
     { "source": "/privacy", "destination": "/privacy.html" },

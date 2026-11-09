@@ -1,15 +1,48 @@
 import { loadSessionForRequest } from "../session.js";
-import { initApi, readRequestBody, requireActiveSession } from "../../lib/gen/http.js";
+import { header, initApi, readRequestBody, requireActiveSession } from "../../lib/gen/http.js";
+import { createSupabaseHouseStore } from "../../lib/gen/house-store.js";
 import { createRoutineStore } from "../../lib/gen/routine-store.js";
 import { parseRoutineRequest } from "../../lib/gen/routines.js";
+import { runDueRoutines } from "../../lib/gen/run-routines.js";
+import { createRateLimiter } from "../../lib/gen/rate-limit.js";
+
+function isCron(req, env) {
+  const secret = String(env.CRON_SECRET || "").trim();
+  const auth = String(header(req, "authorization") || "");
+  if (secret && auth === `Bearer ${secret}`) return true;
+  if (String(header(req, "x-vercel-cron") || "") === "1") return true;
+  return false;
+}
 
 export function createRoutinesHandler(deps = {}) {
+  const env = deps.env || process.env;
   const loadSession = deps.loadSession || ((req) => loadSessionForRequest(req, deps.env, deps.fetchImpl));
   const store = deps.store || createRoutineStore();
+  const houseStore = deps.houseStore || deps.house || createSupabaseHouseStore();
+  const limiter = deps.limiter || createRateLimiter({ limit: 40, windowMs: 60_000 });
+  const now = deps.now || (() => Date.now());
 
   return async function handler(req, res) {
     if (initApi(req, res, ["GET", "POST", "PATCH", "DELETE"])) return;
     try {
+      if (isCron(req, env)) {
+        const result = await runDueRoutines({
+          houseStore,
+          routineStore: store,
+          env,
+          fetchImpl: deps.fetchImpl,
+          limiter,
+          now: now(),
+          suggest: true,
+        });
+        if (result.error) {
+          res.status(result.status || 503).json({ error: result.error });
+          return;
+        }
+        res.status(200).json({ ran: result.ran, suggestions: result.suggestions });
+        return;
+      }
+
       const session = await requireActiveSession(res, loadSession, req);
       if (!session) return;
       const userId = session.user_id;
@@ -18,6 +51,18 @@ export function createRoutinesHandler(deps = {}) {
         return;
       }
       if (req.method === "GET") {
+        try {
+          await runDueRoutines({
+            houseStore,
+            routineStore: store,
+            env,
+            fetchImpl: deps.fetchImpl,
+            limiter,
+            now: now(),
+            userId,
+            sessionId: session.id,
+          });
+        } catch { /* tick não derruba o GET */ }
         const listed = await store.list(userId);
         if (listed.error) {
           res.status(listed.status || 503).json({ error: listed.error });

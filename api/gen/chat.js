@@ -13,6 +13,7 @@ import { toGroqTools } from "../../lib/gen/tools.js";
 import { loadMemoryForSession, recordSessionHistory } from "../../lib/gen/history.js";
 import { createRoutineStore } from "../../lib/gen/routine-store.js";
 import { parseRoutineRequest } from "../../lib/gen/routines.js";
+import { runDueRoutines } from "../../lib/gen/run-routines.js";
 import { profanityAllowed } from "../../lib/gen/profanity.js";
 import { supabaseRest } from "../../lib/supabase-rest.cjs";
 
@@ -21,7 +22,8 @@ const sharedIpLimiter = createRateLimiter({ limit: IP_LIMIT, windowMs: IP_WINDOW
 const sharedCommandLimiter = createRateLimiter({ limit: 20, windowMs: 60_000 });
 
 function replyText(modelText, actions, transcript, state) {
-  return chooseReply({ modelText, actions, transcript, state });
+  const search = (actions || []).find((item) => item.tool === "web_search" && item.search)?.search;
+  return chooseReply({ modelText, actions, transcript, state, search });
 }
 
 async function readTurn(req) {
@@ -122,6 +124,21 @@ export function createChatHandler(deps = {}) {
         userId: session.user_id,
         routineStore,
       });
+
+      if (session.user_id) {
+        try {
+          await runDueRoutines({
+            houseStore: store,
+            routineStore,
+            env,
+            fetchImpl,
+            limiter: commandLimiter,
+            now: stamp,
+            userId: session.user_id,
+            sessionId: session.id,
+          });
+        } catch { /* tick não derruba o chat */ }
+      }
 
       const current = await runTool("get_house_state", {});
       if (current.error) {
@@ -260,6 +277,7 @@ export function createChatHandler(deps = {}) {
             args: parsed && typeof parsed === "object" ? parsed : {},
             status: outcome.status,
             reason: outcome.reason || null,
+            search: outcome.search || undefined,
           });
           messages.push({
             role: "tool",

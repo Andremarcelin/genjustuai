@@ -9,7 +9,9 @@ import { createMemoryHouseStore } from "../lib/gen/house-store.js";
 import { createMemoryRoutineStore } from "../lib/gen/routine-store.js";
 import { createDeviceHandler } from "../api/house/device.js";
 import { createChatHandler } from "../api/gen/chat.js";
-import { createRoutinesRunHandler } from "../api/routines/run.js";
+import { createRoutinesHandler } from "../api/routines/index.js";
+import { createHouseStateHandler } from "../api/house/state.js";
+import { citeSource } from "../lib/gen/persona.js";
 import { defaultHouseState } from "../lib/gen/defaults.js";
 import { parseHouseIntent, plannedActions } from "../lib/gen/intent.js";
 import { parseRoutineRequest, isRoutineDue, detectRoutinePatterns } from "../lib/gen/routines.js";
@@ -117,6 +119,7 @@ test("web_search uses DuckDuckGo then Wikipedia and cites titles", async () => {
     RelatedTopics: [],
   });
   assert.equal(ddg[0].title, "Brasil");
+  assert.match(citeSource([{ title: "Lua", snippet: "Satélite natural.", url: "https://pt.wikipedia.org/wiki/Lua" }]), /Fonte: Wikipedia — Lua/);
   const hits = await searchWeb({
     query: "capital do Brasil",
     fetchImpl: async (url) => {
@@ -146,12 +149,15 @@ test("routines parse Portuguese, run in Sao Paulo, and detect 3-day patterns", a
   assert.ok(parsed.actions.some((item) => item.args.device_id === "quarto_luz"));
   assert.ok(parsed.actions.some((item) => item.tool === "play_music"));
 
-  const due = isRoutineDue({
+  const slot = {
     enabled: true,
     schedule: { hour: 7, minute: 0, days: [0, 1, 2, 3, 4, 5, 6], tz: "America/Sao_Paulo" },
     last_run_at: null,
-  }, new Date("2026-11-09T10:00:00.000Z"));
-  assert.equal(due, true);
+  };
+  assert.equal(isRoutineDue(slot, new Date("2026-11-09T10:00:00.000Z")), true);
+  assert.equal(isRoutineDue(slot, new Date("2026-11-09T12:00:00.000Z")), true);
+  assert.equal(isRoutineDue(slot, new Date("2026-11-09T09:00:00.000Z")), false);
+  assert.equal(isRoutineDue({ ...slot, last_run_at: "2026-11-09T10:00:00.000Z" }, new Date("2026-11-09T12:00:00.000Z")), false);
 
   const patterns = detectRoutinePatterns([
     { tool: "set_device", status: "accepted", args: { device_id: "quarto_luz", on: true }, created_at: "2026-11-07T10:02:00.000Z" },
@@ -170,18 +176,19 @@ test("routines parse Portuguese, run in Sao Paulo, and detect 3-day patterns", a
     days: [0, 1, 2, 3, 4, 5, 6],
     actions: [{ tool: "set_device", args: { device_id: "quarto_luz", on: true, intensity: 0.7 } }],
   });
-  const run = createRoutinesRunHandler({
+  const run = createRoutinesHandler({
     env: { CRON_SECRET: "cron-secret" },
-    store: house,
-    routineStore: routines,
+    loadSession: async () => ({ session: null }),
+    store: routines,
+    houseStore: house,
     limiter: createRateLimiter({ limit: 40, windowMs: 60_000 }),
     now: () => Date.parse("2026-11-09T10:00:00.000Z"),
   });
   const blocked = mockRes();
   await run({ method: "POST", headers: {} }, blocked);
-  assert.equal(blocked.statusCode, 401);
+  assert.equal(blocked.statusCode, 409);
   const ok = mockRes();
-  await run({ method: "POST", headers: { authorization: "Bearer cron-secret" } }, ok);
+  await run({ method: "POST", headers: { authorization: "Bearer cron-secret", "x-vercel-cron": "1" } }, ok);
   assert.equal(ok.statusCode, 200);
   assert.equal(ok.body.ran, 1);
   const state = await house.load("AB3K7Q");
@@ -203,6 +210,30 @@ test("routines parse Portuguese, run in Sao Paulo, and detect 3-day patterns", a
   });
   assert.equal(created.status, "accepted");
   assert.ok(created.routines.length >= 1);
+
+  const lateHouse = createMemoryHouseStore();
+  const lateRoutines = createMemoryRoutineStore();
+  await lateRoutines.create("user-1", "AB3K7Q", {
+    name: "Manhã tarde",
+    hour: 7,
+    minute: 0,
+    days: [0, 1, 2, 3, 4, 5, 6],
+    actions: [{ tool: "set_device", args: { device_id: "quarto_luz", on: true } }],
+  });
+  const stateHandler = createHouseStateHandler({
+    loadSession: async () => ({ session: SESSION }),
+    readState: async (id) => lateHouse.load(id),
+    store: lateHouse,
+    routineStore: lateRoutines,
+    now: () => Date.parse("2026-11-09T12:30:00.000Z"),
+  });
+  const houseRes = mockRes();
+  await stateHandler({ method: "GET", headers: {} }, houseRes);
+  assert.equal(houseRes.statusCode, 200);
+  assert.equal(houseRes.body.state.lights.quarto_luz.on, true);
+  const again = mockRes();
+  await stateHandler({ method: "GET", headers: {} }, again);
+  assert.equal(lateRoutines.rows[0].last_run_at, "2026-11-09T12:30:00.000Z");
 });
 
 test("chat planned liga o ar no 20 and does not leak secrets", async () => {
@@ -238,5 +269,7 @@ test("chat planned liga o ar no 20 and does not leak secrets", async () => {
   assert.match(js, /ar_condicionado/);
   assert.doesNotMatch(js, /SUPABASE_SERVICE_ROLE|GROQ_API_KEY|TAVILY_API_KEY|BRAVE_API_KEY|CRON_SECRET/);
   const vercel = fs.readFileSync(new URL("../vercel.json", import.meta.url), "utf8");
-  assert.match(vercel, /\/api\/routines\/run/);
+  assert.match(vercel, /"path": "\/api\/routines"/);
+  assert.match(vercel, /0 10 \* \* \*/);
+  assert.equal(fs.existsSync(new URL("../api/routines/run.js", import.meta.url)), false);
 });
