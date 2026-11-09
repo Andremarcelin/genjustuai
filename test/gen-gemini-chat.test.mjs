@@ -157,6 +157,23 @@ test("routine confirmation is natural, not A casa atualizou", () => {
   assert.match(reply, /Fechado/);
 });
 
+test("openaiToGeminiContents echoes thoughtSignature on functionCall", () => {
+  const mapped = openaiToGeminiContents([
+    { role: "user", content: "clima" },
+    {
+      role: "assistant",
+      content: "",
+      tool_calls: [{
+        id: "c1",
+        thought_signature: "sig-abc",
+        function: { name: "get_weather", arguments: "{}" },
+      }],
+    },
+    { role: "tool", name: "get_weather", content: "{\"status\":\"accepted\"}" },
+  ]);
+  assert.equal(mapped.contents[1].parts[0].functionCall.thoughtSignature, "sig-abc");
+});
+
 test("openaiToGeminiContents uses user/model roles and functionResponse objects", () => {
   const mapped = openaiToGeminiContents([
     { role: "system", content: "sys" },
