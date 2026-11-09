@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Entrada — GenJutsu AI</title>
+<link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/assets/apple-touch-icon.png">
+<link rel="manifest" href="/site.webmanifest">
+<link rel="canonical" href="https://genjutsuai.vercel.app/entrada">
+<meta name="robots" content="noindex">
+<meta name="application-name" content="GenJutsu AI">
+<meta name="theme-color" content="#050505">
+<meta name="description" content="GenJutsu AI é a Smart Home Cognitiva para o Meta Quest 3S. Continue com Google (agenda, YouTube, contatos e tarefas, sem Gmail) ou sem conta, só com o clima da casa. ExpoTech / UniFECAF.">
+<meta property="og:site_name" content="GenJutsu AI">
+<meta property="og:title" content="GenJutsu AI — Smart Home Cognitiva">
+<meta property="og:description" content="Entre com Google ou continue como visitante. O clima da casa e o código da sessão seguem para o Meta Quest 3S.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://genjutsuai.vercel.app/entrada">
+<meta property="og:image" content="https://genjutsuai.vercel.app/assets/og-logo.jpg">
+<meta property="og:image:alt" content="Corvo de feltro preto com olhos sharingan vermelhos diante de um torii neon">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://genjutsuai.vercel.app/assets/og-logo.jpg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Noto+Serif+JP:wght@600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/site.css">
+<link rel="stylesheet" href="/portal.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+<a class="skip" href="#entrada">Ir para a entrada</a>
+<div class="landing hidden" id="landing" data-role="shell">
+  <div class="house-veil" id="house-veil" hidden></div>
+  <div class="fork" id="entrada">
+    <button class="cta cta-guest" id="btn-guest" type="button">Continuar sem conta</button>
+    <button class="cta cta-google" id="btn-google" type="button">Continuar com Google</button>
+    <button class="cta cta-guest" id="btn-guest-bottom" type="button">Continuar sem conta</button>
+    <button class="cta cta-google" id="btn-google-bottom" type="button">Continuar com Google</button>
+    <button class="cta ghost nav-cta" id="btn-nav-login" type="button">Entrar</button>
+    <button class="text-link" id="btn-scroll-more" type="button">Como funciona</button>
+  </div>
+  <div id="como-funciona" hidden></div>
+</div>
+
+<div class="phone" id="app">
+  <nav class="landing-nav" aria-label="Jornada">
+    <a class="nav-mark" href="/">
+      <picture>
+        <source type="image/webp" srcset="/assets/logo-crow.webp">
+        <img src="/assets/logo-crow.png" width="36" height="36" alt="">
+      </picture>
+      GenJutsu AI
+    </a>
+    <div class="nav-actions">
+      <a class="text-link nav-gen" href="/casa">Casa</a>
+      <a class="text-link nav-gen" href="/gen">Falar com a Gen</a>
+    </div>
+  </nav>
+  <ol class="dojo-progress" id="dojo-progress" aria-label="Progresso da jornada, passos 1 a 4">
+    <li data-step="1"><b>1</b> Entrada</li>
+    <li data-step="2"><b>2</b> <span data-step-label>Rastro</span></li>
+    <li data-step="3"><b>3</b> Perfil</li>
+    <li data-step="4"><b>4</b> Quest</li>
+  </ol>
+
+  <section class="screen on" id="screen-login">
+    <h2 class="screen-title">Como você entra</h2>
+    <div id="logged-out">
+      <p class="section-label">Salvar sem conta é o caminho principal. Google é opcional. Microsoft fica à parte.</p>
+      <div class="oauth">
+        <div class="oauth-main">
+          <button class="cta cta-google" id="btn-login" type="button" disabled>Continuar com Google</button>
+          <button class="cta cta-guest" id="btn-guest-login" type="button" disabled>Continuar sem conta</button>
+        </div>
+        <button class="oauth-tertiary" id="btn-login-ms" type="button" disabled>ou Microsoft</button>
+      </div>
+      <div class="status" id="status-auth" role="status"></div>
+      <p class="privacy">Visitante: só preferências e código. Google: agenda, YouTube, contatos e tarefas, sem Gmail. <a href="/privacy">Privacidade</a> · <a href="/terms">Termos</a></p>
+    </div>
+    <div id="logged-in" class="hidden">
+      <div class="card">
+        <div class="profile-row">
+          <img id="avatar" src="/assets/guest-avatar.jpg" alt="">
+          <div>
+            <div class="name" id="user-name"></div>
+            <div class="email" id="user-email"></div>
+          </div>
+        </div>
+        <div class="session-box">
+          <div class="lbl">Código da sessão</div>
+          <div class="code" data-session-code>—</div>
+          <img class="session-qr" alt="QR da sessão para o Quest">
+          <a class="session-link" href="#" target="_blank" rel="noopener">Abrir resumo</a>
+        </div>
+        <div class="stack">
+          <button class="cta ghost" id="btn-logout" type="button">Sair</button>
+          <button class="oauth-tertiary" id="btn-upgrade-google" type="button" data-guest-only hidden>ou entrar com Google</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="screen" id="screen-sync">
+    <div class="progress-track" aria-hidden="true"><div class="progress-bar" id="sync-bar"></div></div>
+    <h2 class="screen-title">Sincronização</h2>
+    <p id="sync-user" class="sync-user"></p>
+    <p id="sync-mail" class="privacy sync-mail"></p>
+    <div class="session-box">
+      <div class="lbl">Código único desta sessão</div>
+      <div class="code" data-session-code>—</div>
+      <img class="session-qr" alt="QR da sessão para o Quest">
+    </div>
+    <p id="sync-status" class="status" role="status">Conectando…</p>
+    <div class="stack">
+      <button class="cta cta-google" id="btn-skip-sync" type="button">Continuar para a casa</button>
+      <button class="cta ghost" id="btn-relogin" type="button">Refazer login com Google</button>
+      <button class="oauth-tertiary" id="btn-relogin-ms" type="button">ou Microsoft</button>
+    </div>
+  </section>
+
+  <section class="screen" id="screen-questionnaire">
+    <h2 class="screen-title">Seu nome e três situações</h2>
+    <p class="guest-save-note" id="guest-save-note">Sem conta. Dá para salvar como visitante: escreva o nome e responda as três perguntas. A casa é inferida — você não escolhe o dojo. O Google não é necessário.</p>
+    <label class="section-label" for="visitor-name">Como você quer ser chamado?</label>
+    <input type="text" id="visitor-name" name="visitor-name" maxlength="40" autocomplete="name" required aria-describedby="visitor-name-hint" placeholder="Seu nome">
+    <p class="field-hint" id="visitor-name-hint">O nome entra na frase da sessão. Pelo menos 2 letras.</p>
+    <p class="section-label" id="label-folga">Num fim de semana livre, você…</p>
+    <div class="option-col" role="group" aria-labelledby="label-folga">
+      <button type="button" class="option" data-field="folga" data-value="ordem" aria-pressed="false">organiza o dia em silêncio e segue o plano</button>
+      <button type="button" class="option" data-field="folga" data-value="sistema" aria-pressed="false">abre um aparelho ou um sistema só para ver como funciona</button>
+      <button type="button" class="option" data-field="folga" data-value="impulso" aria-pressed="false">sai sem roteiro atrás de algo que nunca fez</button>
+      <button type="button" class="option" data-field="folga" data-value="gente" aria-pressed="false">chama alguém e cuida do almoço e da conversa</button>
+    </div>
+    <p class="section-label" id="label-problema">Quando surge um problema difícil, você…</p>
+    <div class="option-col" role="group" aria-labelledby="label-problema">
+      <button type="button" class="option" data-field="problema" data-value="respira" aria-pressed="false">respira, ordena os fatos e resolve um passo de cada vez</button>
+      <button type="button" class="option" data-field="problema" data-value="modelo" aria-pressed="false">monta um modelo, testa hipóteses e escolhe a jogada</button>
+      <button type="button" class="option" data-field="problema" data-value="atalho" aria-pressed="false">tenta um atalho ousado antes de abrir o manual</button>
+      <button type="button" class="option" data-field="problema" data-value="junto" aria-pressed="false">chama quem está perto e segura o clima enquanto resolvem</button>
+    </div>
+    <p class="section-label" id="label-festa">Numa festa onde conhece pouca gente, você…</p>
+    <div class="option-col" role="group" aria-labelledby="label-festa">
+      <button type="button" class="option" data-field="festa" data-value="canto" aria-pressed="false">fica num canto calmo, observa e entra só quando faz sentido</button>
+      <button type="button" class="option" data-field="festa" data-value="mapa" aria-pressed="false">lê a sala, vê quem decide o quê e escolhe com quem falar</button>
+      <button type="button" class="option" data-field="festa" data-value="pista" aria-pressed="false">puxa a conversa, improvisa e vira o centro sem planejar</button>
+      <button type="button" class="option" data-field="festa" data-value="anel" aria-pressed="false">percebe quem está sozinho e puxa essa pessoa para o círculo</button>
+    </div>
+    <div class="quest-profile" id="quiz-profile" hidden></div>
+    <button class="cta cta-guest" id="btn-save-questionnaire" type="button">Salvar sem conta e gerar o código</button>
+    <div class="status" id="status-questionnaire" role="status"></div>
+  </section>
+
+  <section class="screen" id="screen-ready">
+    <h2 class="screen-title">A casa leu você</h2>
+    <article class="makimono" id="ready-scroll">
+      <div class="makimono-roller" aria-hidden="true"><span></span></div>
+      <div class="parchment" aria-labelledby="ready-kicker">
+      <p class="parchment-kicker" id="ready-kicker">O que a casa entendeu de você</p>
+      <p class="parchment-name" id="ready-name"></p>
+      <div class="seal-row">
+        <p class="hanko" id="ready-kanji" aria-hidden="true"></p>
+        <div>
+          <p class="parchment-sign" id="ready-profile" hidden></p>
+          <p class="seal-title" id="ready-title"></p>
+        </div>
+      </div>
+      <p class="parchment-phrase" id="ready-phrase"></p>
+      <h3 class="parchment-sub">O alvo</h3>
+      <div class="alvo-wrap">
+        <div class="alvo" id="ready-alvo" role="img" aria-label="Alvo dos quatro perfis"></div>
+        <ul class="trait-bars" id="ready-traits"></ul>
+      </div>
+      <div class="sumi" id="ready-sumi" data-profile="" aria-hidden="true">
+        <svg class="sumi-zen" viewBox="0 0 240 120"><path d="M28 78c18-28 48-42 92-42 40 0 70 16 92 42" fill="none" stroke="#2a2118" stroke-width="1.4" opacity=".8"/><circle cx="168" cy="36" r="14" fill="none" stroke="#2a2118" stroke-width="1.6"/><path d="M46 92c8-18 10-28 8-40M54 90c6-14 8-22 6-32M40 96h28" fill="none" stroke="#1c140e" stroke-width="1.8" stroke-linecap="round"/></svg>
+        <svg class="sumi-cyber" viewBox="0 0 240 120"><path d="M30 90 L70 40 L110 70 L150 28 L210 28" fill="none" stroke="#1c140e" stroke-width="1.6"/><path d="M150 28 v24 M110 70 v18 M70 40 v16" fill="none" stroke="#1c140e" stroke-width="1.2"/><circle cx="210" cy="28" r="3" fill="#1c140e"/></svg>
+        <svg class="sumi-excentrico" viewBox="0 0 240 120"><path d="M36 96c20-8 28-30 48-34 18-4 22 16 40 14 20-2 24-28 46-36 16-6 28 4 40 2" fill="none" stroke="#1c140e" stroke-width="2" stroke-linecap="round"/><path d="M150 40c10-16 18-18 28-8" fill="none" stroke="#1c140e" stroke-width="1.4"/></svg>
+        <svg class="sumi-acolhedor" viewBox="0 0 240 120"><path d="M78 78c0-22 18-36 42-36s42 14 42 36" fill="none" stroke="#1c140e" stroke-width="1.8"/><path d="M74 78h92" stroke="#1c140e" stroke-width="1.6"/><path d="M120 42c-2-14 2-22 8-28" fill="none" stroke="#1c140e" stroke-width="1.1" stroke-linecap="round"/><path d="M40 96c24-6 136-6 160 0" fill="none" stroke="#2a2118" stroke-width="1.2" opacity=".7"/></svg>
+      </div>
+      <h3 class="parchment-sub">Como sua casa vai responder</h3>
+      <ul class="house-rows">
+        <li>
+          <span class="house-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="22" height="22"><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          </span>
+          <span class="house-key">Luz</span>
+          <span class="house-val" id="ready-luz"></span>
+        </li>
+        <li>
+          <span class="house-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="22" height="22"><path d="M4 10v4M8 7v10M12 4v16M16 7v10M20 10v4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          </span>
+          <span class="house-key">Som</span>
+          <span class="house-val" id="ready-som"></span>
+        </li>
+        <li>
+          <span class="house-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="22" height="22"><path d="M3 14c2.5-4 5-4 7.5 0s5 4 7.5 0 4-4 3 0" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M4 18h16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          </span>
+          <span class="house-key">Clima</span>
+          <span class="house-val" id="ready-clima"></span>
+        </li>
+      </ul>
+      <h3 class="parchment-sub">O que aconteceu com a casa</h3>
+      <ol class="history" id="ready-timeline"></ol>
+      <p class="quest-step">Sua sessão está pronta — coloque o Quest</p>
+      <p class="quest-code" id="ready-quest-code" data-session-code>—</p>
+      </div>
+      <div class="makimono-roller" aria-hidden="true"><span></span></div>
+    </article>
+    <section class="session-record" aria-labelledby="record-title">
+      <h3 id="record-title">Registros desta sessão</h3>
+      <p class="guest-save-note" id="ready-guest-note">Salvo sem conta, como visitante.</p>
+      <dl id="ready-records"></dl>
+      <div class="session-box parchment-pass">
+        <div class="lbl">Mostre este código ao staff para o Quest</div>
+        <div class="code" data-session-code>—</div>
+        <img class="session-qr" alt="QR da sessão para o Quest">
+        <a class="session-link" href="#" target="_blank" rel="noopener">Abrir resumo</a>
+      </div>
+      <p class="record-foot">Esta sessão passa a ser a do Quest. O admin ainda pode trocar o código em /admin.</p>
+    </section>
+    <a class="cta cta-google" id="btn-goto-casa" href="/casa">Ir para a minha Casa</a>
+    <button class="cta ghost" id="btn-leave-ready" type="button">Sair e escolher de novo</button>
+  </section>
+</div>
+
+<div id="screen-config" class="config-fallback" hidden>
+  <div class="config-panel card">
+    <h2 class="screen-title">Ajuste local</h2>
+    <label class="section-label" for="input-url">SUPABASE_URL</label>
+    <input type="text" id="input-url" placeholder="https://seu-projeto.supabase.co" autocomplete="off">
+    <label class="section-label" for="input-key">SUPABASE_ANON_KEY</label>
+    <input type="password" id="input-key" placeholder="chave anon" autocomplete="off">
+    <div class="stack">
+      <button class="cta cta-google" id="btn-save-config" type="button">Salvar e conectar</button>
+      <button class="cta ghost" id="btn-clear-config" type="button">Limpar</button>
+      <button class="cta ghost" id="btn-close-config" type="button">Voltar</button>
+    </div>
+    <div class="status" id="status-config" role="status"></div>
+  </div>
+</div>
+
+<script src="/js/history-view.js"></script>
+<script src="/js/zcea-profile.js"></script>
+<script src="/js/personality.js"></script>
+<script src="/js/guest-save.js"></script>
+<script src="/js/portal.js"></script>
+<script src="/js/house-state.js"></script>
+</body>
+</html>

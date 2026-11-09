@@ -729,7 +729,7 @@ test("house SQL resets to the hub, locks RLS, and broadcasts without quiz data",
 });
 
 test("pages wire the phone, the provider, and the session contract", () => {
-  const html = fs.readFileSync(new URL("../index.html", import.meta.url), "utf8");
+  const html = fs.readFileSync(new URL("../entrada.html", import.meta.url), "utf8");
   const gen = fs.readFileSync(new URL("../gen.html", import.meta.url), "utf8");
   const phone = fs.readFileSync(new URL("../js/gen-phone.js", import.meta.url), "utf8");
   const provider = fs.readFileSync(new URL("../js/house-state.js", import.meta.url), "utf8");

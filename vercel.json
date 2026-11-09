@@ -11,6 +11,7 @@
     { "source": "/admin", "destination": "/admin.html" },
     { "source": "/gen", "destination": "/gen.html" },
     { "source": "/casa", "destination": "/casa.html" },
+    { "source": "/entrada", "destination": "/entrada.html" },
     { "source": "/s/:code", "destination": "/summary.html" }
   ]
 }
