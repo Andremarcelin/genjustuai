@@ -1,4 +1,4 @@
-import { loadActiveSession } from "../session.js";
+import { loadSessionForRequest } from "../session.js";
 import { IP_LIMIT, IP_WINDOW_MS, VOICE_TOKEN_LIMIT, VOICE_TOKEN_WINDOW_MS } from "../../lib/gen/constants.js";
 import { executeHouseTool } from "../../lib/gen/executor.js";
 import { infraFromStore, initApi, requireActiveSession } from "../../lib/gen/http.js";
@@ -11,7 +11,7 @@ const sharedSessionLimiter = createRateLimiter({ limit: VOICE_TOKEN_LIMIT, windo
 const sharedIpLimiter = createRateLimiter({ limit: IP_LIMIT, windowMs: IP_WINDOW_MS });
 
 export function createVoiceHandler(deps = {}) {
-  const loadSession = deps.loadSession || loadActiveSession;
+  const loadSession = deps.loadSession || ((req) => loadSessionForRequest(req, deps.env, deps.fetchImpl));
   const fetchImpl = deps.fetchImpl || globalThis.fetch;
   const env = deps.env || process.env;
   const sessionLimiter = deps.limiter || sharedSessionLimiter;
@@ -23,7 +23,7 @@ export function createVoiceHandler(deps = {}) {
   return async function handler(req, res) {
     if (initApi(req, res, ["POST"])) return;
     try {
-      const session = await requireActiveSession(res, loadSession);
+      const session = await requireActiveSession(res, loadSession, req);
       if (!session) return;
       const stamp = now();
       if (!sessionLimiter.allow(session.id, stamp) || !ipLimiter.allow(clientIp(req), stamp)) {

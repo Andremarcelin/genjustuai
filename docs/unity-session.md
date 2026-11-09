@@ -115,6 +115,14 @@ Isso grava `session_summaries.status = ended` e `ended_at`. O poll seguinte é `
 
 `profile_id` vem `null` se essa pessoa ainda não salvou o questionário. A lista de `/admin` mostra nome, perfil, código e status de cada sessão, sem agrupar por perfil.
 
+## Casa / `house_state.lights` (dispositivos)
+
+O Quest **continua lendo** `lights.main` e `lights.lanterns` (`intensity` + `color` `#RRGGBB`). Campos novos no mesmo objeto:
+
+`sala_luz`, `quarto_luz`, `abajur`, `fita_led`, `tv`, `ambiente` → `{ on, color, intensity }`.
+
+`sala_luz` espelha `main` (`on: false` zera `main.intensity`). `quarto_luz` espelha `lanterns`. `ambiente.on: false` zera `ambience.volume`. Ignore chaves que o APK ainda não mapeia. Detalhes em [gen-api.md](gen-api.md). SQL: `sql/house_devices.sql`.
+
 ## SessionGate.cs
 
 ```csharp

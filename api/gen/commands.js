@@ -1,4 +1,4 @@
-import { loadActiveSession } from "../session.js";
+import { loadSessionForRequest } from "../session.js";
 import { COMMAND_LIMIT, COMMAND_WINDOW_MS } from "../../lib/gen/constants.js";
 import { executeHouseTool } from "../../lib/gen/executor.js";
 import { infraFromStore, initApi, requireActiveSession } from "../../lib/gen/http.js";
@@ -9,7 +9,7 @@ import { recordSessionHistory } from "../../lib/gen/history.js";
 const sharedLimiter = createRateLimiter({ limit: COMMAND_LIMIT, windowMs: COMMAND_WINDOW_MS });
 
 export function createCommandsHandler(deps = {}) {
-  const loadSession = deps.loadSession || loadActiveSession;
+  const loadSession = deps.loadSession || ((req) => loadSessionForRequest(req, deps.env, deps.fetchImpl));
   const store = deps.store || createSupabaseHouseStore();
   const limiter = deps.limiter || sharedLimiter;
   const limit = deps.limit ?? COMMAND_LIMIT;
@@ -19,7 +19,7 @@ export function createCommandsHandler(deps = {}) {
   return async function handler(req, res) {
     if (initApi(req, res, ["POST"])) return;
     try {
-      const session = await requireActiveSession(res, loadSession);
+      const session = await requireActiveSession(res, loadSession, req);
       if (!session) return;
       const tool = req.body?.tool;
       const args = req.body?.args ?? {};
@@ -42,7 +42,7 @@ export function createCommandsHandler(deps = {}) {
         res.status(infra.status).json(infra.body);
         return;
       }
-      if (result.status === "accepted" && tool !== "get_house_state") {
+      if (result.status === "accepted" && tool !== "get_house_state" && tool !== "list_devices") {
         const source = req.body?.source === "voice" ? "voice" : "quest";
         try {
           await recordSessionHistory({
