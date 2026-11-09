@@ -299,6 +299,20 @@ test("empty search suffix only when search was needed", () => {
   assert.equal(needed, "Olhei na internet e não achei uma fonte.");
 });
 
+test("Gen self-intro does not need web search suffix", () => {
+  assert.equal(needsWebSearch("o que é a Gen?"), false);
+  assert.equal(needsWebSearch("quem é a Gen"), false);
+  const reply = chooseReply({
+    modelText: "Eu sou a Gen, a inteligência da casa.",
+    actions: [{ tool: "web_search", status: "accepted", search: [] }],
+    transcript: "o que é a Gen?",
+    state: { lights: { main: { color: "#FF1A1A", intensity: 0.3 } }, ambience: { preset: "quiet" } },
+  });
+  assert.match(reply, /Gen/);
+  assert.equal(/Olhei na internet/.test(reply), false);
+});
+
+
 test("anonymous chat creates a wake routine without login", async () => {
   const store = createMemoryHouseStore();
   const routines = createMemoryRoutineStore();
