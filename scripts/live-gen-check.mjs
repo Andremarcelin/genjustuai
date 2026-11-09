@@ -101,7 +101,9 @@ try {
   }
   const acts = routine.args?.actions || [];
   if (!acts.some((a) => a.args?.device_id === "ar_condicionado")) fail("need AC action", routine);
-  if (!acts.some((a) => /luz|led/i.test(a.args?.device_id || ""))) fail("need lights action", routine);
+  if (!acts.some((a) => /luz|led/i.test(a.args?.device_id || "") || a.tool === "set_lights")) {
+    fail("need lights action", routine);
+  }
   if (routine.args?.id) createdIds.push(routine.args.id);
 
   const listed = await get("/api/routines");

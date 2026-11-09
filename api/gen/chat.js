@@ -378,7 +378,18 @@ export function createChatHandler(deps = {}) {
         });
         for (const call of calls) {
           const name = call?.function?.name;
-          const parsed = parseToolArguments(call?.function?.arguments);
+          let parsed = parseToolArguments(call?.function?.arguments);
+          if (gameAsk && hasKickoff(recalled.facts?.match) && name === "create_routine" && parsed) {
+            const game = gameRoutineFromFact(recalled.facts.match);
+            parsed = {
+              name: game.name,
+              hour: game.hour,
+              minute: game.minute,
+              days: game.days,
+              actions: game.actions,
+              once: true,
+            };
+          }
           let outcome;
           if (parsed === null) {
             outcome = { status: "rejected", reason: "invalid_args", state };
