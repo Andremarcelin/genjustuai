@@ -15,7 +15,8 @@ import { createHouseStateHandler } from "../api/house/state.js";
 import { createCommandsHandler } from "../api/gen/commands.js";
 import { createVoiceHandler } from "../api/gen/voice-session.js";
 import { createChatHandler } from "../api/gen/chat.js";
-import { GEMINI_LIVE_MODEL, GEMINI_LIVE_RESOURCE, GROQ_CHAT_MODEL, GROQ_STT_MODEL } from "../lib/gen/constants.js";
+import { GEMINI_LIVE_MODEL, GEMINI_LIVE_RESOURCE, GEMINI_TEXT_MODEL, GROQ_CHAT_MODEL, GROQ_STT_MODEL } from "../lib/gen/constants.js";
+import { completeChat, createLiveToken, geminiKeys, transcribeAudio } from "../lib/gen/providers.js";
 import { resolveVoiceName } from "../lib/gen/voice.js";
 import { pickPtBrMaleVoice, SPEECH_FALLBACK_PITCH } from "../js/gen-voice.js";
 
@@ -60,7 +61,7 @@ function noSession() {
 }
 
 async function withEnv(env, fn) {
-  const keys = ["SUPABASE_URL", "SUPABASE_ANON_KEY", "SUPABASE_SERVICE_ROLE", "SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_SECRET_KEY", "GEMINI_API_KEY", "GROQ_API_KEY"];
+  const keys = ["SUPABASE_URL", "SUPABASE_ANON_KEY", "SUPABASE_SERVICE_ROLE", "SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_SECRET_KEY", "GEMINI_API_KEY", "GEMINI_API_KEY_2", "GEMINI_API_KEY_3", "GROQ_API_KEY"];
   const previous = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
   for (const key of keys) delete process.env[key];
   Object.assign(process.env, env);
@@ -391,6 +392,100 @@ test("voice session mints a Gemini ephemeral token and hides the API key", async
   assert.equal(missing.statusCode, 503);
   assert.equal(missing.body.error, "missing_config");
   assert.equal(JSON.stringify(missing.body).includes(secret), false);
+});
+
+test("geminiKeys keeps non-empty keys in GEMINI_API_KEY then _2 then _3 order", () => {
+  assert.deepEqual(geminiKeys({
+    GEMINI_API_KEY: " k1 ",
+    GEMINI_API_KEY_2: "",
+    GEMINI_API_KEY_3: "k3",
+  }), ["k1", "k3"]);
+  assert.deepEqual(geminiKeys({ GEMINI_API_KEY_2: "only-two" }), ["only-two"]);
+  assert.deepEqual(geminiKeys({}), []);
+  assert.equal(GEMINI_LIVE_MODEL, "gemini-3.8-live");
+  assert.equal(GEMINI_TEXT_MODEL, "gemini-3.5-flash-lite");
+});
+
+test("createLiveToken rotates Gemini keys on 429 and 403 and never leaks secrets", async () => {
+  const k1 = "gemini-secret-one";
+  const k2 = "gemini-secret-two";
+  const k3 = "gemini-secret-three";
+  const seen = [];
+  const token = await createLiveToken({
+    env: { GEMINI_API_KEY: k1, GEMINI_API_KEY_2: k2, GEMINI_API_KEY_3: k3 },
+    session: SESSION,
+    state: defaultHouseState("AB3K7Q"),
+    now: Date.parse("2026-11-06T23:50:00.000Z"),
+    fetchImpl: async (_url, opts) => {
+      seen.push(opts.headers["x-goog-api-key"]);
+      if (seen.length === 1) return new Response("{}", { status: 429 });
+      if (seen.length === 2) return new Response("{}", { status: 403 });
+      return new Response(JSON.stringify({ name: "ephemeral-rotated" }), { status: 200 });
+    },
+  });
+  assert.deepEqual(seen, [k1, k2, k3]);
+  assert.equal(token.token, "ephemeral-rotated");
+  assert.equal(token.model, GEMINI_LIVE_MODEL);
+  assert.equal(JSON.stringify(token).includes(k1), false);
+  assert.equal(JSON.stringify(token).includes(k2), false);
+  assert.equal(JSON.stringify(token).includes(k3), false);
+
+  const failed = await createLiveToken({
+    env: { GEMINI_API_KEY: k1, GEMINI_API_KEY_2: k2 },
+    session: SESSION,
+    fetchImpl: async () => new Response("quota", { status: 429 }),
+  });
+  assert.deepEqual(failed, { error: "gemini_unavailable", fallback: "groq" });
+  assert.equal(JSON.stringify(failed).includes(k1), false);
+
+  const handler = createVoiceHandler({
+    loadSession: activeSession(),
+    store: createMemoryHouseStore(),
+    env: { GEMINI_API_KEY: k1, GEMINI_API_KEY_2: k2 },
+    limiter: limiter(),
+    ipLimiter: limiter(),
+    fetchImpl: async () => { throw new Error(k1); },
+  });
+  const res = mockRes();
+  await handler({ method: "POST", headers: {}, body: {} }, res);
+  assert.equal(res.statusCode, 502);
+  assert.deepEqual(res.body, { error: "gemini_unavailable", fallback: "groq" });
+  assert.equal(JSON.stringify(res.body).includes(k1), false);
+  assert.equal(JSON.stringify(res.body).includes(k2), false);
+});
+
+test("Groq transcribe and chat retry once on 429/5xx", async () => {
+  const secret = "groq-secret-retry";
+  let transcribeCalls = 0;
+  const heard = await transcribeAudio({
+    env: { GROQ_API_KEY: secret },
+    audio: Buffer.from("wav"),
+    mime: "audio/wav",
+    fetchImpl: async () => {
+      transcribeCalls += 1;
+      if (transcribeCalls === 1) return new Response("{}", { status: 429 });
+      return new Response(JSON.stringify({ text: "oi" }), { status: 200 });
+    },
+  });
+  assert.equal(transcribeCalls, 2);
+  assert.equal(heard.text, "oi");
+  assert.equal(JSON.stringify(heard).includes(secret), false);
+
+  let chatCalls = 0;
+  const chat = await completeChat({
+    env: { GROQ_API_KEY: secret },
+    messages: [{ role: "user", content: "oi" }],
+    fetchImpl: async () => {
+      chatCalls += 1;
+      if (chatCalls === 1) return new Response("{}", { status: 503 });
+      return new Response(JSON.stringify({
+        choices: [{ message: { role: "assistant", content: "olá" } }],
+      }), { status: 200 });
+    },
+  });
+  assert.equal(chatCalls, 2);
+  assert.equal(chat.message.content, "olá");
+  assert.equal(JSON.stringify(chat).includes(secret), false);
 });
 
 test("Groq chat transcribes, runs the tool, and returns text only", async () => {
@@ -737,7 +832,6 @@ test("pages wire the phone, the provider, and the session contract", () => {
   const env = fs.readFileSync(new URL("../.env.example", import.meta.url), "utf8");
   assert.match(html, /id="house-veil"/);
   assert.match(html, /js\/house-state\.js/);
-  assert.match(html, /href="\/gen"/);
   assert.match(html, /href="\/casa"/);
   assert.match(html, /favicon-32\.png/);
   assert.match(html, /og-logo\.jpg/);
@@ -765,6 +859,8 @@ test("pages wire the phone, the provider, and the session contract", () => {
   assert.match(vercel, /\/gen/);
   assert.match(vercel, /\/casa/);
   assert.match(env, /GEMINI_API_KEY=/);
+  assert.match(env, /GEMINI_API_KEY_2=/);
+  assert.match(env, /GEMINI_API_KEY_3=/);
   assert.match(env, /GROQ_API_KEY=/);
   assert.doesNotMatch(phone, /GEMINI_API_KEY|GROQ_API_KEY/);
 });

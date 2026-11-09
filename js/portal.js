@@ -22,6 +22,7 @@
   var saveInProgress = false;
   var guestIntent = false;
   var configReady = Promise.resolve();
+  var READY_STORE = "genjutsu_ready_v1";
 
   function randomSessionCode() {
     var out = "";
@@ -133,9 +134,18 @@
     var guest = guestIntent || (currentPaintUser ? P.isGuest(currentPaintUser) : false);
     var step = { "screen-login": 1, "screen-sync": 2, "screen-questionnaire": 3, "screen-ready": 4 }[id] || 1;
     setProgress(step, guest);
+    var hud = $("journey-hud");
+    if (hud) {
+      if (id === "screen-ready") hud.textContent = "Sessão pronta · 03 / 03";
+      else if (id === "screen-questionnaire") hud.textContent = "Questionário · 02 / 03";
+      else hud.textContent = guest && id === "screen-login" ? "Entrada · 01 / 03" : "Jornada";
+    }
+    var quizHud = $("quiz-hud-count");
+    if (quizHud) quizHud.textContent = "02 / 03";
     if (id === "screen-questionnaire") {
       paintSaveCopy();
       prefillVisitorName();
+      paintQuizBar();
     }
     var title = screen && screen.querySelector(".screen-title");
     if (title) {
@@ -402,11 +412,18 @@
     paintIdentity(user);
     if (journeyUserId === user.id && (journeyPhase === "quiz" || journeyPhase === "ready" || journeyPhase === "sync")) {
       paintIdentity(user);
+      applyPersistedReady(user);
+      if (journeyPhase !== "ready" && quizComplete(globalDossie)) restoreReady(user);
       return;
     }
     journeyUserId = user.id;
     await loadStoredDossier(user);
+    applyPersistedReady(user);
     paintIdentity(user);
+    if (quizComplete(globalDossie)) {
+      restoreReady(user);
+      return;
+    }
     if (P.isGuest(user)) {
       journeyPhase = "quiz";
       globalDossie.fonte = "convidado";
@@ -587,25 +604,130 @@
     var btn = $("btn-save-questionnaire");
     if (note) {
       note.textContent = guest
-        ? "Sem conta. Dá para salvar como visitante: escreva o nome e responda as três perguntas. A casa é inferida — você não escolhe o dojo. O Google não é necessário."
-        : "Conta Google conectada. O nome pode ser o da conta. Salvar grava o perfil inferido neste código. Quem não tem conta usa o mesmo questionário como visitante.";
+        ? "Sem conta. A casa é inferida — você não escolhe o dojo."
+        : "Conta Google conectada. A casa é inferida — você não escolhe o dojo.";
     }
     if (btn) btn.textContent = guest ? "Salvar sem conta e gerar o código" : "Salvar perfil e gerar o código";
+  }
+
+  function compactRecordLabel(label) {
+    var raw = String(label || "").toLowerCase();
+    if (raw === "nome") return "Nome";
+    if (raw === "profile_id") return "profile_id";
+    if (raw.indexOf("fim de semana") !== -1) return "Fim de semana";
+    if (raw.indexOf("problema difícil") !== -1) return "Problema difícil";
+    if (raw.indexOf("festa") !== -1) return "Festa";
+    return "";
   }
 
   function renderSessionFields(fields) {
     var dl = $("ready-records");
     if (!dl) return;
     dl.replaceChildren();
+    var order = ["Nome", "Fim de semana", "Problema difícil", "Festa", "profile_id"];
+    var byLabel = {};
     (fields || []).forEach(function (pair) {
-      var dt = document.createElement("dt");
-      dt.textContent = pair[0];
-      var dd = document.createElement("dd");
-      dd.textContent = pair[1];
-      if (pair[0] === "Código da sessão") dd.className = "record-code";
-      dl.appendChild(dt);
-      dl.appendChild(dd);
+      var label = compactRecordLabel(pair[0]);
+      if (!label) return;
+      var value = String(pair[1] || "");
+      var short = value.match(/\(([a-z_]+)\)\s*$/i);
+      if (short && label !== "Nome" && label !== "profile_id") value = short[1];
+      byLabel[label] = value;
     });
+    order.forEach(function (label) {
+      if (!byLabel[label]) return;
+      var row = document.createElement("div");
+      row.className = "record-row";
+      var dt = document.createElement("dt");
+      dt.textContent = label;
+      var dd = document.createElement("dd");
+      dd.textContent = byLabel[label];
+      row.appendChild(dt);
+      row.appendChild(dd);
+      dl.appendChild(row);
+    });
+  }
+
+  function quizComplete(dossie) {
+    var pref = (dossie && dossie.preferencias) || {};
+    return !!(pref.folga && pref.problema && pref.festa);
+  }
+
+  function persistReadySnapshot(saved) {
+    var payload = JSON.stringify({
+      sessionCode: (saved && saved.sessionCode) || sessionCode || "",
+      userId: saved && saved.user ? saved.user.id : "",
+      profile_id: saved && saved.profile ? saved.profile.profile_id : "",
+      preferencias: (globalDossie && globalDossie.preferencias) || {},
+      nome: saved && saved.persona ? saved.persona.displayName : "",
+      guest: !!(saved && saved.guest)
+    });
+    try { localStorage.setItem(READY_STORE, payload); } catch (e) { /* storage opcional */ }
+    try { sessionStorage.setItem(READY_STORE, payload); } catch (e) { /* storage opcional */ }
+  }
+
+  function readReadySnapshot() {
+    var raw = "";
+    try { raw = localStorage.getItem(READY_STORE) || ""; } catch (e) { raw = ""; }
+    if (!raw) {
+      try { raw = sessionStorage.getItem(READY_STORE) || ""; } catch (e2) { raw = ""; }
+    }
+    if (!raw) return null;
+    try {
+      var snap = JSON.parse(raw);
+      return snap && typeof snap === "object" ? snap : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function applyPersistedReady(user) {
+    var snap = readReadySnapshot();
+    if (!snap) return;
+    if (user && snap.userId && snap.userId !== user.id) return;
+    if (snap.sessionCode && !sessionCode) renderSessionCode(snap.sessionCode);
+    if (snap.preferencias) {
+      globalDossie.preferencias = Object.assign({}, snap.preferencias, globalDossie.preferencias || {});
+    }
+    if (snap.nome && !globalDossie.nome_exibicao) globalDossie.nome_exibicao = snap.nome;
+    if (snap.profile_id && globalDossie.preferencias && !globalDossie.preferencias.profile_id) {
+      globalDossie.preferencias.profile_id = snap.profile_id;
+    }
+  }
+
+  function restoreReady(user) {
+    applyPersistedReady(user);
+    var pref = globalDossie.preferencias || {};
+    var resolved = G && G.selection ? G.selection(pref.folga, pref.problema, pref.festa) : null;
+    var persona = P.buildPersonality(user, globalDossie, sessionCode);
+    var profileId = (resolved && resolved.profile_id) || persona.profile_id || pref.profile_id;
+    var fields = P.sessionFields({
+      display_name: persona.displayName,
+      preferencias: pref,
+      profile_id: profileId,
+      session_code: sessionCode,
+      fonte: globalDossie.fonte || (P.isGuest(user) ? "convidado" : "")
+    });
+    guestIntent = P.isGuest(user);
+    journeyUserId = user && user.id ? user.id : journeyUserId;
+    journeyPhase = "ready";
+    currentPaintUser = user;
+    paintReady({
+      user: user,
+      persona: persona,
+      profile: resolved || { profile_id: profileId, scores: pref.scores || {} },
+      fields: fields,
+      sessionCode: sessionCode,
+      guest: guestIntent
+    });
+    showScreen("screen-ready");
+  }
+
+  function paintQuizBar() {
+    var bar = $("quiz-bar-fill");
+    if (!bar) return;
+    var n = quizAnswers().filter(Boolean).length;
+    bar.style.width = Math.max(8, Math.round((n / 3) * 100)) + "%";
   }
 
   function paintTraits(scores) {
@@ -639,6 +761,8 @@
     ["luz", "som", "clima"].forEach(function (key) {
       var el = $("ready-" + key);
       if (el) el.textContent = house && house[key] ? house[key] : "";
+      var card = $("ready-" + key + "-card");
+      if (card) card.textContent = house && house[key] ? house[key] : "";
     });
   }
 
@@ -753,19 +877,27 @@
   }
 
   function paintReady(saved) {
-    var phrase = saved && saved.persona ? saved.persona.phrase : "";
-    if ($("ready-phrase")) $("ready-phrase").textContent = phrase || "";
     var profile = saved && saved.profile;
     var meta = profile && Z && Z.META[profile.profile_id];
+    var name = saved && saved.persona ? saved.persona.displayName : "";
+    var who = $("ready-who");
+    if (who) who.textContent = name && meta ? (name + " · perfil " + meta.archetype) : (name || "");
+    var code = (saved && saved.sessionCode) || sessionCode || "";
+    var proverb = P.proverbFor ? P.proverbFor(profile && profile.profile_id, code) : "";
+    if ($("ready-phrase")) $("ready-phrase").textContent = proverb || "";
     var sign = $("ready-profile");
     if (sign) {
       sign.hidden = !meta;
       sign.textContent = meta ? meta.archetype : "";
     }
     var kanji = $("ready-kanji");
-    if (kanji) kanji.textContent = meta ? meta.kanji : "";
+    if (kanji) {
+      var mark = kanji.querySelector("span");
+      if (mark) mark.textContent = "幻術";
+      else kanji.textContent = "幻術";
+    }
     var title = $("ready-title");
-    if (title) title.textContent = meta ? meta.title : "";
+    if (title) title.textContent = "Sua sessão está pronta";
     paintTraits(profile && profile.scores);
     paintAlvo(profile && profile.scores);
     var sumi = $("ready-sumi");
@@ -775,8 +907,14 @@
     var codeEl = $("ready-quest-code");
     if (codeEl) codeEl.textContent = code || "—";
     renderSessionFields(saved && saved.fields);
-    var readyNote = $("ready-guest-note");
-    if (readyNote) readyNote.hidden = !(saved && saved.guest);
+    var titleEl = $("record-title");
+    if (titleEl) titleEl.textContent = saved && saved.guest === false ? "Salvo na conta" : "Salvo sem conta";
+    persistReadySnapshot(saved);
+    var thumb = $("ready-house-thumb");
+    if (thumb && profile && profile.profile_id) {
+      thumb.src = "/assets/casa/" + String(profile.profile_id).toLowerCase() + ".jpg";
+      thumb.alt = "Casa " + profile.profile_id;
+    }
     revealParchment();
     watchHistory(saved && saved.user);
   }
@@ -790,10 +928,7 @@
       el.textContent = label;
     }
     var readyNote = $("ready-guest-note");
-    if (readyNote) {
-      var guest = guestIntent || (currentPaintUser && P.isGuest(currentPaintUser));
-      readyNote.hidden = !guest;
-    }
+    if (readyNote) readyNote.hidden = true;
   }
 
   function selectedValue(field) {
@@ -808,6 +943,7 @@
 
   async function startGuest() {
     if (authBusy) return;
+    if (journeyPhase === "ready") return;
     if (!(await requireClient())) return;
     authBusy = true;
     try {
@@ -815,11 +951,24 @@
       var session = existing && existing.data && existing.data.session;
       var user = session && session.user;
       guestIntent = !user || P.isGuest(user);
-      journeyPhase = "quiz";
+      applyPersistedReady(user);
+      if (user && quizComplete(globalDossie)) {
+        journeyUserId = user.id;
+        paintIdentity(user);
+        restoreReady(user);
+        return;
+      }
       if (user) {
         journeyUserId = user.id;
         paintIdentity(user);
+        await loadStoredDossier(user);
+        applyPersistedReady(user);
+        if (quizComplete(globalDossie)) {
+          restoreReady(user);
+          return;
+        }
       }
+      journeyPhase = "quiz";
       revealApp();
       showScreen("screen-questionnaire");
       setStatus("status-questionnaire", guestIntent
@@ -832,6 +981,8 @@
 
   async function leaveJourney() {
     journeyPhase = "leaving";
+    try { localStorage.removeItem(READY_STORE); } catch (e) {}
+    try { sessionStorage.removeItem(READY_STORE); } catch (e) {}
     try {
       if (sb) await sb.auth.signOut();
     } catch (e) {}
@@ -849,6 +1000,7 @@
         b.setAttribute("aria-pressed", on ? "true" : "false");
       });
       renderQuestProfile(G.selection.apply(null, quizAnswers()));
+      paintQuizBar();
     });
   });
 
@@ -996,12 +1148,24 @@
   }
 
   configReady = (async function main() {
+    try {
+      var bank = await fetch("/data/proverbios.json", { cache: "no-store" }).then(function (res) {
+        return res.ok ? res.json() : null;
+      });
+      if (bank && P.setProverbBank) P.setProverbBank(bank);
+    } catch (e) { /* o fallback do personality.js cobre os testes */ }
     var config = await loadConfig();
     if (config) setupSupabaseClient(config.supabaseUrl, config.supabaseAnonKey, config.source);
     if (!onEntryRoute()) return;
     revealApp();
     var params = new URLSearchParams(location.search);
     var via = (params.get("via") || "").toLowerCase();
+    var existing = sb ? await sb.auth.getSession() : null;
+    var user = existing && existing.data && existing.data.session && existing.data.session.user;
+    if (user) {
+      await showLoggedIn(user);
+      if (journeyPhase === "ready") return;
+    }
     if (via === "google") {
       await startGoogle();
       return;

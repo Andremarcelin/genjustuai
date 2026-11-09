@@ -12,7 +12,7 @@
 <meta name="robots" content="noindex">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Oswald:wght@500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/site.css">
 <link rel="stylesheet" href="/casa.css">
 </head>
@@ -30,40 +30,44 @@
     <nav>
       <a href="/">Início</a>
       <a href="/casa" aria-current="page">Casa</a>
-      <a href="/gen">Gen</a>
-      <a href="/admin">Admin</a>
     </nav>
   </aside>
 
   <div class="casa-stage">
     <header class="casa-top">
       <div class="casa-home-name">
-        <picture>
-          <source type="image/webp" srcset="/assets/logo-crow.webp">
-          <img src="/assets/logo-crow.png" width="36" height="36" alt="">
-        </picture>
-        <h1 id="casa-title">Sua casa</h1>
+        <div>
+          <p class="hud" id="casa-hud">Estado · sessão</p>
+          <h1 id="casa-title">Sua casa</h1>
+        </div>
       </div>
+      <p class="hud" id="casa-hud-profile"></p>
       <button class="casa-add" type="button" id="casa-settings" aria-label="Ajustes">⚙</button>
     </header>
 
     <div class="casa-layout">
       <section class="casa-preview" aria-label="Imagem da casa">
-        <div class="casa-frame" id="casa-frame" data-profile="">
+        <div class="casa-frame panel house" id="casa-frame" data-profile="">
           <img id="casa-photo" alt="Casa mobiliada do seu perfil" src="/assets/casa/acolhedor.jpg">
           <div class="casa-lights" id="casa-lights" aria-hidden="true"></div>
+          <span class="casa-rim" aria-hidden="true"></span>
+          <p class="casa-profile-caption cap" id="casa-profile-caption"></p>
         </div>
-        <p class="casa-profile-caption" id="casa-profile-caption"></p>
+        <div class="casa-chips" id="casa-chips" aria-label="Sugestões da casa"></div>
       </section>
 
       <section class="casa-panel">
-        <div class="casa-understood" id="casa-understood">
+        <div class="casa-understood panel block" id="casa-understood">
+          <div class="n">01</div>
+          <p class="hud">Leitura</p>
           <h2>O que a casa entendeu de você</h2>
-          <p id="casa-badges" class="casa-badges"></p>
+          <p id="casa-badges" class="casa-badges tags"></p>
           <p id="casa-understood-copy" class="casa-understood-copy"></p>
+          <p id="casa-proverb" class="casa-proverb"></p>
         </div>
 
-        <div class="casa-groups">
+        <div class="casa-groups panel block">
+          <div class="n">02</div>
           <div class="casa-section-head">
             <h2>Grupos</h2>
             <button class="casa-ver-tudo" type="button" id="btn-groups-all">Ver tudo</button>
@@ -84,7 +88,8 @@
           </div>
         </div>
 
-        <div class="casa-devices">
+        <div class="casa-devices panel block">
+          <div class="n">03</div>
           <h2>Dispositivos</h2>
           <div class="casa-filters">
             <label class="casa-search">
@@ -125,7 +130,6 @@
   </div>
 
   <div class="casa-dock">
-    <div class="casa-chips" id="casa-chips" aria-label="Sugestões da casa"></div>
     <p class="casa-voice-status" id="casa-voice-status" role="status" aria-live="polite"></p>
     <div class="casa-ask" role="group" aria-label="Pergunte para o Gen">
       <button class="casa-ask-text" id="casa-ask" type="button">Pergunte para o Gen</button>
@@ -171,6 +175,8 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/js/zcea-profile.js"></script>
+<script src="/js/personality.js"></script>
 <script src="/js/casa-suggestions.js"></script>
 <script src="/js/casa-view.js"></script>
 <script src="/js/casa-voice.js"></script>
