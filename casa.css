@@ -121,20 +121,38 @@ body.page-casa {
 .casa-light--bloom {
   border-radius: 50%;
   mix-blend-mode: screen;
-  filter: blur(10px);
+  filter: blur(12px);
 }
 
 .casa-light--cone {
   border-radius: 50%;
-  mix-blend-mode: soft-light;
-  filter: blur(8px);
+  mix-blend-mode: screen;
+  filter: blur(10px);
+}
+
+.casa-light--wash {
+  border-radius: 50%;
+  mix-blend-mode: color;
+  filter: blur(22px);
+}
+
+.casa-light--pool {
+  border-radius: 50%;
+  mix-blend-mode: overlay;
+  filter: blur(16px);
+}
+
+.casa-light--spill {
+  border-radius: 999px;
+  mix-blend-mode: screen;
+  filter: blur(10px);
 }
 
 .casa-light--strip {
   border-radius: 999px;
   mix-blend-mode: screen;
-  filter: blur(3px);
-  box-shadow: 0 0 18px currentColor;
+  filter: blur(0.35px);
+  box-shadow: 0 0 4px 0.5px currentColor, 0 0 10px 2px currentColor;
 }
 
 .casa-light--tv {

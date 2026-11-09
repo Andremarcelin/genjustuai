@@ -105,7 +105,8 @@ test("casa lights are per-device glows, not rectangular room fills", () => {
   assert.doesNotMatch(html, /overlay-quarto/);
   assert.doesNotMatch(css, /clip-path:\s*polygon/);
   assert.match(css, /mix-blend-mode:\s*screen/);
-  assert.match(css, /mix-blend-mode:\s*soft-light/);
+  assert.match(css, /mix-blend-mode:\s*color/);
+  assert.match(css, /mix-blend-mode:\s*overlay/);
   assert.match(css, /mix-blend-mode:\s*color-dodge/);
   assert.match(css, /prefers-reduced-motion/);
   assert.match(css, /casa-tv-flicker/);
@@ -120,6 +121,10 @@ test("casa lights are per-device glows, not rectangular room fills", () => {
       assert.equal(devices.has(id), true, profile + " missing " + id);
     });
     assert.ok(layers.some((layer) => layer.device === "fita_led" && layer.kind === "strip"));
+    assert.ok(layers.some((layer) => layer.device === "fita_led" && layer.kind === "spill"));
+    assert.ok(layers.some((layer) => layer.device === "sala_luz" && layer.kind === "wash"));
+    assert.ok(layers.some((layer) => layer.device === "sala_luz" && layer.kind === "pool"));
+    assert.ok(layers.some((layer) => layer.device === "abajur" && layer.kind === "pool"));
     assert.ok(layers.some((layer) => layer.device === "tv" && layer.kind === "tv"));
     layers.forEach((layer) => {
       assert.ok(layer.x >= 0 && layer.x <= 100);
@@ -131,9 +136,9 @@ test("casa lights are per-device glows, not rectangular room fills", () => {
   const on = { id: "sala_luz", on: true, color: "#FF1A1A", intensity: 0.9 };
   const off = { id: "sala_luz", on: false, color: "#FF1A1A", intensity: 0.9 };
   const bloom = View.lightLayersFor("Acolhedor").find((layer) => layer.id === "sala-lantern");
-  const lit = View.lightLayerStyle(bloom, on, { dark: false, brightness: 0.8 });
-  const dark = View.lightLayerStyle(bloom, off, { dark: true, brightness: 0.38 });
-  assert.ok(Number(lit.opacity) > 0.4);
+  const lit = View.lightLayerStyle(bloom, on, { dark: false, brightness: 0.9 });
+  const dark = View.lightLayerStyle(bloom, off, { dark: true, brightness: 0.2 });
+  assert.ok(Number(lit.opacity) > 0.7);
   assert.equal(dark.opacity, "0");
   assert.match(lit.background, /radial-gradient/);
   assert.match(lit.background, /255,\s*26,\s*26/);
@@ -145,7 +150,16 @@ test("casa lights are per-device glows, not rectangular room fills", () => {
   const ambientOff = View.frameAmbient([{ id: "sala_luz", on: false, intensity: 0.9 }]);
   const ambientOn = View.frameAmbient([{ id: "sala_luz", on: true, intensity: 0.9 }]);
   assert.equal(ambientOff.dark, true);
+  assert.ok(ambientOff.brightness < 0.28);
+  assert.ok(ambientOn.brightness > 0.85);
   assert.ok(ambientOff.brightness < ambientOn.brightness);
+
+  const wash = View.lightLayersFor("Acolhedor").find((layer) => layer.id === "sala-wash");
+  const washOn = View.lightLayerStyle(wash, on, { dark: false, brightness: 0.9 });
+  assert.ok(Number(washOn.opacity) > 0.7);
+  const darken = View.lightLayersFor("Acolhedor").find((layer) => layer.kind === "darken");
+  const night = View.lightLayerStyle(darken, { on: false }, { dark: true, brightness: 0.2 });
+  assert.ok(Number(night.opacity) > 0.8);
 
   const sala = View.demoLightsFromScene("sala_red");
   assert.equal(sala.sala_luz.on, true);
