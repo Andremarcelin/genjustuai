@@ -1,4 +1,4 @@
-import { loadActiveSession } from "../session.js";
+import { loadSessionForRequest } from "../session.js";
 import { CHAT_LIMIT, CHAT_WINDOW_MS, IP_LIMIT, IP_WINDOW_MS, MAX_AUDIO_BYTES } from "../../lib/gen/constants.js";
 import { defaultHouseState } from "../../lib/gen/defaults.js";
 import { executeHouseTool } from "../../lib/gen/executor.js";
@@ -49,7 +49,7 @@ async function readTurn(req) {
 }
 
 export function createChatHandler(deps = {}) {
-  const loadSession = deps.loadSession || loadActiveSession;
+  const loadSession = deps.loadSession || ((req) => loadSessionForRequest(req, deps.env, deps.fetchImpl));
   const fetchImpl = deps.fetchImpl || globalThis.fetch;
   const env = deps.env || process.env;
   const store = deps.store || createSupabaseHouseStore();
@@ -62,7 +62,7 @@ export function createChatHandler(deps = {}) {
   return async function handler(req, res) {
     if (initApi(req, res, ["POST"])) return;
     try {
-      const session = await requireActiveSession(res, loadSession);
+      const session = await requireActiveSession(res, loadSession, req);
       if (!session) return;
       const stamp = now();
       if (!chatLimiter.allow(session.id, stamp) || !ipLimiter.allow(clientIp(req), stamp)) {

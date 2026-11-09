@@ -353,7 +353,7 @@ test("voice session mints a Gemini ephemeral token and hides the API key", async
   assert.equal(res.body.expiresAt, "2026-11-07T00:00:00.000Z");
   assert.match(res.body.wsUrl, /BidiGenerateContentConstrained/);
   assert.match(res.body.wsUrl, /access_token=ephemeral-token-1/);
-  assert.equal(res.body.tools.length, 4);
+  assert.equal(res.body.tools.length, 6);
   assert.match(res.body.systemInstruction, /Lina/);
   assert.match(res.body.systemInstruction, /Não peça para repetir/);
   assert.match(res.body.systemInstruction, /Estado atual da casa/);
@@ -367,7 +367,7 @@ test("voice session mints a Gemini ephemeral token and hides the API key", async
   assert.equal(request.bidiGenerateContentSetup.model, GEMINI_LIVE_RESOURCE);
   assert.equal(request.fieldMask, undefined);
   assert.match(request.bidiGenerateContentSetup.systemInstruction.parts[0].text, /Lina/);
-  assert.equal(request.bidiGenerateContentSetup.tools[0].functionDeclarations.length, 4);
+  assert.equal(request.bidiGenerateContentSetup.tools[0].functionDeclarations.length, 6);
   assert.equal(JSON.stringify(request).includes(secret), false);
   assert.equal(res.body.voiceName, "Charon");
   assert.equal(
@@ -723,6 +723,9 @@ test("pages wire the phone, the provider, and the session contract", () => {
   assert.match(html, /id="house-veil"/);
   assert.match(html, /js\/house-state\.js/);
   assert.match(html, /href="\/gen"/);
+  assert.match(html, /href="\/casa"/);
+  assert.match(html, /O que a casa entendeu de você/);
+  assert.match(html, /Ir para a minha Casa/);
   assert.match(provider, /HouseStateProvider/);
   assert.match(provider, /house:/);
   assert.match(provider, /house_state_changed/);
@@ -743,6 +746,7 @@ test("pages wire the phone, the provider, and the session contract", () => {
   assert.match(phone, /pt-BR/);
   assert.match(phone, /audio\/pcm;rate=16000/);
   assert.match(vercel, /\/gen/);
+  assert.match(vercel, /\/casa/);
   assert.match(env, /GEMINI_API_KEY=/);
   assert.match(env, /GROQ_API_KEY=/);
   assert.doesNotMatch(phone, /GEMINI_API_KEY|GROQ_API_KEY/);
