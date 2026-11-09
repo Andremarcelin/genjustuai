@@ -12,9 +12,12 @@ import { validateToolCall } from "../lib/gen/tools.js";
 import { parseHouseIntent, plannedActions } from "../lib/gen/intent.js";
 import { chooseReply } from "../lib/gen/persona.js";
 import { createRateLimiter } from "../lib/gen/rate-limit.js";
+import { loadSessionForUser } from "../api/session.js";
+import { readSupabaseConfig } from "../lib/supabase-rest.cjs";
 import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
 const { suggestionsFor } = require("../js/casa-suggestions.js");
+const { houseTitle, overlayLights } = require("../js/casa-view.js");
 
 const SESSION = {
   id: "AB3K7Q",
@@ -205,4 +208,88 @@ test("casa page is Portuguese and has the Gen pill", () => {
   assert.match(html, /Grupos/);
   assert.match(css, /#ff1a1a/i);
   assert.doesNotMatch(js, /SUPABASE_SERVICE_ROLE|GROQ_API_KEY|GEMINI_API_KEY/);
+  assert.match(html, /js\/casa-view\.js/);
+  assert.match(js, /deviceFromState\(item\.id\)/);
+  assert.match(js, /overlayLights|houseTitle/);
 });
+
+test("overlay uses stateful devices so color and intensity exist", () => {
+  const meta = [
+    { id: "sala_luz", overlay: "sala" },
+    { id: "abajur", overlay: "quarto" },
+  ];
+  const mapped = meta.map((item) => item.id === "sala_luz"
+    ? { id: "sala_luz", overlay: "sala", on: true, color: "#FF1A1A", intensity: 0.85 }
+    : { id: "abajur", overlay: "quarto", on: false, color: "#FFAA00", intensity: 0.4 });
+  const sala = overlayLights(mapped, "sala");
+  assert.equal(sala.length, 1);
+  assert.equal(sala[0].color, "#FF1A1A");
+  assert.equal(Number.isFinite(sala[0].intensity), true);
+  assert.equal(overlayLights(meta, "sala").length, 0);
+});
+
+test("header uses the full typed name", () => {
+  assert.equal(houseTitle("André Teste"), "Casa de André Teste");
+  assert.equal(houseTitle("  André   Teste  "), "Casa de André Teste");
+  assert.equal(houseTitle(""), "Sua casa");
+});
+
+test("visitor session lookup uses the anon key and does not require a service role", async () => {
+  const previous = {
+    SUPABASE_URL: process.env.SUPABASE_URL,
+    SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY,
+    SUPABASE_SERVICE_ROLE: process.env.SUPABASE_SERVICE_ROLE,
+    SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
+  };
+  delete process.env.SUPABASE_SERVICE_ROLE;
+  delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+  process.env.SUPABASE_URL = "https://example.supabase.co";
+  process.env.SUPABASE_ANON_KEY = "anon-for-session-read";
+  let auth = "";
+  let path = "";
+  global.fetch = async (url, opts) => {
+    path = String(url);
+    auth = opts.headers.Authorization;
+    return new Response(JSON.stringify([{
+      session_code: "AB3K7Q",
+      display_name: "André Teste",
+      personality_text: "ok",
+      archetype: "Acolhedor",
+      profile_id: "Acolhedor",
+      status: "ready",
+    }]), { status: 200, headers: { "content-type": "application/json" } });
+  };
+  try {
+    const found = await loadSessionForUser("user-1");
+    assert.equal(found.session.display_name, "André Teste");
+    assert.equal(auth, "Bearer anon-for-session-read");
+    assert.match(path, /session_summaries/);
+    assert.doesNotMatch(auth, /service/i);
+  } finally {
+    for (const [key, value] of Object.entries(previous)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  }
+});
+
+test("service role aliases match the names already used on Vercel", () => {
+  const fromAlias = readSupabaseConfig({
+    SUPABASE_URL: "https://example.supabase.co",
+    SUPABASE_ANON_KEY: "anon",
+    SUPABASE_SERVICE_ROLE_KEY: "role-alias",
+  }, { serviceRoleOnly: true });
+  assert.equal(fromAlias.key, "role-alias");
+  const fromLegacy = readSupabaseConfig({
+    SUPABASE_URL: "https://example.supabase.co",
+    SUPABASE_ANON_KEY: "anon",
+    SUPABASE_SERVICE_ROLE: "role-legacy",
+  }, { serviceRoleOnly: true });
+  assert.equal(fromLegacy.key, "role-legacy");
+  const secret = readSupabaseConfig({
+    SUPABASE_URL: "https://example.supabase.co",
+    SUPABASE_SECRET_KEY: "secret-alias",
+  }, { serviceRoleOnly: true });
+  assert.equal(secret.key, "secret-alias");
+});
+

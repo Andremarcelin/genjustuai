@@ -1,4 +1,5 @@
 (function () {
+  var View = window.GenjutsuCasaView || {};
   var DEVICES = [
     { id: "sala_luz", label: "Luz Sala", room: "Sala", kind: "light", overlay: "sala", icon: "bulb" },
     { id: "quarto_luz", label: "Luz Quarto", room: "Quarto", kind: "light", overlay: "quarto", icon: "lamp" },
@@ -53,15 +54,10 @@
     });
   }
 
-  function firstName(name) {
-    var clean = String(name || "").trim();
-    if (!clean) return "";
-    return clean.split(/\s+/)[0];
-  }
-
   function paintHeader() {
-    var name = firstName(session && session.display_name);
-    $("casa-title").textContent = name ? "Casa de " + name : "Sua casa";
+    $("casa-title").textContent = View.houseTitle
+      ? View.houseTitle(session && session.display_name)
+      : ((session && session.display_name) ? "Casa de " + String(session.display_name).trim() : "Sua casa");
     var profile = session && session.profile_id;
     var photo = $("casa-photo");
     photo.src = HOUSE_IMG[profile] || HOUSE_IMG.Acolhedor;
@@ -78,8 +74,10 @@
   }
 
   function overlayFor(room) {
-    var devices = DEVICES.filter(function (item) { return item.overlay === room; });
-    var on = devices.filter(function (item) { return deviceFromState(item.id).on; });
+    var devices = DEVICES.map(function (item) { return deviceFromState(item.id); });
+    var on = View.overlayLights ? View.overlayLights(devices, room) : devices.filter(function (item) {
+      return item.overlay === room && item.on;
+    });
     var el = $("overlay-" + room);
     if (!el) return;
     if (!on.length) {
