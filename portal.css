@@ -929,6 +929,8 @@ input::placeholder { color: var(--faint); }
 }
 
 body.page-entrada {
+  overflow-x: hidden;
+  max-width: 100%;
   background-color: #050505;
   background-image:
     radial-gradient(ellipse at 50% 0%, rgba(122, 15, 15, 0.5), transparent 42%),
@@ -951,6 +953,7 @@ body.page-entrada .hud {
 
 body.page-entrada .phone {
   width: min(440px, 100%);
+  max-width: 100%;
   border: 1px solid rgba(224, 40, 40, 0.45);
   border-radius: 22px;
   background: rgba(8, 6, 6, 0.78);
@@ -959,7 +962,7 @@ body.page-entrada .phone {
   min-height: auto;
   margin: 24px auto 48px;
   padding: 0 0 24px;
-  overflow: visible;
+  overflow-x: hidden;
 }
 
 body.page-entrada .landing-nav {
@@ -1106,8 +1109,8 @@ body.page-entrada .scroll-paper {
 
 body.page-entrada .scroll-roll {
   position: absolute;
-  left: -8px;
-  right: -8px;
+  left: 0;
+  right: 0;
   height: 22px;
   border-radius: 11px;
   background: linear-gradient(180deg, #5a2e1c, #3a1810 55%, #2a100a);

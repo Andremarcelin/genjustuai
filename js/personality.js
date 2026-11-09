@@ -179,7 +179,7 @@
       });
     }
     rows.push(
-      ["profile_id", src.profile_id || ""],
+      ["Perfil", src.profile_id || ""],
       ["Arquétipo", src.archetype || ""],
       ["Letra", src.letter || ""],
       ["Código da sessão", src.session_code || ""],

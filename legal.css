@@ -1,5 +1,10 @@
 @import url("site.css");
 
+html, body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
 body {
   font-family: Inter, system-ui, sans-serif;
   background:
