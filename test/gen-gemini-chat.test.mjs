@@ -171,7 +171,8 @@ test("openaiToGeminiContents echoes thoughtSignature on functionCall", () => {
     },
     { role: "tool", name: "get_weather", content: "{\"status\":\"accepted\"}" },
   ]);
-  assert.equal(mapped.contents[1].parts[0].functionCall.thoughtSignature, "sig-abc");
+  assert.equal(mapped.contents[1].parts[0].thoughtSignature, "sig-abc");
+  assert.equal(mapped.contents[1].parts[0].functionCall.name, "get_weather");
 });
 
 test("openaiToGeminiContents uses user/model roles and functionResponse objects", () => {
