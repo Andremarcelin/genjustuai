@@ -134,6 +134,10 @@ $$;
 revoke all on function genjutsu_internal.default_lights() from public, anon, authenticated;
 revoke all on function genjutsu_internal.default_ambience() from public, anon, authenticated;
 
+grant usage on schema genjutsu_internal to service_role;
+grant execute on function genjutsu_internal.default_lights() to service_role;
+grant execute on function genjutsu_internal.default_ambience() to service_role;
+
 create or replace function genjutsu_internal.reset_house_on_session_end()
 returns trigger
 language plpgsql
