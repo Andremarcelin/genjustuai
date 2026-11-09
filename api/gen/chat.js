@@ -292,6 +292,7 @@ export function createChatHandler(deps = {}) {
           grounded_text: outcome.grounded_text || undefined,
           grounded: outcome.grounded || undefined,
         });
+        if (outcome.gemini_error && !used.gemini_error) used.gemini_error = outcome.gemini_error;
       }
 
       for (let round = 0; round < 2; round += 1) {
