@@ -771,6 +771,44 @@ test("supabase helper still exports the CommonJS functions", () => {
   assert.equal(typeof supabaseRest, "function");
 });
 
+test("supabase REST maps 42501 permission errors, not missing_config", async () => {
+  const env = {
+    SUPABASE_URL: "https://example.supabase.co",
+    SUPABASE_SERVICE_ROLE: "service-key-server-only",
+  };
+  global.fetch = async () => new Response(
+    JSON.stringify({
+      code: "42501",
+      message: "permission denied for function lights_valid",
+    }),
+    { status: 403, headers: { "content-type": "application/json" } }
+  );
+  const denied = await supabaseRest("house_state", { env, serviceRoleOnly: true, raw: true });
+  assert.equal(denied.ok, false);
+  assert.equal(denied.error, "db_permission_denied");
+  assert.equal(denied.code, "42501");
+  assert.equal(denied.error === "missing_config", false);
+
+  global.fetch = async () => new Response(
+    JSON.stringify({ message: "Invalid API key" }),
+    { status: 401, headers: { "content-type": "application/json" } }
+  );
+  const missing = await supabaseRest("house_state", { env, serviceRoleOnly: true, raw: true });
+  assert.equal(missing.error, "missing_config");
+
+  const noEnv = await supabaseRest("house_state", { env: {}, serviceRoleOnly: true, raw: true });
+  assert.equal(noEnv.error, "missing_config");
+});
+
+test("house devices SQL re-grants service_role execute on CHECK validators", () => {
+  const sql = fs.readFileSync(new URL("../sql/house_devices.sql", import.meta.url), "utf8");
+  assert.match(sql, /grant usage on schema genjutsu_internal to service_role/i);
+  assert.match(sql, /grant execute on function genjutsu_internal\.lights_valid\(jsonb\) to service_role/i);
+  assert.match(sql, /grant execute on function genjutsu_internal\.device_cell_valid\(jsonb\) to service_role/i);
+  assert.match(sql, /grant execute on function genjutsu_internal\.default_lights\(\) to service_role/i);
+  assert.match(sql, /grant execute on function genjutsu_internal\.default_ambience\(\) to service_role/i);
+});
+
 test("live voice defaults to Charon and can be overridden", async () => {
   assert.equal(resolveVoiceName({}), "Charon");
   assert.equal(resolveVoiceName({ GEN_VOICE_NAME: "  " }), "Charon");
