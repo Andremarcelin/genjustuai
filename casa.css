@@ -143,57 +143,6 @@ body.page-casa {
   font-size: 0.85rem;
 }
 
-.casa-now {
-  margin-top: 12px;
-  padding: 12px 14px;
-  border-radius: 16px;
-  background: #0c0c0c;
-  border: 1px solid #2a2a2a;
-}
-
-.casa-now-kicker {
-  margin: 0;
-  color: #ff1a1a;
-  font-size: 0.72rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.casa-now h3 {
-  margin: 4px 0 2px;
-  font-size: 1.05rem;
-}
-
-.casa-now-license,
-#casa-now-artist {
-  margin: 0;
-  color: #9a9a9a;
-  font-size: 0.85rem;
-}
-
-.casa-now-controls {
-  display: flex;
-  gap: 8px;
-  margin: 10px 0;
-}
-
-.casa-now-controls button {
-  border: 0;
-  border-radius: 999px;
-  background: #ff1a1a;
-  color: #fff;
-  padding: 8px 14px;
-  font-weight: 600;
-}
-
-.casa-now audio,
-.casa-now video {
-  width: 100%;
-  margin-top: 6px;
-  border-radius: 10px;
-  background: #000;
-}
-
 .casa-understood h2,
 .casa-groups h2,
 .casa-devices h2 {
