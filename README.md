@@ -38,8 +38,9 @@ Documento mestre acadêmico (CDD): [docs/GenJutsu_AI_CDD_Completo.md](docs/GenJu
    8. [`sql/freeze_session_code.sql`](sql/freeze_session_code.sql) — solta o código antigo, se o trigger que travava `session_code` já existia
    9. [`sql/session_lifecycle.sql`](sql/session_lifecycle.sql) — `status` (`ready` / `active` / `ended`), `ended_at`, um código novo por visita e uma única sessão ativa. **Precisa rodar no Supabase ao vivo** para o botão Finalizar sessão.
    10. [`sql/house_state.sql`](sql/house_state.sql) — estado da casa, log das ferramentas da Gen, RLS e o broadcast `house:<session_id>`. **Não roda sozinho**: cole no SQL Editor. Sem ele, luz e dojo respondem `502 need_sql`.
-   11. [`sql/house_devices.sql`](sql/house_devices.sql) — device ids (`sala_luz`, `quarto_luz`, `abajur`, `fita_led`, `tv`, `ambiente`) no mesmo `lights` jsonb. Mantém `main`/`lanterns` para o Quest. RLS: só o dono lê; a API escreve com service role.
-   12. [`sql/gen_history.sql`](sql/gen_history.sql) — falas, respostas e gestos da casa. A pessoa só lê as próprias linhas.
+   11. [`sql/house_devices.sql`](sql/house_devices.sql) — device ids (`sala_luz`, `quarto_luz`, `abajur`, `fita_led`, `tv`, `ambiente`) no mesmo `lights` jsonb. Mantém `main`/`lanterns` para o Quest. RLS: só o dono lê; a API escreve com service role. Inclui `GRANT EXECUTE` das funções de CHECK para `service_role`; sem o grant, a escrita responde `503 db_permission_denied`.
+   12. [`sql/house_media.sql`](sql/house_media.sql) — coluna `media` (TV/ambiente), validator `media_valid` com `GRANT EXECUTE` para `service_role`, broadcast inclui `media`.
+   13. [`sql/gen_history.sql`](sql/gen_history.sql) — falas, respostas e gestos da casa. A pessoa só lê as próprias linhas.
 3. **Authentication → URL configuration**
    - Site URL: `https://SEU-PROJETO.vercel.app`
    - Redirect URLs: `https://SEU-PROJETO.vercel.app/**` e `https://SEU-REF.supabase.co/auth/v1/callback`
@@ -106,6 +107,7 @@ Documento mestre acadêmico (CDD): [docs/GenJutsu_AI_CDD_Completo.md](docs/GenJu
 - `gen.html` — celular em `/gen`, push-to-talk
 - `js/house-state.js` — `HouseStateProvider` na landing
 - `sql/house_state.sql` — tabelas da casa; aplicar no SQL Editor, não pela API
+- `sql/house_devices.sql` — dispositivos da casa e grants de `service_role` nas funções internas
 
 O resumo do visitante descreve só clima e casa. A frase “N evento(s) de agenda…” só entra quando a fonte do dossiê é Google.
 

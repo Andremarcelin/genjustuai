@@ -291,6 +291,7 @@ JSON `{ "error": "..." }`. Sem URL, chave ou corpo do provedor.
 | 502 | `need_sql` | falta `sql/house_state.sql` no Supabase. |
 | 502 | `provider_unreachable` | Gemini ou Groq não responderam. `provider` diz qual. |
 | 503 | `missing_config` | falta `SUPABASE_*`, `GEMINI_API_KEY` ou `GROQ_API_KEY` no servidor. |
+| 503 | `db_permission_denied` | o Postgres recusou EXECUTE (42501), em geral funções de CHECK em `genjutsu_internal` sem grant para `service_role`. |
 | 405 | `method_not_allowed` | método errado. |
 
 ## O que a página `/gen` faz
@@ -299,6 +300,6 @@ Celular, push-to-talk. Primeiro pede o token e fala pelo WebSocket (microfone vi
 
 ## SQL
 
-Aplicar à mão, no projeto `ahzsvjimyfzjcfuhgdgw`, depois de `sql/session_lifecycle.sql`: [`sql/house_state.sql`](../sql/house_state.sql), [`sql/house_devices.sql`](../sql/house_devices.sql) e [`sql/house_media.sql`](../sql/house_media.sql). Sem o primeiro, comando de casa responde `need_sql`. Sem o segundo, `main`/`lanterns` ainda funcionam; os device ids entram na leitura via normalização no servidor. Sem o terceiro, `media` fica `null` e a API ignora a coluna.
+Aplicar à mão, no projeto `ahzsvjimyfzjcfuhgdgw`, depois de `sql/session_lifecycle.sql`: [`sql/house_state.sql`](../sql/house_state.sql), [`sql/house_devices.sql`](../sql/house_devices.sql) e [`sql/house_media.sql`](../sql/house_media.sql). Este repositório não aplica a migração. Sem o primeiro, comando de casa responde `need_sql`. Sem o segundo, `main`/`lanterns` ainda funcionam; os device ids entram na leitura via normalização no servidor. Sem o terceiro, `media` fica `null` e a API ignora a coluna. Sem o grant de `service_role` nas funções de CHECK (`house_devices.sql` e `house_media.sql`), a escrita responde `db_permission_denied`.
 
 Variáveis só de servidor: `GEMINI_API_KEY`, `GROQ_API_KEY`, `SUPABASE_SERVICE_ROLE` para gravar a casa, e opcional `JAMENDO_CLIENT_ID` (nunca no cliente). A anon key continua pública em `/api/config` e não escreve nessas tabelas.

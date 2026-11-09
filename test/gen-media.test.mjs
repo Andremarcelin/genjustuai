@@ -237,6 +237,7 @@ test("casa page has now-playing card", () => {
   assert.match(html, /id="casa-player-audio"/);
   const sql = fs.readFileSync(new URL("../sql/house_media.sql", import.meta.url), "utf8");
   assert.match(sql, /add column if not exists media jsonb/);
+  assert.match(sql, /grant execute on function genjutsu_internal\.media_valid\(jsonb\) to service_role/i);
   const docs = fs.readFileSync(new URL("../docs/gen-api.md", import.meta.url), "utf8");
   assert.match(docs, /play_music/);
 });
