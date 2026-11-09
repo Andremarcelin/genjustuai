@@ -444,17 +444,12 @@
       return;
     }
     var cfg = await fetch("/api/config", { cache: "no-store" }).then(function (res) { return res.ok ? res.json() : {}; }).catch(function () { return {}; });
-    if (!cfg.supabaseUrl || !cfg.supabaseAnonKey || !window.supabase) {
-      location.href = "/";
-      return;
-    }
-    sb = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
-    var auth = await sb.auth.getSession();
-    var user = auth && auth.data && auth.data.session && auth.data.session.user;
-    token = auth && auth.data && auth.data.session && auth.data.session.access_token;
-    if (!user || !token) {
-      location.href = "/";
-      return;
+    if (cfg.supabaseUrl && cfg.supabaseAnonKey && window.supabase) {
+      sb = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
+      var auth = await sb.auth.getSession();
+      var user = auth && auth.data && auth.data.session && auth.data.session.user;
+      token = auth && auth.data && auth.data.session && auth.data.session.access_token;
+      if (!user) token = "";
     }
     var house = await fetch("/api/house/state", { headers: await authHeaders(), cache: "no-store" }).then(function (res) { return res.json(); }).catch(function () { return null; });
     if (!house || !house.session || !house.session.id) {
@@ -474,7 +469,6 @@
   }
 
   async function loadRoutines() {
-    if (!token) return;
     try {
       var res = await fetch("/api/routines", { headers: await authHeaders(), cache: "no-store" });
       var json = await res.json().catch(function () { return null; });

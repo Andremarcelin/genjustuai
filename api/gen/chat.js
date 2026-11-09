@@ -121,24 +121,23 @@ export function createChatHandler(deps = {}) {
         fetchImpl,
         env,
         profileId: session.profile_id || session.profileId,
-        userId: session.user_id,
+        userId: session.user_id || null,
         routineStore,
+        sessionCity: session.city || session.city_name || session.cidade,
       });
 
-      if (session.user_id) {
-        try {
-          await runDueRoutines({
-            houseStore: store,
-            routineStore,
-            env,
-            fetchImpl,
-            limiter: commandLimiter,
-            now: stamp,
-            userId: session.user_id,
-            sessionId: session.id,
-          });
-        } catch { /* tick não derruba o chat */ }
-      }
+      try {
+        await runDueRoutines({
+          houseStore: store,
+          routineStore,
+          env,
+          fetchImpl,
+          limiter: commandLimiter,
+          now: stamp,
+          userId: session.user_id || null,
+          sessionId: session.id,
+        });
+      } catch { /* tick não derruba o chat */ }
 
       const current = await runTool("get_house_state", {});
       if (current.error) {
@@ -230,6 +229,7 @@ export function createChatHandler(deps = {}) {
                 minute: routinePlan.schedule.minute,
                 days: routinePlan.schedule.days,
                 actions: routinePlan.actions,
+                once: routinePlan.schedule.once === true,
               },
             }]
             : plannedActions(parseHouseIntent(transcript), state);
@@ -246,6 +246,8 @@ export function createChatHandler(deps = {}) {
               args: plan.args,
               status: outcome.status,
               reason: outcome.reason || null,
+              search: outcome.search || undefined,
+              weather: outcome.weather || undefined,
             });
           }
           const reply = replyText(visibleReply(message.content), actions, transcript, state);
@@ -278,6 +280,7 @@ export function createChatHandler(deps = {}) {
             status: outcome.status,
             reason: outcome.reason || null,
             search: outcome.search || undefined,
+            weather: outcome.weather || undefined,
           });
           messages.push({
             role: "tool",
@@ -286,9 +289,10 @@ export function createChatHandler(deps = {}) {
               status: outcome.status,
               reason: outcome.reason || null,
               state: outcome.state || state,
-              search: outcome.search || undefined,
-              devices: outcome.devices || undefined,
-              routines: outcome.routines || undefined,
+            search: outcome.search || undefined,
+            weather: outcome.weather || undefined,
+            devices: outcome.devices || undefined,
+            routines: outcome.routines || undefined,
             }),
           });
         }

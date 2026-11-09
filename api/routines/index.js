@@ -45,11 +45,8 @@ export function createRoutinesHandler(deps = {}) {
 
       const session = await requireActiveSession(res, loadSession, req);
       if (!session) return;
-      const userId = session.user_id;
-      if (!userId) {
-        res.status(409).json({ error: "no_active_session" });
-        return;
-      }
+      const userId = session.user_id || null;
+      const sessionId = session.id;
       if (req.method === "GET") {
         try {
           await runDueRoutines({
@@ -60,10 +57,10 @@ export function createRoutinesHandler(deps = {}) {
             limiter,
             now: now(),
             userId,
-            sessionId: session.id,
+            sessionId,
           });
         } catch { /* tick não derruba o GET */ }
-        const listed = await store.list(userId);
+        const listed = await store.list(userId, sessionId);
         if (listed.error) {
           res.status(listed.status || 503).json({ error: listed.error });
           return;
@@ -80,7 +77,7 @@ export function createRoutinesHandler(deps = {}) {
 
       if (req.method === "DELETE") {
         const id = String(payload.id || "").trim();
-        const removed = await store.remove(userId, id);
+        const removed = await store.remove(userId, id, sessionId);
         if (removed.error) {
           res.status(removed.status || 503).json({ error: removed.error });
           return;
@@ -93,7 +90,7 @@ export function createRoutinesHandler(deps = {}) {
         const patch = {};
         if (typeof payload.enabled === "boolean") patch.enabled = payload.enabled;
         if (payload.created_by === "user") patch.created_by = "user";
-        const updated = await store.update(userId, id, patch);
+        const updated = await store.update(userId, id, patch, sessionId);
         if (updated.error) {
           res.status(updated.status || 503).json({ error: updated.error });
           return;
@@ -119,9 +116,10 @@ export function createRoutinesHandler(deps = {}) {
           enabled: parsed.enabled,
           created_by: parsed.created_by,
           hint: parsed.hint,
+          once: parsed.schedule.once === true,
         }
         : parsed;
-      const created = await store.create(userId, session.id, args);
+      const created = await store.create(userId, sessionId, args);
       if (created.error) {
         res.status(created.status || 503).json({ error: created.error });
         return;

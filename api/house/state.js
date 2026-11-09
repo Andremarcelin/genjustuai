@@ -25,19 +25,17 @@ export function createHouseStateHandler(deps = {}) {
         res.status(200).json({ state: null });
         return;
       }
-      if (found.session.user_id) {
-        try {
-          await runDueRoutines({
-            houseStore,
-            routineStore,
-            env: deps.env || process.env,
-            fetchImpl: deps.fetchImpl,
-            now: now(),
-            userId: found.session.user_id,
-            sessionId: found.session.id,
-          });
-        } catch { /* rotina atrasada não derruba o GET */ }
-      }
+      try {
+        await runDueRoutines({
+          houseStore,
+          routineStore,
+          env: deps.env || process.env,
+          fetchImpl: deps.fetchImpl,
+          now: now(),
+          userId: found.session.user_id || null,
+          sessionId: found.session.id,
+        });
+      } catch { /* rotina atrasada não derruba o GET */ }
       const row = await readState(found.session.id);
       if (row?.error) {
         const infra = infraFromStore(row);
