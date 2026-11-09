@@ -73,7 +73,7 @@ Documento mestre acadêmico (CDD): [docs/GenJutsu_AI_CDD_Completo.md](docs/GenJu
 3. Environment variables:
    - `SUPABASE_URL`
    - `SUPABASE_ANON_KEY` (chave **anon / publishable** de leitura — não é a secret)
-   - `SUPABASE_SERVICE_ROLE` (só no servidor; a Gen grava `house_state` com ela)
+   - `SUPABASE_SERVICE_ROLE` (só no servidor; a Gen grava `house_state` com ela). Também aceita `SUPABASE_SERVICE_ROLE_KEY` e `SUPABASE_SECRET_KEY`.
    - `GEMINI_API_KEY` (Gemini Live, free tier, só no servidor)
    - `GEN_VOICE_NAME` (opcional; voz masculina do Live, padrão `Charon`)
    - `GROQ_API_KEY` (Whisper turbo + `openai/gpt-oss-20b`, free tier, só no servidor)
