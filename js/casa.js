@@ -87,39 +87,49 @@
     copy.textContent = understood.summary;
   }
 
-  function overlayFor(room) {
-    var devices = DEVICES.map(function (item) { return deviceFromState(item.id); });
-    var on = View.overlayLights ? View.overlayLights(devices, room) : devices.filter(function (item) {
-      return item.overlay === room && item.on;
-    });
-    var el = $("overlay-" + room);
-    if (!el) return;
-    if (!on.length) {
-      el.style.opacity = "0";
-      return;
-    }
-    var mix = on[0];
-    var color = mix.color;
-    var alpha = 0.4 + mix.intensity * 0.5;
-    el.style.background = "radial-gradient(circle at 50% 40%, " + color + " 0%, transparent 70%)";
-    el.style.opacity = String(alpha);
-    if (room === "sala") {
-      var img = $("casa-photo");
-      img.style.filter = "brightness(" + (0.55 + mix.intensity * 0.7) + ")";
-    }
-  }
-
-  function paintAcOverlay() {
-    var ac = deviceFromState("ar_condicionado");
-    var el = $("overlay-ar");
-    if (!el) return;
-    el.style.opacity = ac.on ? "0.55" : "0";
-    document.querySelector(".casa-frame").classList.toggle("is-ac", !!ac.on);
-  }
-
   function paintOverlays() {
-    ["quarto", "sala", "cozinha", "casa"].forEach(overlayFor);
-    paintAcOverlay();
+    var devices = DEVICES.map(function (item) { return deviceFromState(item.id); });
+    var byId = {};
+    devices.forEach(function (item) { byId[item.id] = item; });
+    var profile = (session && session.profile_id) || "Acolhedor";
+    var layers = View.lightLayersFor ? View.lightLayersFor(profile) : [];
+    var host = $("casa-lights");
+    var ambient = View.frameAmbient ? View.frameAmbient(devices) : { dark: true, brightness: 0.4 };
+    if (host && host.dataset.profile !== profile) {
+      host.replaceChildren();
+      host.dataset.profile = profile;
+      layers.forEach(function (layer) {
+        var el = document.createElement("div");
+        el.className = "casa-light casa-light--" + layer.kind;
+        el.dataset.device = layer.device;
+        el.dataset.lid = layer.id;
+        host.appendChild(el);
+      });
+    }
+    if (host) {
+      Array.prototype.forEach.call(host.children, function (el) {
+        var layer = null;
+        for (var i = 0; i < layers.length; i += 1) {
+          if (layers[i].id === el.dataset.lid) { layer = layers[i]; break; }
+        }
+        if (!layer || !View.lightLayerStyle) return;
+        var st = View.lightLayerStyle(layer, byId[el.dataset.device], ambient);
+        el.style.left = st.left;
+        el.style.top = st.top;
+        el.style.width = st.width;
+        el.style.height = st.height;
+        el.style.opacity = st.opacity;
+        el.style.background = st.background;
+        el.style.transform = st.transform;
+        if (st.color) el.style.color = st.color;
+      });
+    }
+    var frame = $("casa-frame");
+    if (frame) {
+      frame.style.setProperty("--casa-bright", String(ambient.brightness));
+      frame.classList.toggle("is-dark", !!ambient.dark);
+      frame.classList.toggle("is-ac", !!(byId.ar_condicionado && byId.ar_condicionado.on));
+    }
     document.querySelectorAll(".casa-group").forEach(function (btn) {
       var room = btn.getAttribute("data-room");
       var lit = DEVICES.some(function (item) {
@@ -378,20 +388,22 @@
     var profile = new URLSearchParams(location.search).get("profile") || "Acolhedor";
     if (!View.HOUSE_IMG || !View.HOUSE_IMG[profile]) profile = "Acolhedor";
     session = { id: "DEMO01", display_name: "André", profile_id: profile };
+    var scene = new URLSearchParams(location.search).get("scene") || "";
+    var lights = View.demoLightsFromScene ? View.demoLightsFromScene(scene) : {
+      sala_luz: { on: true, color: "#FF1A1A", intensity: 0.85 },
+      quarto_luz: { on: false, color: "#FF1A1A", intensity: 0.2 },
+      abajur: { on: false, color: "#FFAA00", intensity: 0.45 },
+      fita_led: { on: false, color: "#7C3AED", intensity: 0.55 },
+      tv: { on: true, color: "#3B82F6", intensity: 0.7 },
+      ambiente: { on: false, color: "#FF1A1A", intensity: 0.3 },
+      ar_condicionado: { on: true, temp: 22, mode: "frio", fan: "auto", color: "#7DD3FC", intensity: 0.45 }
+    };
+    lights.main = { intensity: lights.sala_luz.on ? lights.sala_luz.intensity : 0, color: lights.sala_luz.color };
+    lights.lanterns = { intensity: lights.quarto_luz.on ? lights.quarto_luz.intensity : 0, color: lights.quarto_luz.color };
     state = {
       session_id: "DEMO01",
       version: 1,
-      lights: {
-        sala_luz: { on: true, color: "#FF1A1A", intensity: 0.85 },
-        quarto_luz: { on: false, color: "#FF1A1A", intensity: 0.2 },
-        abajur: { on: false, color: "#FFAA00", intensity: 0.45 },
-        fita_led: { on: false, color: "#7C3AED", intensity: 0.55 },
-        tv: { on: true, color: "#3B82F6", intensity: 0.7 },
-        ambiente: { on: false, color: "#FF1A1A", intensity: 0.3 },
-        ar_condicionado: { on: true, temp: 22, mode: "frio", fan: "auto", color: "#7DD3FC", intensity: 0.45 },
-        main: { intensity: 0.85, color: "#FF1A1A" },
-        lanterns: { intensity: 0, color: "#FF1A1A" }
-      },
+      lights: lights,
       media: {
         type: "audio",
         url: "https://archive.org/download/testmp3testfile/mpthreetest.mp3",

@@ -98,50 +98,113 @@ body.page-casa {
   width: 100%;
   height: 100%;
   object-fit: contain;
-  filter: brightness(0.72);
-  transition: filter 0.28s ease;
+  filter: brightness(var(--casa-bright, 0.72));
+  transition: filter 0.45s ease;
 }
 
-.casa-overlay {
+.casa-lights {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  border-radius: inherit;
+}
+
+.casa-light {
   position: absolute;
   pointer-events: none;
-  mix-blend-mode: screen;
   opacity: 0;
-  transition: opacity 0.28s ease, background 0.28s ease;
+  will-change: opacity, filter;
+  transition: opacity 0.45s ease, background 0.45s ease, transform 0.45s ease, filter 0.45s ease;
 }
 
-.casa-overlay[data-room="quarto"] {
-  left: 8%;
-  top: 36%;
-  width: 38%;
-  height: 42%;
-  clip-path: polygon(8% 10%, 92% 8%, 90% 92%, 6% 90%);
-}
-
-.casa-overlay[data-room="sala"] {
-  left: 30%;
-  top: 46%;
-  width: 52%;
-  height: 42%;
-  clip-path: polygon(8% 16%, 90% 8%, 96% 92%, 4% 96%);
-}
-
-.casa-overlay[data-room="cozinha"] {
-  right: 10%;
-  top: 12%;
-  width: 34%;
-  height: 34%;
-  clip-path: polygon(10% 8%, 96% 12%, 94% 90%, 8% 86%);
-}
-
-.casa-overlay[data-room="casa"] {
-  inset: 0;
-}
-
-.casa-overlay-ac {
-  inset: 8% 12% 18% 18%;
-  background: radial-gradient(circle at 70% 55%, rgba(125, 211, 252, 0.55), transparent 70%);
+.casa-light--bloom {
+  border-radius: 50%;
   mix-blend-mode: screen;
+  filter: blur(12px);
+}
+
+.casa-light--cone {
+  border-radius: 50%;
+  mix-blend-mode: screen;
+  filter: blur(10px);
+}
+
+.casa-light--wash {
+  border-radius: 50%;
+  mix-blend-mode: color;
+  filter: blur(22px);
+}
+
+.casa-light--pool {
+  border-radius: 50%;
+  mix-blend-mode: overlay;
+  filter: blur(16px);
+}
+
+.casa-light--spill {
+  border-radius: 999px;
+  mix-blend-mode: screen;
+  filter: blur(10px);
+}
+
+.casa-light--strip {
+  border-radius: 999px;
+  mix-blend-mode: screen;
+  filter: blur(0.35px);
+  box-shadow: 0 0 4px 0.5px currentColor, 0 0 10px 2px currentColor;
+}
+
+.casa-light--tv {
+  border-radius: 42%;
+  mix-blend-mode: color-dodge;
+  filter: blur(7px);
+  animation: casa-tv-flicker 2.6s ease-in-out infinite;
+}
+
+.casa-light--ambient {
+  border-radius: inherit;
+  mix-blend-mode: soft-light;
+  filter: blur(12px);
+}
+
+.casa-light--darken {
+  border-radius: inherit;
+  mix-blend-mode: multiply;
+}
+
+.casa-light--ac {
+  border-radius: 50%;
+  mix-blend-mode: screen;
+  filter: blur(12px);
+}
+
+.casa-frame.is-ac .casa-light--ac {
+  animation: casa-ac-drift 3.2s ease-in-out infinite;
+}
+
+@keyframes casa-tv-flicker {
+  0%, 100% { filter: blur(7px) brightness(1); }
+  16% { filter: blur(6px) brightness(1.18); }
+  22% { filter: blur(9px) brightness(0.78); }
+  58% { filter: blur(7px) brightness(1.1); }
+  64% { filter: blur(8px) brightness(0.88); }
+}
+
+@keyframes casa-ac-drift {
+  0%, 100% { filter: blur(12px) brightness(1); }
+  50% { filter: blur(18px) brightness(1.2); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .casa-light {
+    transition: none;
+    animation: none !important;
+  }
+
+  .casa-frame img {
+    transition: none;
+  }
 }
 
 .casa-profile-caption {
