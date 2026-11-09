@@ -96,6 +96,92 @@
     return { session: body.session };
   }
 
+  async function fetchVisit(code, fetchImpl) {
+    var fetchFn = fetchImpl || fetch;
+    var res = await fetchFn("/api/codigo/summary?code=" + encodeURIComponent(normalizeCode(code)), { cache: "no-store" });
+    var body = {};
+    try { body = await res.json(); } catch (e) { body = {}; }
+    if (!res.ok || !body.visit) return { error: true };
+    return { visit: body.visit };
+  }
+
+  function el(tag, className, text) {
+    var node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text) node.textContent = text;
+    return node;
+  }
+
+  function paintVisit(visit) {
+    var card = document.getElementById("visit-card");
+    var empty = document.getElementById("visit-empty");
+    var body = document.getElementById("visit-body");
+    if (!card) return;
+    card.hidden = false;
+    if (!visit || visit.empty) {
+      if (empty) empty.hidden = false;
+      if (body) {
+        body.hidden = true;
+        body.replaceChildren();
+      }
+      return;
+    }
+    if (empty) empty.hidden = true;
+    if (!body) return;
+    body.hidden = false;
+    body.replaceChildren();
+    var dl = el("dl");
+    var talks = el("div", "visit-stat");
+    talks.appendChild(el("dt", "", "Conversas com a Gen"));
+    talks.appendChild(el("dd", "", String(visit.conversations || 0)));
+    dl.appendChild(talks);
+    if (visit.durationLabel) {
+      var time = el("div", "visit-stat");
+      time.appendChild(el("dt", "", "Tempo na casa"));
+      time.appendChild(el("dd", "", visit.durationLabel));
+      dl.appendChild(time);
+    }
+    body.appendChild(dl);
+    if (visit.quotes && visit.quotes.length) {
+      var quotes = el("ul", "visit-quotes");
+      visit.quotes.forEach(function (q) {
+        quotes.appendChild(el("li", "", "“" + q + "”"));
+      });
+      body.appendChild(quotes);
+    }
+    if (visit.devices && visit.devices.length) {
+      var chips = el("div", "visit-chips");
+      visit.devices.forEach(function (d) {
+        chips.appendChild(el("span", "", d.name + (d.value ? " · " + d.value : "")));
+      });
+      body.appendChild(chips);
+    }
+    if (visit.music && visit.music.length) {
+      var music = el("div", "visit-stat");
+      music.appendChild(el("dt", "", "Música"));
+      music.appendChild(el("dd", "", visit.music.join(" · ")));
+      body.appendChild(music);
+    }
+    if (visit.routines && visit.routines.length) {
+      var routines = el("div", "visit-stat");
+      routines.appendChild(el("dt", "", "Rotinas"));
+      routines.appendChild(el("dd", "", visit.routines.join(" · ")));
+      body.appendChild(routines);
+    }
+  }
+
+  function hideVisit() {
+    var card = document.getElementById("visit-card");
+    var empty = document.getElementById("visit-empty");
+    var body = document.getElementById("visit-body");
+    if (card) card.hidden = true;
+    if (empty) empty.hidden = false;
+    if (body) {
+      body.hidden = true;
+      body.replaceChildren();
+    }
+  }
+
   function paintReady(session, P, Z) {
     var code = String(session.session_code || session.id || "").toUpperCase();
     var profileId = (P && P.profileIdFrom)
@@ -193,6 +279,11 @@
         paintReady(found.session, P, Z);
         if (lookup) lookup.hidden = true;
         if (ready) ready.hidden = false;
+        hideVisit();
+        try {
+          var visit = await fetchVisit(code);
+          if (visit.visit) paintVisit(visit.visit);
+        } catch (e) { /* card stays hidden */ }
       } catch (e) {
         setStatus(errorFor(503, "supabase_unreachable"));
       } finally {
@@ -208,6 +299,7 @@
       other.addEventListener("click", function () {
         if (ready) ready.hidden = true;
         if (lookup) lookup.hidden = false;
+        hideVisit();
         setStatus("");
         inputs[0].focus();
       });
@@ -229,6 +321,8 @@
     errorFor: errorFor,
     recordRows: recordRows,
     fetchSession: fetchSession,
+    fetchVisit: fetchVisit,
+    paintVisit: paintVisit,
     codeFromLocation: codeFromLocation,
     writeBoxes: writeBoxes,
     readBoxes: readBoxes,

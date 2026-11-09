@@ -8,7 +8,7 @@ export function sanitizeProfileId(value) {
   return PROFILE_IDS.has(value) ? value : null;
 }
 
-const CODE_RE = /^[A-HJ-NP-Z2-9]{6}$/i;
+export const CODE_RE = /^[A-HJ-NP-Z2-9]{6}$/i;
 const SUMMARY_FIELDS = ["session_code", "display_name", "personality_text", "archetype", "profile_id", "status"];
 
 function cors(res) {
