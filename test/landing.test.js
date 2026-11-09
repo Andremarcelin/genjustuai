@@ -45,6 +45,7 @@ for (const file of assets) {
 }
 
 assert.match(vercel, /"\/entrada"/);
+assert.match(vercel, /"\/codigo"/);
 assert.match(portal, /via === "google"/);
 assert.match(portal, /via === "guest"/);
 assert.match(portal, /onEntryRoute/);
