@@ -290,7 +290,8 @@ test("Groq 429 after retry falls back to Gemini flash lite keys", async () => {
     GEMINI_API_KEY: "k1",
     GEMINI_API_KEY_2: "k2",
     GEMINI_API_KEY_3: "k3",
-  }), ["k1", "k2", "k3"]);
+    GEMINI_API_KEY_4: "k4",
+  }), ["k1", "k2", "k3", "k4"]);
 
   const seen = [];
   const result = await completeChat({
