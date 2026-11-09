@@ -2,6 +2,9 @@
   "buildCommand": "node scripts/inject-gsc.js",
   "outputDirectory": ".",
   "trailingSlash": false,
+  "crons": [
+    { "path": "/api/routines/run", "schedule": "*/5 * * * *" }
+  ],
   "rewrites": [
     { "source": "/privacy", "destination": "/privacy.html" },
     { "source": "/terms", "destination": "/terms.html" },

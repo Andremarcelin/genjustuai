@@ -97,7 +97,7 @@ export async function loadSessionForUser(userId) {
     if (result.ok) {
       const row = Array.isArray(result.json) ? result.json[0] : null;
       if (!row) return { session: null };
-      return { session: toPublicSession(row, "ready") };
+      return { session: { ...toPublicSession(row, "ready"), user_id: uid } };
     }
     if (!isMissingColumn(result)) return { error: publicError(result), status: result.status || 503 };
     if (fields.includes("status")) {

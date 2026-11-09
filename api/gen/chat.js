@@ -11,6 +11,10 @@ import { completeChat, parseToolArguments, transcribeAudio, visibleReply } from 
 import { clientIp, createRateLimiter } from "../../lib/gen/rate-limit.js";
 import { toGroqTools } from "../../lib/gen/tools.js";
 import { loadMemoryForSession, recordSessionHistory } from "../../lib/gen/history.js";
+import { createRoutineStore } from "../../lib/gen/routine-store.js";
+import { parseRoutineRequest } from "../../lib/gen/routines.js";
+import { profanityAllowed } from "../../lib/gen/profanity.js";
+import { supabaseRest } from "../../lib/supabase-rest.cjs";
 
 const sharedChatLimiter = createRateLimiter({ limit: CHAT_LIMIT, windowMs: CHAT_WINDOW_MS });
 const sharedIpLimiter = createRateLimiter({ limit: IP_LIMIT, windowMs: IP_WINDOW_MS });
@@ -58,6 +62,17 @@ export function createChatHandler(deps = {}) {
   const commandLimiter = deps.commandLimiter || sharedCommandLimiter;
   const now = deps.now || (() => Date.now());
   const loadMemory = deps.loadMemory || loadMemoryForSession;
+  const routineStore = deps.routineStore || createRoutineStore();
+  const loadPrefs = deps.loadPrefs || (async (userId) => {
+    if (!userId) return true;
+    const result = await supabaseRest(
+      `house_prefs?user_id=eq.${encodeURIComponent(userId)}&select=profanity`,
+      { serviceRoleOnly: true, raw: true }
+    );
+    if (!result.ok) return true;
+    const row = Array.isArray(result.json) ? result.json[0] : result.json;
+    return row?.profanity !== false;
+  });
 
   return async function handler(req, res) {
     if (initApi(req, res, ["POST"])) return;
@@ -104,6 +119,8 @@ export function createChatHandler(deps = {}) {
         fetchImpl,
         env,
         profileId: session.profile_id || session.profileId,
+        userId: session.user_id,
+        routineStore,
       });
 
       const current = await runTool("get_house_state", {});
@@ -158,8 +175,12 @@ export function createChatHandler(deps = {}) {
       } catch {
         memory = "";
       }
+      let userPref = true;
+      try { userPref = await loadPrefs(session.user_id); } catch { userPref = true; }
+      const allowSwear = profanityAllowed(env, userPref);
+      const routinePlan = parseRoutineRequest(transcript);
       const messages = [
-        { role: "system", content: buildSystemInstruction(session, state, memory) },
+        { role: "system", content: buildSystemInstruction(session, state, memory, { profanity: allowSwear }) },
         { role: "user", content: transcript },
       ];
       const tools = toGroqTools();
@@ -183,7 +204,18 @@ export function createChatHandler(deps = {}) {
         const message = completion.message;
         const calls = Array.isArray(message.tool_calls) ? message.tool_calls : [];
         if (!calls.length) {
-          const intentActions = plannedActions(parseHouseIntent(transcript), state);
+          const intentActions = routinePlan
+            ? [{
+              tool: "create_routine",
+              args: {
+                name: routinePlan.name,
+                hour: routinePlan.schedule.hour,
+                minute: routinePlan.schedule.minute,
+                days: routinePlan.schedule.days,
+                actions: routinePlan.actions,
+              },
+            }]
+            : plannedActions(parseHouseIntent(transcript), state);
           for (const plan of intentActions) {
             const outcome = await runTool(plan.tool, plan.args);
             if (outcome.error) {
@@ -238,6 +270,7 @@ export function createChatHandler(deps = {}) {
               state: outcome.state || state,
               search: outcome.search || undefined,
               devices: outcome.devices || undefined,
+              routines: outcome.routines || undefined,
             }),
           });
         }

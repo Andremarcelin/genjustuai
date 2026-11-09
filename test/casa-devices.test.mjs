@@ -45,7 +45,7 @@ function limiter() {
 }
 
 test("device ids are stable and aliases keep Quest main/lanterns", () => {
-  assert.deepEqual(DEVICE_IDS, ["sala_luz", "quarto_luz", "abajur", "fita_led", "tv", "ambiente"]);
+  assert.deepEqual(DEVICE_IDS, ["sala_luz", "quarto_luz", "abajur", "fita_led", "tv", "ambiente", "ar_condicionado"]);
   const lights = normalizeLights({
     main: { intensity: 0.8, color: "#00ffaa" },
     lanterns: { intensity: 0.1, color: "#112233" },
@@ -129,7 +129,7 @@ test("GET /api/house/state still returns null without a session and includes dev
   const res2 = mockRes();
   await ready({ method: "GET", headers: {} }, res2);
   assert.equal(res2.body.state.lights.sala_luz.on, true);
-  assert.equal(res2.body.devices.length, 6);
+  assert.equal(res2.body.devices.length, 7);
   assert.equal(res2.body.session.display_name, "André");
 });
 

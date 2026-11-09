@@ -65,6 +65,10 @@ export function createDeviceHandler(deps = {}) {
       if (payload.color != null) args.color = payload.color;
       const intensity = asNumber(payload.intensity);
       if (intensity !== undefined) args.intensity = intensity;
+      const temp = asNumber(payload.temp);
+      if (temp !== undefined) args.temp = temp;
+      if (payload.mode != null) args.mode = payload.mode;
+      if (payload.fan != null) args.fan = String(payload.fan);
 
       const result = await executeHouseTool({
         sessionId: session.id,

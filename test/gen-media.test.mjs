@@ -112,10 +112,11 @@ test("ZCEA playlists have attribution and no youtube", () => {
 });
 
 test("public tools include media and web_search", () => {
-  assert.equal(TOOLS.length, 10);
+  assert.equal(TOOLS.length, 13);
   assert.deepEqual(TOOLS.map((tool) => tool.name), [
     "get_house_state", "list_devices", "set_device", "set_lights", "set_ambience", "switch_dojo",
     "play_music", "open_video", "stop_media", "web_search",
+    "create_routine", "list_routines", "delete_routine",
   ]);
   assert.equal(validateToolCall("play_music", {}).ok, true);
   assert.equal(validateToolCall("open_video", { query: "jazz" }).ok, true);

@@ -7,7 +7,8 @@
     { id: "abajur", label: "Abajur", room: "Quarto", kind: "light", overlay: "quarto", icon: "abajur" },
     { id: "fita_led", label: "Fita LED", room: "Sala", kind: "led", overlay: "sala", icon: "led" },
     { id: "tv", label: "TV", room: "Sala", kind: "media", overlay: "sala", icon: "tv" },
-    { id: "ambiente", label: "Ambiente", room: "Casa", kind: "ambience", overlay: "casa", icon: "fan" }
+    { id: "ambiente", label: "Ambiente", room: "Casa", kind: "ambience", overlay: "casa", icon: "fan" },
+    { id: "ar_condicionado", label: "Ar-condicionado", room: "Sala", kind: "climate", overlay: "sala", icon: "ac" }
   ];
   var SWATCHES = ["#FF1A1A", "#FFF4E0", "#3B82F6", "#7C3AED"];
   var ICONS = {
@@ -16,7 +17,8 @@
     abajur: '<svg viewBox="0 0 24 24" width="22" height="22"><path d="M8 21h8M12 21V12M6 12h12L14 5H10z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>',
     led: '<svg viewBox="0 0 24 24" width="22" height="22"><path d="M4 12h16M7 9v6M12 8v8M17 9v6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',
     tv: '<svg viewBox="0 0 24 24" width="22" height="22"><rect x="3" y="6" width="18" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 21h8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',
-    fan: '<svg viewBox="0 0 24 24" width="22" height="22"><circle cx="12" cy="12" r="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 4c3 2 4 5 3 7M20 12c-2 3-5 4-7 3M12 20c-3-2-4-5-3-7M4 12c2-3 5-4 7-3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>'
+    fan: '<svg viewBox="0 0 24 24" width="22" height="22"><circle cx="12" cy="12" r="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 4c3 2 4 5 3 7M20 12c-2 3-5 4-7 3M12 20c-3-2-4-5-3-7M4 12c2-3 5-4 7-3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',
+    ac: '<svg viewBox="0 0 24 24" width="22" height="22"><rect x="3" y="8" width="18" height="8" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M7 16v2M12 16v3M17 16v2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>'
   };
 
   var $ = function (id) { return document.getElementById(id); };
@@ -29,6 +31,7 @@
   var suggestions = [];
   var recognition = null;
   var listening = false;
+  var routines = [];
 
   function hex(value) {
     return /^#[0-9A-Fa-f]{6}$/.test(String(value || "")) ? String(value).toUpperCase() : "#FF1A1A";
@@ -47,7 +50,10 @@
     return Object.assign({}, meta, {
       on: !!raw.on,
       color: hex(raw.color),
-      intensity: clamp(raw.intensity, 0.35)
+      intensity: clamp(raw.intensity, 0.35),
+      temp: Number.isFinite(Number(raw.temp)) ? Number(raw.temp) : 22,
+      mode: raw.mode || "frio",
+      fan: raw.fan || "auto"
     });
   }
 
@@ -103,8 +109,17 @@
     }
   }
 
+  function paintAcOverlay() {
+    var ac = deviceFromState("ar_condicionado");
+    var el = $("overlay-ar");
+    if (!el) return;
+    el.style.opacity = ac.on ? "0.55" : "0";
+    document.querySelector(".casa-frame").classList.toggle("is-ac", !!ac.on);
+  }
+
   function paintOverlays() {
     ["quarto", "sala", "cozinha", "casa"].forEach(overlayFor);
+    paintAcOverlay();
     document.querySelectorAll(".casa-group").forEach(function (btn) {
       var room = btn.getAttribute("data-room");
       var lit = DEVICES.some(function (item) {
@@ -150,19 +165,72 @@
     rows.forEach(function (item) {
       var li = document.createElement("li");
       li.className = "casa-device";
-      li.innerHTML = '<div class="casa-device-row">'
-        + '<span class="casa-device-icon">' + (ICONS[item.icon] || ICONS.bulb) + "</span>"
-        + "<span>" + item.label + "</span>"
-        + '<button type="button" class="casa-toggle' + (item.on ? " is-on" : "") + '" data-toggle="' + item.id + '">'
-        + (item.on ? "Ativado" : "Desativado") + "</button></div>"
-        + '<div class="casa-swatches" aria-label="Cor">'
-        + SWATCHES.map(function (color) {
-          return '<button type="button" class="casa-swatch' + (item.color === color ? " is-on" : "") + '" data-color="' + item.id + '" data-hex="' + color + '" style="background:' + color + '"></button>';
-        }).join("")
-        + '<input class="casa-swatch-custom" type="color" data-custom="' + item.id + '" value="' + item.color + '" title="Cor personalizada">'
-        + "</div>"
-        + '<input class="casa-bright" type="range" min="0" max="1" step="0.05" value="' + item.intensity + '" data-bright="' + item.id + '" aria-label="Brilho de ' + item.label + '">';
+      if (item.kind === "climate") {
+        li.innerHTML = '<div class="casa-device-row">'
+          + '<span class="casa-device-icon">' + ICONS.ac + "</span>"
+          + "<span>" + item.label + "</span>"
+          + '<button type="button" class="casa-toggle' + (item.on ? " is-on" : "") + '" data-toggle="' + item.id + '">'
+          + (item.on ? "Ativado" : "Desativado") + "</button></div>"
+          + '<div class="casa-ac-controls">'
+          + '<div class="casa-ac-temp">'
+          + '<button type="button" data-ac-temp="' + item.id + '" data-delta="-1" aria-label="Diminuir temperatura">−</button>'
+          + "<strong>" + item.temp + " °C</strong>"
+          + '<button type="button" data-ac-temp="' + item.id + '" data-delta="1" aria-label="Aumentar temperatura">+</button>'
+          + "</div>"
+          + '<label><span class="sr-only">Modo</span><select data-ac-mode="' + item.id + '">'
+          + ["frio", "ventilar", "seco"].map(function (mode) {
+            return '<option value="' + mode + '"' + (item.mode === mode ? " selected" : "") + ">" + mode + "</option>";
+          }).join("")
+          + "</select></label>"
+          + '<label><span class="sr-only">Ventilação</span><select data-ac-fan="' + item.id + '">'
+          + ["auto", "1", "2", "3"].map(function (fan) {
+            return '<option value="' + fan + '"' + (String(item.fan) === fan ? " selected" : "") + ">Fan " + fan + "</option>";
+          }).join("")
+          + "</select></label></div>";
+      } else {
+        li.innerHTML = '<div class="casa-device-row">'
+          + '<span class="casa-device-icon">' + (ICONS[item.icon] || ICONS.bulb) + "</span>"
+          + "<span>" + item.label + "</span>"
+          + '<button type="button" class="casa-toggle' + (item.on ? " is-on" : "") + '" data-toggle="' + item.id + '">'
+          + (item.on ? "Ativado" : "Desativado") + "</button></div>"
+          + '<div class="casa-swatches" aria-label="Cor">'
+          + SWATCHES.map(function (color) {
+            return '<button type="button" class="casa-swatch' + (item.color === color ? " is-on" : "") + '" data-color="' + item.id + '" data-hex="' + color + '" style="background:' + color + '"></button>';
+          }).join("")
+          + '<input class="casa-swatch-custom" type="color" data-custom="' + item.id + '" value="' + item.color + '" title="Cor personalizada">'
+          + "</div>"
+          + '<input class="casa-bright" type="range" min="0" max="1" step="0.05" value="' + item.intensity + '" data-bright="' + item.id + '" aria-label="Brilho de ' + item.label + '">';
+      }
       list.appendChild(li);
+    });
+  }
+
+  function paintRoutines() {
+    var box = $("casa-routine-list");
+    var banner = $("casa-routine-suggest");
+    if (!box) return;
+    box.replaceChildren();
+    var pending = routines.filter(function (item) { return item.created_by === "gen_suggestion" && item.enabled === false; });
+    if (pending[0]) {
+      banner.hidden = false;
+      banner.textContent = pending[0].hint || "Quer virar rotina?";
+    } else {
+      banner.hidden = true;
+    }
+    routines.forEach(function (item) {
+      var li = document.createElement("li");
+      li.className = "casa-routine";
+      var when = (item.schedule && item.schedule.hour != null)
+        ? String(item.schedule.hour).padStart(2, "0") + ":" + String(item.schedule.minute || 0).padStart(2, "0")
+        : "";
+      li.innerHTML = '<div class="casa-routine-row"><span>' + item.name + (when ? " · " + when : "") + "</span>"
+        + '<span><button type="button" class="casa-toggle' + (item.enabled ? " is-on" : "") + '" data-routine-toggle="' + item.id + '">'
+        + (item.enabled ? "On" : "Off") + "</button> "
+        + (item.created_by === "gen_suggestion" && !item.enabled
+          ? '<button type="button" class="casa-ver-tudo" data-routine-accept="' + item.id + '">Quer virar rotina?</button> '
+          : "")
+        + '<button type="button" class="casa-ver-tudo" data-routine-del="' + item.id + '">Apagar</button></span></div>';
+      box.appendChild(li);
     });
   }
 
@@ -211,6 +279,7 @@
     paintGroupSelection();
     paintDevices();
     paintNowPlaying();
+    paintRoutines();
   }
 
   function take(next) {
@@ -227,6 +296,20 @@
   }
 
   async function patchDevice(body) {
+    if (new URLSearchParams(location.search).get("demo") === "1") {
+      var lights = state.lights || {};
+      var cur = Object.assign({}, lights[body.device_id] || {});
+      if (body.on !== undefined) cur.on = body.on;
+      if (body.color) cur.color = body.color;
+      if (body.intensity != null) cur.intensity = body.intensity;
+      if (body.temp != null) cur.temp = body.temp;
+      if (body.mode) cur.mode = body.mode;
+      if (body.fan) cur.fan = body.fan;
+      lights[body.device_id] = cur;
+      state.lights = lights;
+      paint();
+      return { state: state };
+    }
     var res = await fetch("/api/house/device", {
       method: "POST",
       headers: await authHeaders(),
@@ -345,6 +428,7 @@
         fita_led: { on: false, color: "#7C3AED", intensity: 0.55 },
         tv: { on: true, color: "#3B82F6", intensity: 0.7 },
         ambiente: { on: false, color: "#FF1A1A", intensity: 0.3 },
+        ar_condicionado: { on: true, temp: 22, mode: "frio", fan: "auto", color: "#7DD3FC", intensity: 0.45 },
         main: { intensity: 0.85, color: "#FF1A1A" },
         lanterns: { intensity: 0, color: "#FF1A1A" }
       },
@@ -360,9 +444,26 @@
       }
     };
     suggestions = window.GenjutsuCasaSuggestions.suggestionsFor(profile, new Date());
+    routines = [{
+      id: "demo-7h",
+      name: "Manhã no quarto",
+      schedule: { hour: 7, minute: 0, days: [0, 1, 2, 3, 4, 5, 6] },
+      actions: [{ tool: "set_device", args: { device_id: "quarto_luz", on: true } }],
+      enabled: true,
+      created_by: "user"
+    }, {
+      id: "demo-hint",
+      name: "Ar às 22h",
+      schedule: { hour: 22, minute: 0, days: [0, 1, 2, 3, 4, 5, 6] },
+      actions: [{ tool: "set_device", args: { device_id: "ar_condicionado", on: true, temp: 22 } }],
+      enabled: false,
+      created_by: "gen_suggestion",
+      hint: "Quer virar rotina? ar_condicionado por volta das 22h em 3 dias."
+    }];
     paint();
     paintChips();
     if (suggestions[0]) appendBubble("gen", suggestions[0].message);
+    appendBubble("gen", "Ar no 22. Tá suave.");
   }
 
   async function start() {
@@ -396,9 +497,50 @@
     if (suggestions[0]) appendBubble("gen", suggestions[0].message);
     subscribe(session.id);
     loadHistory();
+    loadRoutines();
+    loadPrefs();
+  }
+
+  async function loadRoutines() {
+    if (!token) return;
+    try {
+      var res = await fetch("/api/routines", { headers: await authHeaders(), cache: "no-store" });
+      var json = await res.json().catch(function () { return null; });
+      if (json && json.routines) {
+        routines = json.routines;
+        paintRoutines();
+      }
+    } catch (err) {}
+  }
+
+  async function loadPrefs() {
+    if (!token) return;
+    try {
+      var res = await fetch("/api/house/prefs", { headers: await authHeaders(), cache: "no-store" });
+      var json = await res.json().catch(function () { return null; });
+      if (json && $("pref-profanity")) $("pref-profanity").checked = json.profanity !== false && json.server !== false;
+    } catch (err) {}
+  }
+
+  async function patchRoutine(body, method) {
+    var res = await fetch("/api/routines", {
+      method: method || "POST",
+      headers: await authHeaders(),
+      body: JSON.stringify(body)
+    });
+    var json = await res.json().catch(function () { return null; });
+    if (json && json.routines) routines = json.routines;
+    paintRoutines();
   }
 
   $("device-list").addEventListener("click", function (event) {
+    var tempBtn = event.target.closest("[data-ac-temp]");
+    if (tempBtn) {
+      var ac = deviceFromState(tempBtn.getAttribute("data-ac-temp"));
+      var next = ac.temp + Number(tempBtn.getAttribute("data-delta"));
+      patchDevice({ device_id: ac.id, on: true, temp: next });
+      return;
+    }
     var toggle = event.target.closest("[data-toggle]");
     if (toggle) {
       var id = toggle.getAttribute("data-toggle");
@@ -415,6 +557,12 @@
       });
     }
   });
+  $("device-list").addEventListener("change", function (event) {
+    var mode = event.target.getAttribute("data-ac-mode");
+    if (mode) patchDevice({ device_id: mode, on: true, mode: event.target.value });
+    var fan = event.target.getAttribute("data-ac-fan");
+    if (fan) patchDevice({ device_id: fan, on: true, fan: event.target.value });
+  });
   $("device-list").addEventListener("input", function (event) {
     var bright = event.target.getAttribute("data-bright");
     if (bright) {
@@ -430,8 +578,59 @@
     btn.addEventListener("click", function () {
       var room = btn.getAttribute("data-room");
       roomFilter = roomFilter === room ? "" : room;
-      paintGroupSelection();
-      paintDevices();
+    paintGroupSelection();
+    paintDevices();
+    paintRoutines();
+  });
+  });
+  $("casa-routine-list").addEventListener("click", function (event) {
+    var del = event.target.closest("[data-routine-del]");
+    if (del) {
+      var id = del.getAttribute("data-routine-del");
+      if (new URLSearchParams(location.search).get("demo") === "1") {
+        routines = routines.filter(function (item) { return item.id !== id; });
+        paintRoutines();
+        return;
+      }
+      patchRoutine({ id: id }, "DELETE");
+      return;
+    }
+    var accept = event.target.closest("[data-routine-accept]");
+    if (accept) {
+      if (new URLSearchParams(location.search).get("demo") === "1") {
+        routines = routines.map(function (item) {
+          if (item.id === accept.getAttribute("data-routine-accept")) {
+            item.enabled = true;
+            item.created_by = "user";
+          }
+          return item;
+        });
+        paintRoutines();
+        return;
+      }
+      patchRoutine({ id: accept.getAttribute("data-routine-accept"), enabled: true, created_by: "user" }, "PATCH");
+      return;
+    }
+    var tog = event.target.closest("[data-routine-toggle]");
+    if (tog) {
+      var rid = tog.getAttribute("data-routine-toggle");
+      var current = routines.find(function (item) { return item.id === rid; });
+      if (new URLSearchParams(location.search).get("demo") === "1") {
+        if (current) current.enabled = !current.enabled;
+        paintRoutines();
+        return;
+      }
+      patchRoutine({ id: rid, enabled: !(current && current.enabled) }, "PATCH");
+    }
+  });
+  $("casa-settings").addEventListener("click", function () { $("casa-settings-sheet").hidden = false; });
+  $("casa-settings-close").addEventListener("click", function () { $("casa-settings-sheet").hidden = true; });
+  $("pref-profanity").addEventListener("change", async function () {
+    if (new URLSearchParams(location.search).get("demo") === "1") return;
+    await fetch("/api/house/prefs", {
+      method: "POST",
+      headers: await authHeaders(),
+      body: JSON.stringify({ profanity: $("pref-profanity").checked })
     });
   });
   $("btn-groups-all").addEventListener("click", showAllDevices);

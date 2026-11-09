@@ -131,6 +131,12 @@ body.page-casa {
   inset: 0;
 }
 
+.casa-overlay-ac {
+  inset: 8% 12% 18% 18%;
+  background: radial-gradient(circle at 70% 55%, rgba(125, 211, 252, 0.55), transparent 70%);
+  mix-blend-mode: screen;
+}
+
 .casa-profile-caption {
   margin: 8px 0 0;
   color: #8f8f8f;
@@ -576,6 +582,76 @@ body.page-casa {
   color: #fff;
   padding: 10px 14px;
   box-shadow: 0 0 12px rgba(255, 26, 26, 0.35);
+}
+
+.casa-ac-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.casa-ac-temp {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.casa-ac-temp button {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 26, 26, 0.4);
+  background: #111;
+  color: #fff;
+}
+
+.casa-ac-temp strong {
+  min-width: 3.2rem;
+  text-align: center;
+}
+
+.casa-ac-controls select {
+  background: #111;
+  color: #f5f5f5;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  padding: 6px 10px;
+}
+
+.casa-routine-list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.casa-routine {
+  border: 1px solid rgba(255, 26, 26, 0.28);
+  border-radius: 14px;
+  padding: 10px 12px;
+  background: #0a0a0a;
+}
+
+.casa-routine-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+}
+
+.casa-routine-suggest {
+  color: #ff8a8a;
+  font-size: 0.88rem;
+}
+
+.casa-pref {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 16px;
 }
 
 .casa-send {

@@ -88,7 +88,7 @@ test("persona uses the name and profile and does not reveal the quiz", () => {
   assert.match(text, /status accepted/);
   assert.doesNotMatch(text, /SEGREDO_DO_QUIZ/);
   assert.doesNotMatch(text, /tranquilo/);
-  assert.doesNotMatch(text, /frio/);
+  assert.doesNotMatch(text, /\bfrio\b/);
   assert.doesNotMatch(text, /clima_/);
   assert.match(buildSystemInstruction({ display_name: "A\nB", profile_id: "Excentrico" }), /se chama A B\./);
   assert.match(buildSystemInstruction({ profile_id: "Excentrico" }), /Excêntrico/);
@@ -353,7 +353,7 @@ test("voice session mints a Gemini ephemeral token and hides the API key", async
   assert.equal(res.body.expiresAt, "2026-11-07T00:00:00.000Z");
   assert.match(res.body.wsUrl, /BidiGenerateContentConstrained/);
   assert.match(res.body.wsUrl, /access_token=ephemeral-token-1/);
-  assert.equal(res.body.tools.length, 10);
+  assert.equal(res.body.tools.length, 13);
   assert.match(res.body.systemInstruction, /Lina/);
   assert.match(res.body.systemInstruction, /Não peça para repetir/);
   assert.match(res.body.systemInstruction, /Estado atual da casa/);
@@ -367,7 +367,7 @@ test("voice session mints a Gemini ephemeral token and hides the API key", async
   assert.equal(request.bidiGenerateContentSetup.model, GEMINI_LIVE_RESOURCE);
   assert.equal(request.fieldMask, undefined);
   assert.match(request.bidiGenerateContentSetup.systemInstruction.parts[0].text, /Lina/);
-  assert.equal(request.bidiGenerateContentSetup.tools[0].functionDeclarations.length, 10);
+  assert.equal(request.bidiGenerateContentSetup.tools[0].functionDeclarations.length, 13);
   assert.equal(JSON.stringify(request).includes(secret), false);
   assert.equal(res.body.voiceName, "Charon");
   assert.equal(

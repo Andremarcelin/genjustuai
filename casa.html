@@ -36,7 +36,7 @@
         <img src="/assets/icon-crow.jpg" alt="">
         <h1 id="casa-title">Sua casa</h1>
       </div>
-      <button class="casa-add" type="button" aria-label="Adicionar" hidden>+</button>
+      <button class="casa-add" type="button" id="casa-settings" aria-label="Ajustes">⚙</button>
     </header>
 
     <div class="casa-layout">
@@ -47,6 +47,7 @@
           <div class="casa-overlay" data-room="sala" id="overlay-sala"></div>
           <div class="casa-overlay" data-room="cozinha" id="overlay-cozinha"></div>
           <div class="casa-overlay" data-room="casa" id="overlay-casa"></div>
+          <div class="casa-overlay casa-overlay-ac" data-room="ar" id="overlay-ar"></div>
         </div>
         <p class="casa-profile-caption" id="casa-profile-caption"></p>
         <div class="casa-now" id="casa-now" hidden>
@@ -108,6 +109,7 @@
                 <option value="led">LED</option>
                 <option value="media">Mídia</option>
                 <option value="ambience">Ambiente</option>
+                <option value="climate">Clima</option>
               </select>
             </label>
             <label class="casa-select">
@@ -120,6 +122,14 @@
           </div>
           <ul class="casa-device-list" id="device-list"></ul>
         </div>
+
+        <div class="casa-routines">
+          <div class="casa-section-head">
+            <h2>Rotinas</h2>
+          </div>
+          <p class="casa-routine-suggest" id="casa-routine-suggest" hidden></p>
+          <ul class="casa-routine-list" id="casa-routine-list"></ul>
+        </div>
       </section>
     </div>
   </div>
@@ -131,6 +141,20 @@
       <button class="casa-ask-text" id="casa-ask" type="button">Pergunte para o Gen</button>
       <button type="button" class="casa-mic" id="casa-dock-voice" aria-label="Falar"></button>
     </div>
+  </div>
+</div>
+
+<div class="casa-sheet" id="casa-settings-sheet" hidden>
+  <div class="casa-sheet-card" role="dialog" aria-labelledby="casa-settings-title">
+    <header>
+      <div><h2 id="casa-settings-title">Ajustes</h2></div>
+      <button type="button" id="casa-settings-close" aria-label="Fechar">×</button>
+    </header>
+    <label class="casa-pref">
+      <input type="checkbox" id="pref-profanity" checked>
+      Palavrões leves da Gen
+    </label>
+    <p class="casa-understood-copy">Desligue em apresentações. A Gen continua informal e nunca xinga você.</p>
   </div>
 </div>
 
