@@ -522,7 +522,7 @@ test("server allowlist matches the quiz profile ids", () => {
 });
 
 test("site still signs in with Google and persists profile_id", () => {
-  const html = fs.readFileSync(new URL("../index.html", import.meta.url), "utf8");
+  const html = fs.readFileSync(new URL("../entrada.html", import.meta.url), "utf8");
   const portal = fs.readFileSync(new URL("../js/portal.js", import.meta.url), "utf8");
   const sql = fs.readFileSync(new URL("../sql/profile_id.sql", import.meta.url), "utf8");
   assert.match(portal, /signInWithOAuth/);

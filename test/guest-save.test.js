@@ -281,7 +281,7 @@ test("a missing profile_id column still stores the session code", async () => {
 });
 
 test("the page copy tells the visitor they are saving without an account", () => {
-  const index = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
+  const index = fs.readFileSync(path.join(__dirname, "..", "entrada.html"), "utf8");
   const portal = fs.readFileSync(path.join(__dirname, "..", "js", "portal.js"), "utf8");
   const css = fs.readFileSync(path.join(__dirname, "..", "portal.css"), "utf8");
   const anon = fs.readFileSync(path.join(__dirname, "..", "sql", "anonymous_auth.sql"), "utf8");
