@@ -290,7 +290,8 @@ test("Groq 429 after retry falls back to Gemini flash lite keys", async () => {
     GEMINI_API_KEY: "k1",
     GEMINI_API_KEY_2: "k2",
     GEMINI_API_KEY_3: "k3",
-  }), ["k1", "k2", "k3"]);
+    GEMINI_API_KEY_4: "k4",
+  }), ["k1", "k2", "k3", "k4"]);
 
   const seen = [];
   const result = await completeChat({
@@ -312,7 +313,7 @@ test("Groq 429 after retry falls back to Gemini flash lite keys", async () => {
   assert.equal(result.message.content, "Oi, Lina. Tô aqui.");
   assert.equal(result.provider, "gemini");
   assert.equal(result.model, GEMINI_TEXT_MODEL);
-  assert.equal(seen.filter((url) => url === GROQ_CHAT_URL).length, 2);
+  assert.equal(seen.filter((url) => url === GROQ_CHAT_URL).length, 0);
   assert.ok(seen.includes(GEMINI_GENERATE_URL));
   assert.equal(JSON.stringify(result).includes("groq-secret"), false);
   assert.equal(JSON.stringify(result).includes("good-gemini"), false);

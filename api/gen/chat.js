@@ -7,12 +7,21 @@ import { createSupabaseHouseStore } from "../../lib/gen/house-store.js";
 import { audioExtension, isAllowedAudio, parseMultipart } from "../../lib/gen/multipart.js";
 import { parseHouseIntent, plannedActions } from "../../lib/gen/intent.js";
 import { buildSystemInstruction, chooseReply } from "../../lib/gen/persona.js";
-import { completeChat, parseToolArguments, transcribeAudio, visibleReply } from "../../lib/gen/providers.js";
+import { chatPrimary, completeChat, geminiKeys, parseToolArguments, transcribeAudio, visibleReply } from "../../lib/gen/providers.js";
 import { clientIp, createRateLimiter } from "../../lib/gen/rate-limit.js";
 import { toGroqTools } from "../../lib/gen/tools.js";
 import { loadMemoryForSession, recordSessionHistory } from "../../lib/gen/history.js";
 import { createRoutineStore } from "../../lib/gen/routine-store.js";
 import { parseRoutineRequest } from "../../lib/gen/routines.js";
+import {
+  confirmGameRoutine,
+  createSessionMemoryStore,
+  gameRoutineFromFact,
+  hasKickoff,
+  isGameTimeRequest,
+  missingKickoffReply,
+  parseMatchFact,
+} from "../../lib/gen/session-memory.js";
 import { runDueRoutines } from "../../lib/gen/run-routines.js";
 import { profanityAllowed } from "../../lib/gen/profanity.js";
 import { supabaseRest } from "../../lib/supabase-rest.cjs";
@@ -64,6 +73,7 @@ export function createChatHandler(deps = {}) {
   const commandLimiter = deps.commandLimiter || sharedCommandLimiter;
   const now = deps.now || (() => Date.now());
   const loadMemory = deps.loadMemory || loadMemoryForSession;
+  const sessionMemory = deps.sessionMemory || createSessionMemoryStore();
   const routineStore = deps.routineStore || createRoutineStore();
   const loadPrefs = deps.loadPrefs || (async (userId) => {
     if (!userId) return true;
@@ -147,21 +157,45 @@ export function createChatHandler(deps = {}) {
       }
 
       async function sendTurn(payload) {
-        if (payload.transcript) {
+        const body = {
+          ...payload,
+          meta: {
+            provider: payload.meta?.provider || payload.provider || null,
+            model: payload.meta?.model || payload.model || null,
+            ...(payload.meta?.gemini_error ? { gemini_error: payload.meta.gemini_error } : {}),
+          },
+        };
+        delete body.provider;
+        delete body.model;
+        if (body.transcript) {
           try {
             await recordSessionHistory({
               env,
               sessionCode: session.id,
               source: turn.audio ? "voice" : "chat",
-              transcript: payload.transcript,
-              reply: payload.reply_text,
-              actions: payload.actions,
+              transcript: body.transcript,
+              reply: body.reply_text,
+              actions: body.actions,
             });
           } catch {
             /* o histórico não pode derrubar a resposta */
           }
+          try {
+            const searchBlob = (body.actions || [])
+              .filter((item) => item.tool === "web_search")
+              .map((item) => item.grounded_text || (item.search || []).map((hit) => hit.snippet).join(" "))
+              .join(" ");
+            const fact = parseMatchFact(`${body.transcript}\n${body.reply_text}\n${searchBlob}`, new Date(stamp));
+            await sessionMemory.remember(session.id, {
+              transcript: body.transcript,
+              reply: body.reply_text,
+              fact,
+            });
+          } catch {
+            /* memória curta não derruba a resposta */
+          }
         }
-        res.status(200).json(payload);
+        res.status(200).json(body);
       }
 
       if (!transcript) {
@@ -175,15 +209,20 @@ export function createChatHandler(deps = {}) {
       }
 
       const groqKey = String(env.GROQ_API_KEY || "").trim();
-      if (!groqKey) {
+      const hasGemini = geminiKeys(env).length > 0;
+      if (!hasGemini && !groqKey) {
+        const primary = chatPrimary(env);
         res.status(503).json({
           error: "missing_config",
-          hint: "Defina GROQ_API_KEY na Vercel. A chave fica só no servidor.",
+          hint: primary === "groq"
+            ? "Defina GROQ_API_KEY na Vercel. A chave fica só no servidor."
+            : "Defina GEMINI_API_KEY na Vercel. A chave fica só no servidor.",
         });
         return;
       }
 
       const actions = [];
+      let used = { provider: null, model: null };
       let state = current.state || defaultHouseState(session.id);
       let memory = "";
       try {
@@ -191,15 +230,70 @@ export function createChatHandler(deps = {}) {
       } catch {
         memory = "";
       }
+      let recalled = { turns: [], facts: {}, text: "" };
+      try {
+        recalled = await sessionMemory.load(session.id);
+      } catch {
+        recalled = { turns: [], facts: {}, text: "" };
+      }
+      if (recalled.text) memory = [memory, recalled.text].filter(Boolean).join("\n");
       let userPref = true;
       try { userPref = await loadPrefs(session.user_id); } catch { userPref = true; }
       const allowSwear = profanityAllowed(env, userPref);
-      const routinePlan = parseRoutineRequest(transcript);
+      const gameAsk = isGameTimeRequest(transcript);
+      if (gameAsk && !hasKickoff(recalled.facts?.match)) {
+        await sendTurn({
+          transcript,
+          reply_text: missingKickoffReply(),
+          actions: [],
+          state,
+          meta: { provider: "none", model: null },
+        });
+        return;
+      }
+      let routinePlan = gameAsk ? null : parseRoutineRequest(transcript);
+      if (gameAsk && hasKickoff(recalled.facts?.match)) {
+        const game = gameRoutineFromFact(recalled.facts.match);
+        routinePlan = {
+          name: game.name,
+          schedule: {
+            hour: game.hour,
+            minute: game.minute,
+            days: game.days,
+            once: true,
+          },
+          actions: game.actions,
+        };
+      }
       const messages = [
-        { role: "system", content: buildSystemInstruction(session, state, memory, { profanity: allowSwear }) },
+        { role: "system", content: buildSystemInstruction(session, state, memory, { profanity: allowSwear, now: new Date(stamp) }) },
         { role: "user", content: transcript },
       ];
       const tools = toGroqTools();
+      const packRoutine = (plan) => ({
+        tool: "create_routine",
+        args: {
+          name: plan.name,
+          hour: plan.schedule.hour,
+          minute: plan.schedule.minute,
+          days: plan.schedule.days,
+          actions: plan.actions,
+          once: plan.schedule.once === true,
+        },
+      });
+      function pushAction(name, parsed, outcome) {
+        actions.push({
+          tool: typeof name === "string" ? name : "unknown",
+          args: parsed && typeof parsed === "object" ? parsed : {},
+          status: outcome.status,
+          reason: outcome.reason || null,
+          search: outcome.search || undefined,
+          weather: outcome.weather || undefined,
+          grounded_text: outcome.grounded_text || undefined,
+          grounded: outcome.grounded || undefined,
+        });
+        if (outcome.gemini_error && !used.gemini_error) used.gemini_error = outcome.gemini_error;
+      }
 
       for (let round = 0; round < 2; round += 1) {
         const completion = await completeChat({
@@ -215,20 +309,17 @@ export function createChatHandler(deps = {}) {
         }
         if (completion.error) {
           const intentActions = routinePlan
-            ? [{
-              tool: "create_routine",
-              args: {
-                name: routinePlan.name,
-                hour: routinePlan.schedule.hour,
-                minute: routinePlan.schedule.minute,
-                days: routinePlan.schedule.days,
-                actions: routinePlan.actions,
-                once: routinePlan.schedule.once === true,
-              },
-            }]
+            ? [packRoutine(routinePlan)]
             : plannedActions(parseHouseIntent(transcript), state);
           if (!intentActions.length) {
-            res.status(502).json({ error: "provider_unreachable", provider: "groq" });
+            res.status(502).json({
+              error: "provider_unreachable",
+              provider: used.provider || chatPrimary(env),
+              meta: {
+                provider: used.provider || chatPrimary(env),
+                gemini_error: completion.gemini_error || used.gemini_error || undefined,
+              },
+            });
             return;
           }
           for (const plan of intentActions) {
@@ -239,38 +330,30 @@ export function createChatHandler(deps = {}) {
               return;
             }
             if (outcome.state) state = outcome.state;
-            actions.push({
-              tool: plan.tool,
-              args: plan.args,
-              status: outcome.status,
-              reason: outcome.reason || null,
-              search: outcome.search || undefined,
-              weather: outcome.weather || undefined,
-            });
+            pushAction(plan.tool, plan.args, outcome);
           }
+          const reply = gameAsk && hasKickoff(recalled.facts?.match)
+            ? confirmGameRoutine(recalled.facts.match)
+            : replyText("", actions, transcript, state);
           await sendTurn({
             transcript,
-            reply_text: replyText("", actions, transcript, state),
+            reply_text: reply,
             actions,
             state,
+            meta: used,
           });
           return;
         }
+        used = {
+          provider: completion.provider || used.provider,
+          model: completion.model || used.model,
+          gemini_error: completion.gemini_error || used.gemini_error,
+        };
         const message = completion.message;
         const calls = Array.isArray(message.tool_calls) ? message.tool_calls : [];
         if (!calls.length) {
           const intentActions = routinePlan
-            ? [{
-              tool: "create_routine",
-              args: {
-                name: routinePlan.name,
-                hour: routinePlan.schedule.hour,
-                minute: routinePlan.schedule.minute,
-                days: routinePlan.schedule.days,
-                actions: routinePlan.actions,
-                once: routinePlan.schedule.once === true,
-              },
-            }]
+            ? [packRoutine(routinePlan)]
             : plannedActions(parseHouseIntent(transcript), state);
           for (const plan of intentActions) {
             const outcome = await runTool(plan.tool, plan.args);
@@ -280,17 +363,12 @@ export function createChatHandler(deps = {}) {
               return;
             }
             if (outcome.state) state = outcome.state;
-            actions.push({
-              tool: plan.tool,
-              args: plan.args,
-              status: outcome.status,
-              reason: outcome.reason || null,
-              search: outcome.search || undefined,
-              weather: outcome.weather || undefined,
-            });
+            pushAction(plan.tool, plan.args, outcome);
           }
-          const reply = replyText(visibleReply(message.content), actions, transcript, state);
-          await sendTurn({ transcript, reply_text: reply, actions, state });
+          const reply = gameAsk && hasKickoff(recalled.facts?.match)
+            ? confirmGameRoutine(recalled.facts.match)
+            : replyText(visibleReply(message.content), actions, transcript, state);
+          await sendTurn({ transcript, reply_text: reply, actions, state, meta: used });
           return;
         }
         messages.push({
@@ -300,7 +378,18 @@ export function createChatHandler(deps = {}) {
         });
         for (const call of calls) {
           const name = call?.function?.name;
-          const parsed = parseToolArguments(call?.function?.arguments);
+          let parsed = parseToolArguments(call?.function?.arguments);
+          if (gameAsk && hasKickoff(recalled.facts?.match) && name === "create_routine" && parsed) {
+            const game = gameRoutineFromFact(recalled.facts.match);
+            parsed = {
+              name: game.name,
+              hour: game.hour,
+              minute: game.minute,
+              days: game.days,
+              actions: game.actions,
+              once: true,
+            };
+          }
           let outcome;
           if (parsed === null) {
             outcome = { status: "rejected", reason: "invalid_args", state };
@@ -313,23 +402,21 @@ export function createChatHandler(deps = {}) {
             }
           }
           if (outcome.state) state = outcome.state;
-          actions.push({
-            tool: typeof name === "string" ? name : "unknown",
-            args: parsed && typeof parsed === "object" ? parsed : {},
-            status: outcome.status,
-            reason: outcome.reason || null,
-            search: outcome.search || undefined,
-            weather: outcome.weather || undefined,
-          });
+          pushAction(name, parsed, outcome);
           messages.push({
             role: "tool",
+            name: name || "tool",
             tool_call_id: call?.id || `call_${actions.length}`,
             content: JSON.stringify({
               status: outcome.status,
               reason: outcome.reason || null,
               state: outcome.state || state,
             search: outcome.search || undefined,
+            sources: Array.isArray(outcome.search)
+              ? outcome.search.map((hit) => `${hit.title}: ${hit.snippet} (${hit.url})`).join("\n")
+              : undefined,
             weather: outcome.weather || undefined,
+            grounded_text: outcome.grounded_text || undefined,
             devices: outcome.devices || undefined,
             routines: outcome.routines || undefined,
             }),
@@ -338,12 +425,20 @@ export function createChatHandler(deps = {}) {
       }
 
       const finalTurn = await completeChat({ fetchImpl, env, messages, toolChoice: "none" });
+      if (!finalTurn.error) {
+        used = {
+          provider: finalTurn.provider || used.provider,
+          model: finalTurn.model || used.model,
+          gemini_error: finalTurn.gemini_error || used.gemini_error,
+        };
+      }
       if (finalTurn.error) {
         await sendTurn({
           transcript,
           reply_text: replyText("", actions, transcript, state),
           actions,
           state,
+          meta: used,
         });
         return;
       }
@@ -352,6 +447,7 @@ export function createChatHandler(deps = {}) {
         reply_text: replyText(visibleReply(finalTurn.message?.content), actions, transcript, state),
         actions,
         state,
+        meta: used,
       });
     } catch {
       if (!res.headersSent) res.status(503).json({ error: "supabase_unreachable" });

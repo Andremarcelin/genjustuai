@@ -61,7 +61,7 @@ function noSession() {
 }
 
 async function withEnv(env, fn) {
-  const keys = ["SUPABASE_URL", "SUPABASE_ANON_KEY", "SUPABASE_SERVICE_ROLE", "SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_SECRET_KEY", "GEMINI_API_KEY", "GEMINI_API_KEY_2", "GEMINI_API_KEY_3", "GROQ_API_KEY"];
+  const keys = ["SUPABASE_URL", "SUPABASE_ANON_KEY", "SUPABASE_SERVICE_ROLE", "SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_SECRET_KEY", "GEMINI_API_KEY", "GEMINI_API_KEY_2", "GEMINI_API_KEY_3", "GEMINI_API_KEY_4", "GROQ_API_KEY"];
   const previous = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
   for (const key of keys) delete process.env[key];
   Object.assign(process.env, env);
@@ -209,6 +209,29 @@ test("tool schemas reject unknown fields and out-of-range values", () => {
   const groq = toGroqTools().find((tool) => tool.function.name === "set_lights");
   assert.equal(groq.type, "function");
   assert.equal(groq.function.parameters.additionalProperties, false);
+  const routine = toGeminiDeclarations().find((tool) => tool.name === "create_routine");
+  assert.equal(routine.parameters.properties.once.type, "BOOLEAN");
+  assert.equal(routine.parameters.properties.days.type, "ARRAY");
+  assert.equal(routine.parameters.properties.days.items.type, "INTEGER");
+  assert.equal(routine.parameters.properties.actions.type, "ARRAY");
+  assert.equal(routine.parameters.properties.actions.items.type, "OBJECT");
+  const weather = validateToolCall("create_routine", {
+    name: "jogo",
+    hour: 21,
+    minute: 30,
+    actions: { device_id: "ar_condicionado", on: true, temp: 20 },
+  });
+  assert.equal(weather.ok, true);
+  assert.equal(weather.args.actions[0].tool, "set_device");
+  const bare = validateToolCall("create_routine", {
+    name: "ar",
+    hour: 21,
+    device_id: "ar_condicionado",
+    on: true,
+    temp: 20,
+  });
+  assert.equal(bare.ok, true);
+  assert.equal(bare.args.actions[0].args.device_id, "ar_condicionado");
 });
 
 test("executor applies lights and dojo without touching the profile", async () => {
@@ -394,13 +417,16 @@ test("voice session mints a Gemini ephemeral token and hides the API key", async
   assert.equal(JSON.stringify(missing.body).includes(secret), false);
 });
 
-test("geminiKeys keeps non-empty keys in GEMINI_API_KEY then _2 then _3 order", () => {
+test("geminiKeys keeps non-empty keys in GEMINI_API_KEY then _2 … _9 order", () => {
   assert.deepEqual(geminiKeys({
     GEMINI_API_KEY: " k1 ",
     GEMINI_API_KEY_2: "",
     GEMINI_API_KEY_3: "k3",
-  }), ["k1", "k3"]);
+    GEMINI_API_KEY_4: "k4",
+    GEMINI_API_KEY_9: "k9",
+  }), ["k1", "k3", "k4", "k9"]);
   assert.deepEqual(geminiKeys({ GEMINI_API_KEY_2: "only-two" }), ["only-two"]);
+  assert.deepEqual(geminiKeys({ GEMINI_API_KEY_4: "only-four" }), ["only-four"]);
   assert.deepEqual(geminiKeys({}), []);
   assert.equal(GEMINI_LIVE_MODEL, "gemini-3.8-live");
   assert.equal(GEMINI_TEXT_MODEL, "gemini-3.5-flash-lite");
@@ -861,6 +887,7 @@ test("pages wire the phone, the provider, and the session contract", () => {
   assert.match(env, /GEMINI_API_KEY=/);
   assert.match(env, /GEMINI_API_KEY_2=/);
   assert.match(env, /GEMINI_API_KEY_3=/);
+  assert.match(env, /GEMINI_API_KEY_4=/);
   assert.match(env, /GROQ_API_KEY=/);
   assert.doesNotMatch(phone, /GEMINI_API_KEY|GROQ_API_KEY/);
 });

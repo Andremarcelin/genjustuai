@@ -291,7 +291,7 @@ JSON `{ "error": "..." }`. Sem URL, chave ou corpo do provedor.
 | 502 | `need_sql` | falta `sql/house_state.sql` no Supabase. |
 | 502 | `provider_unreachable` | Gemini ou Groq não responderam. `provider` diz qual. |
 | 502 | `gemini_unavailable` | todas as chaves Gemini Live falharam (401/403/429/5xx ou rede). `fallback` é `groq` — o cliente deve usar `POST /api/gen/chat`. |
-| 503 | `missing_config` | falta `SUPABASE_*`, `GEMINI_API_KEY` (ou `_2`/`_3`) ou `GROQ_API_KEY` no servidor. |
+| 503 | `missing_config` | falta `SUPABASE_*`, `GEMINI_API_KEY` (ou `_2`…`_9`) ou `GROQ_API_KEY` no servidor. |
 | 503 | `db_permission_denied` | o Postgres recusou EXECUTE (42501), em geral funções de CHECK em `genjutsu_internal` sem grant para `service_role`. |
 | 405 | `method_not_allowed` | método errado. |
 
@@ -303,4 +303,4 @@ Celular, push-to-talk. Primeiro pede o token e fala pelo WebSocket (microfone vi
 
 Aplicar à mão, no projeto `ahzsvjimyfzjcfuhgdgw`, depois de `sql/session_lifecycle.sql`: [`sql/house_state.sql`](../sql/house_state.sql), [`sql/house_devices.sql`](../sql/house_devices.sql) e [`sql/house_media.sql`](../sql/house_media.sql). Este repositório não aplica a migração. Sem o primeiro, comando de casa responde `need_sql`. Sem o segundo, `main`/`lanterns` ainda funcionam; os device ids entram na leitura via normalização no servidor. Sem o terceiro, `media` fica `null` e a API ignora a coluna. Sem o grant de `service_role` nas funções de CHECK (`house_devices.sql` e `house_media.sql`), a escrita responde `db_permission_denied`.
 
-Variáveis só de servidor: `GEMINI_API_KEY` (obrigatória se não houver `_2`/`_3`), opcionais `GEMINI_API_KEY_2` e `GEMINI_API_KEY_3` para rotação no mint do token Live, `GROQ_API_KEY`, `SUPABASE_SERVICE_ROLE` para gravar a casa, e opcional `JAMENDO_CLIENT_ID` (nunca no cliente). A anon key continua pública em `/api/config` e não escreve nessas tabelas. Live usa `gemini-3.8-live`. Qualquer chamada de texto Gemini deve usar `gemini-3.5-flash-lite` (`2.0-flash` e `2.5-flash` estão aposentados nestas chaves).
+Variáveis só de servidor: `GEMINI_API_KEY` (obrigatória se não houver `_2`…`_9`), opcionais `GEMINI_API_KEY_2` até `GEMINI_API_KEY_9` para rotação no mint do token Live e no chat, `GROQ_API_KEY`, `SUPABASE_SERVICE_ROLE` para gravar a casa, e opcional `JAMENDO_CLIENT_ID` (nunca no cliente). A anon key continua pública em `/api/config` e não escreve nessas tabelas. Live usa `gemini-3.8-live`. Qualquer chamada de texto Gemini deve usar `gemini-3.5-flash-lite` (`2.0-flash` e `2.5-flash` estão aposentados nestas chaves).
