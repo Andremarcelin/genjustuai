@@ -60,6 +60,7 @@ test("Ver tudo is a themed button that clears filters and groups filter rooms", 
 test("fixed dock leaves padding so chips do not cover the device list", () => {
   const css = fs.readFileSync(new URL("../casa.css", import.meta.url), "utf8");
   assert.match(css, /padding-bottom:\s*calc\(168px/);
+  assert.match(css, /\.casa-preview[\s\S]*padding-bottom:\s*calc\(96px/);
   assert.match(css, /\.casa-dock[\s\S]*position:\s*fixed/);
 });
 

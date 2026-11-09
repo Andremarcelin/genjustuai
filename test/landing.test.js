@@ -49,5 +49,7 @@ assert.match(vercel, /"\/codigo"/);
 assert.match(portal, /via === "google"/);
 assert.match(portal, /via === "guest"/);
 assert.match(portal, /onEntryRoute/);
+assert.match(portal, /genjutsu_ready_v1/);
+assert.match(portal, /restoreReady/);
 
 console.log("landing tests ok");

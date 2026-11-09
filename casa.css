@@ -113,6 +113,7 @@ body.page-casa {
 
 .casa-preview {
   margin: 8px 0 10px;
+  padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
 }
 
 .casa-frame {
@@ -508,7 +509,7 @@ body.page-casa {
   gap: 8px;
   overflow: visible;
   padding: 10px 0 8px;
-  margin: 0 0 56px;
+  margin: 0;
   position: relative;
   z-index: 1;
 }
@@ -841,9 +842,13 @@ body.page-casa {
     padding-bottom: 168px;
   }
 
+  .casa-preview {
+    padding-bottom: calc(108px + env(safe-area-inset-bottom, 0px));
+  }
+
   .casa-frame {
-    min-height: 72vh;
-    max-height: none;
+    min-height: 0;
+    max-height: calc(100dvh - 260px - env(safe-area-inset-bottom, 0px));
     aspect-ratio: 1 / 1;
   }
 

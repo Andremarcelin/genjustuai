@@ -412,6 +412,8 @@
     paintIdentity(user);
     if (journeyUserId === user.id && (journeyPhase === "quiz" || journeyPhase === "ready" || journeyPhase === "sync")) {
       paintIdentity(user);
+      applyPersistedReady(user);
+      if (journeyPhase !== "ready" && quizComplete(globalDossie)) restoreReady(user);
       return;
     }
     journeyUserId = user.id;
@@ -652,31 +654,45 @@
   }
 
   function persistReadySnapshot(saved) {
+    var payload = JSON.stringify({
+      sessionCode: (saved && saved.sessionCode) || sessionCode || "",
+      userId: saved && saved.user ? saved.user.id : "",
+      profile_id: saved && saved.profile ? saved.profile.profile_id : "",
+      preferencias: (globalDossie && globalDossie.preferencias) || {},
+      nome: saved && saved.persona ? saved.persona.displayName : "",
+      guest: !!(saved && saved.guest)
+    });
+    try { localStorage.setItem(READY_STORE, payload); } catch (e) { /* storage opcional */ }
+    try { sessionStorage.setItem(READY_STORE, payload); } catch (e) { /* storage opcional */ }
+  }
+
+  function readReadySnapshot() {
+    var raw = "";
+    try { raw = localStorage.getItem(READY_STORE) || ""; } catch (e) { raw = ""; }
+    if (!raw) {
+      try { raw = sessionStorage.getItem(READY_STORE) || ""; } catch (e2) { raw = ""; }
+    }
+    if (!raw) return null;
     try {
-      localStorage.setItem(READY_STORE, JSON.stringify({
-        sessionCode: (saved && saved.sessionCode) || sessionCode || "",
-        userId: saved && saved.user ? saved.user.id : "",
-        profile_id: saved && saved.profile ? saved.profile.profile_id : "",
-        preferencias: (globalDossie && globalDossie.preferencias) || {},
-        nome: saved && saved.persona ? saved.persona.displayName : "",
-        guest: !!(saved && saved.guest)
-      }));
-    } catch (e) { /* storage opcional */ }
+      var snap = JSON.parse(raw);
+      return snap && typeof snap === "object" ? snap : null;
+    } catch (e) {
+      return null;
+    }
   }
 
   function applyPersistedReady(user) {
-    try {
-      var raw = localStorage.getItem(READY_STORE);
-      if (!raw) return;
-      var snap = JSON.parse(raw);
-      if (!snap || typeof snap !== "object") return;
-      if (user && snap.userId && snap.userId !== user.id) return;
-      if (snap.sessionCode && !sessionCode) renderSessionCode(snap.sessionCode);
-      if (snap.preferencias) {
-        globalDossie.preferencias = Object.assign({}, snap.preferencias, globalDossie.preferencias || {});
-      }
-      if (snap.nome && !globalDossie.nome_exibicao) globalDossie.nome_exibicao = snap.nome;
-    } catch (e) { /* snapshot inválido */ }
+    var snap = readReadySnapshot();
+    if (!snap) return;
+    if (user && snap.userId && snap.userId !== user.id) return;
+    if (snap.sessionCode && !sessionCode) renderSessionCode(snap.sessionCode);
+    if (snap.preferencias) {
+      globalDossie.preferencias = Object.assign({}, snap.preferencias, globalDossie.preferencias || {});
+    }
+    if (snap.nome && !globalDossie.nome_exibicao) globalDossie.nome_exibicao = snap.nome;
+    if (snap.profile_id && globalDossie.preferencias && !globalDossie.preferencias.profile_id) {
+      globalDossie.preferencias.profile_id = snap.profile_id;
+    }
   }
 
   function restoreReady(user) {
@@ -927,6 +943,7 @@
 
   async function startGuest() {
     if (authBusy) return;
+    if (journeyPhase === "ready") return;
     if (!(await requireClient())) return;
     authBusy = true;
     try {
@@ -934,6 +951,13 @@
       var session = existing && existing.data && existing.data.session;
       var user = session && session.user;
       guestIntent = !user || P.isGuest(user);
+      applyPersistedReady(user);
+      if (user && quizComplete(globalDossie)) {
+        journeyUserId = user.id;
+        paintIdentity(user);
+        restoreReady(user);
+        return;
+      }
       if (user) {
         journeyUserId = user.id;
         paintIdentity(user);
@@ -958,6 +982,7 @@
   async function leaveJourney() {
     journeyPhase = "leaving";
     try { localStorage.removeItem(READY_STORE); } catch (e) {}
+    try { sessionStorage.removeItem(READY_STORE); } catch (e) {}
     try {
       if (sb) await sb.auth.signOut();
     } catch (e) {}
