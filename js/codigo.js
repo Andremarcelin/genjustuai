@@ -81,7 +81,7 @@
     var profile = (session && (session.profile_id || session.archetype)) || "";
     var rows = [];
     if (name) rows.push(["Nome", name]);
-    if (profile) rows.push(["profile_id", profile]);
+    if (profile) rows.push(["Perfil", profile]);
     return rows;
   }
 

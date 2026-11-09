@@ -125,7 +125,7 @@ test("save without a session signs in anonymously and writes the ZCEA profile", 
   assert.equal(labels["Num fim de semana livre, você…"], "sai sem roteiro atrás de algo que nunca fez (impulso)");
   assert.equal(labels["Quando surge um problema difícil, você…"], "tenta um atalho ousado antes de abrir o manual (atalho)");
   assert.equal(labels["Numa festa onde conhece pouca gente, você…"], "puxa a conversa, improvisa e vira o centro sem planejar (pista)");
-  assert.equal(labels.profile_id, "Excentrico");
+  assert.equal(labels.Perfil, "Excentrico");
   assert.equal(labels["Arquétipo"], "Excêntrico");
   assert.equal(labels.Letra, "E");
   assert.equal(labels["Código da sessão"], CODE);

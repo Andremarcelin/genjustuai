@@ -613,7 +613,7 @@
   function compactRecordLabel(label) {
     var raw = String(label || "").toLowerCase();
     if (raw === "nome") return "Nome";
-    if (raw === "profile_id") return "profile_id";
+    if (raw === "profile_id" || raw === "perfil") return "Perfil";
     if (raw.indexOf("fim de semana") !== -1) return "Fim de semana";
     if (raw.indexOf("problema difícil") !== -1) return "Problema difícil";
     if (raw.indexOf("festa") !== -1) return "Festa";
@@ -624,14 +624,14 @@
     var dl = $("ready-records");
     if (!dl) return;
     dl.replaceChildren();
-    var order = ["Nome", "Fim de semana", "Problema difícil", "Festa", "profile_id"];
+    var order = ["Nome", "Fim de semana", "Problema difícil", "Festa", "Perfil"];
     var byLabel = {};
     (fields || []).forEach(function (pair) {
       var label = compactRecordLabel(pair[0]);
       if (!label) return;
       var value = String(pair[1] || "");
       var short = value.match(/\(([a-z_]+)\)\s*$/i);
-      if (short && label !== "Nome" && label !== "profile_id") value = short[1];
+      if (short && label !== "Nome" && label !== "Perfil") value = short[1];
       byLabel[label] = value;
     });
     order.forEach(function (label) {

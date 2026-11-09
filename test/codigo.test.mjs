@@ -78,6 +78,6 @@ test("fetchSession maps not_found and returns the public session", async () => {
     };
   });
   assert.equal(found.session.display_name, "QA Teste");
-  assert.deepEqual(C.recordRows(found.session), [["Nome", "QA Teste"], ["profile_id", "Zen"]]);
+  assert.deepEqual(C.recordRows(found.session), [["Nome", "QA Teste"], ["Perfil", "Zen"]]);
   assert.ok(P.proverbFor("Zen", "FM8QS7"));
 });
