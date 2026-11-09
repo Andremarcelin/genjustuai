@@ -112,10 +112,11 @@ test("ZCEA playlists have attribution and no youtube", () => {
 });
 
 test("public tools include media and web_search", () => {
-  assert.equal(TOOLS.length, 10);
+  assert.equal(TOOLS.length, 13);
   assert.deepEqual(TOOLS.map((tool) => tool.name), [
     "get_house_state", "list_devices", "set_device", "set_lights", "set_ambience", "switch_dojo",
     "play_music", "open_video", "stop_media", "web_search",
+    "create_routine", "list_routines", "delete_routine",
   ]);
   assert.equal(validateToolCall("play_music", {}).ok, true);
   assert.equal(validateToolCall("open_video", { query: "jazz" }).ok, true);
@@ -231,10 +232,13 @@ test("casa media handler play/pause", async () => {
   assert.equal(res.body.state.media.playing, true);
 });
 
-test("casa page has now-playing card", () => {
+test("casa page does not play media in the browser", () => {
   const html = fs.readFileSync(new URL("../casa.html", import.meta.url), "utf8");
-  assert.match(html, /id="casa-now"/);
-  assert.match(html, /id="casa-player-audio"/);
+  const js = fs.readFileSync(new URL("../js/casa.js", import.meta.url), "utf8");
+  const css = fs.readFileSync(new URL("../casa.css", import.meta.url), "utf8");
+  assert.doesNotMatch(html, /Agora na TV|id="casa-now"|casa-player-audio|casa-player-video/);
+  assert.doesNotMatch(js, /paintNowPlaying|casa-player-audio|\.play\(/);
+  assert.doesNotMatch(css, /\.casa-now\b/);
   const sql = fs.readFileSync(new URL("../sql/house_media.sql", import.meta.url), "utf8");
   assert.match(sql, /add column if not exists media jsonb/);
   assert.match(sql, /grant execute on function genjutsu_internal\.media_valid\(jsonb\) to service_role/i);

@@ -17,7 +17,7 @@ import { readSupabaseConfig } from "../lib/supabase-rest.cjs";
 import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
 const { suggestionsFor } = require("../js/casa-suggestions.js");
-const { houseTitle, overlayLights } = require("../js/casa-view.js");
+const { houseTitle, overlayLights, houseImageFor } = require("../js/casa-view.js");
 
 const SESSION = {
   id: "AB3K7Q",
@@ -45,7 +45,7 @@ function limiter() {
 }
 
 test("device ids are stable and aliases keep Quest main/lanterns", () => {
-  assert.deepEqual(DEVICE_IDS, ["sala_luz", "quarto_luz", "abajur", "fita_led", "tv", "ambiente"]);
+  assert.deepEqual(DEVICE_IDS, ["sala_luz", "quarto_luz", "abajur", "fita_led", "tv", "ambiente", "ar_condicionado"]);
   const lights = normalizeLights({
     main: { intensity: 0.8, color: "#00ffaa" },
     lanterns: { intensity: 0.1, color: "#112233" },
@@ -129,7 +129,7 @@ test("GET /api/house/state still returns null without a session and includes dev
   const res2 = mockRes();
   await ready({ method: "GET", headers: {} }, res2);
   assert.equal(res2.body.state.lights.sala_luz.on, true);
-  assert.equal(res2.body.devices.length, 6);
+  assert.equal(res2.body.devices.length, 7);
   assert.equal(res2.body.session.display_name, "André");
 });
 
@@ -232,6 +232,13 @@ test("header uses the full typed name", () => {
   assert.equal(houseTitle("André Teste"), "Casa de André Teste");
   assert.equal(houseTitle("  André   Teste  "), "Casa de André Teste");
   assert.equal(houseTitle(""), "Sua casa");
+});
+
+test("Zen casa image is the furnished house, not a generic ofuro hero path", () => {
+  assert.equal(houseImageFor("Zen"), "/assets/casa/zen.jpg");
+  const js = fs.readFileSync(new URL("../js/casa.js", import.meta.url), "utf8");
+  assert.match(js, /dataset\.profile/);
+  assert.match(js, /houseImageFor/);
 });
 
 test("visitor session lookup uses the anon key and does not require a service role", async () => {

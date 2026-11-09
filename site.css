@@ -365,13 +365,17 @@ button, input, select { font: inherit; }
   flex: none;
 }
 
+.page-gen .nav-mark picture,
 .page-gen .nav-mark img {
   width: 42px;
   height: 42px;
+  flex: none;
+}
+
+.page-gen .nav-mark img {
   border-radius: 12px;
-  object-fit: cover;
-  border: 1px solid var(--accent);
-  box-shadow: var(--glow);
+  object-fit: contain;
+  display: block;
 }
 
 .page-gen .gen-status {

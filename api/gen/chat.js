@@ -11,13 +11,19 @@ import { completeChat, parseToolArguments, transcribeAudio, visibleReply } from 
 import { clientIp, createRateLimiter } from "../../lib/gen/rate-limit.js";
 import { toGroqTools } from "../../lib/gen/tools.js";
 import { loadMemoryForSession, recordSessionHistory } from "../../lib/gen/history.js";
+import { createRoutineStore } from "../../lib/gen/routine-store.js";
+import { parseRoutineRequest } from "../../lib/gen/routines.js";
+import { runDueRoutines } from "../../lib/gen/run-routines.js";
+import { profanityAllowed } from "../../lib/gen/profanity.js";
+import { supabaseRest } from "../../lib/supabase-rest.cjs";
 
 const sharedChatLimiter = createRateLimiter({ limit: CHAT_LIMIT, windowMs: CHAT_WINDOW_MS });
 const sharedIpLimiter = createRateLimiter({ limit: IP_LIMIT, windowMs: IP_WINDOW_MS });
 const sharedCommandLimiter = createRateLimiter({ limit: 20, windowMs: 60_000 });
 
 function replyText(modelText, actions, transcript, state) {
-  return chooseReply({ modelText, actions, transcript, state });
+  const search = (actions || []).find((item) => item.tool === "web_search" && item.search)?.search;
+  return chooseReply({ modelText, actions, transcript, state, search });
 }
 
 async function readTurn(req) {
@@ -58,6 +64,17 @@ export function createChatHandler(deps = {}) {
   const commandLimiter = deps.commandLimiter || sharedCommandLimiter;
   const now = deps.now || (() => Date.now());
   const loadMemory = deps.loadMemory || loadMemoryForSession;
+  const routineStore = deps.routineStore || createRoutineStore();
+  const loadPrefs = deps.loadPrefs || (async (userId) => {
+    if (!userId) return true;
+    const result = await supabaseRest(
+      `house_prefs?user_id=eq.${encodeURIComponent(userId)}&select=profanity`,
+      { serviceRoleOnly: true, raw: true }
+    );
+    if (!result.ok) return true;
+    const row = Array.isArray(result.json) ? result.json[0] : result.json;
+    return row?.profanity !== false;
+  });
 
   return async function handler(req, res) {
     if (initApi(req, res, ["POST"])) return;
@@ -104,7 +121,24 @@ export function createChatHandler(deps = {}) {
         fetchImpl,
         env,
         profileId: session.profile_id || session.profileId,
+        userId: session.user_id,
+        routineStore,
       });
+
+      if (session.user_id) {
+        try {
+          await runDueRoutines({
+            houseStore: store,
+            routineStore,
+            env,
+            fetchImpl,
+            limiter: commandLimiter,
+            now: stamp,
+            userId: session.user_id,
+            sessionId: session.id,
+          });
+        } catch { /* tick não derruba o chat */ }
+      }
 
       const current = await runTool("get_house_state", {});
       if (current.error) {
@@ -158,8 +192,12 @@ export function createChatHandler(deps = {}) {
       } catch {
         memory = "";
       }
+      let userPref = true;
+      try { userPref = await loadPrefs(session.user_id); } catch { userPref = true; }
+      const allowSwear = profanityAllowed(env, userPref);
+      const routinePlan = parseRoutineRequest(transcript);
       const messages = [
-        { role: "system", content: buildSystemInstruction(session, state, memory) },
+        { role: "system", content: buildSystemInstruction(session, state, memory, { profanity: allowSwear }) },
         { role: "user", content: transcript },
       ];
       const tools = toGroqTools();
@@ -183,7 +221,18 @@ export function createChatHandler(deps = {}) {
         const message = completion.message;
         const calls = Array.isArray(message.tool_calls) ? message.tool_calls : [];
         if (!calls.length) {
-          const intentActions = plannedActions(parseHouseIntent(transcript), state);
+          const intentActions = routinePlan
+            ? [{
+              tool: "create_routine",
+              args: {
+                name: routinePlan.name,
+                hour: routinePlan.schedule.hour,
+                minute: routinePlan.schedule.minute,
+                days: routinePlan.schedule.days,
+                actions: routinePlan.actions,
+              },
+            }]
+            : plannedActions(parseHouseIntent(transcript), state);
           for (const plan of intentActions) {
             const outcome = await runTool(plan.tool, plan.args);
             if (outcome.error) {
@@ -228,6 +277,7 @@ export function createChatHandler(deps = {}) {
             args: parsed && typeof parsed === "object" ? parsed : {},
             status: outcome.status,
             reason: outcome.reason || null,
+            search: outcome.search || undefined,
           });
           messages.push({
             role: "tool",
@@ -238,6 +288,7 @@ export function createChatHandler(deps = {}) {
               state: outcome.state || state,
               search: outcome.search || undefined,
               devices: outcome.devices || undefined,
+              routines: outcome.routines || undefined,
             }),
           });
         }
