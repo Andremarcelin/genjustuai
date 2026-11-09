@@ -92,7 +92,7 @@ export async function loadSessionForUser(userId) {
   while (fields.length >= 4) {
     const result = await supabaseRest(
       `session_summaries?user_id=eq.${encodeURIComponent(uid)}&select=${fields.join(",")}&order=updated_at.desc&limit=1`,
-      { serviceRoleOnly: true, raw: true },
+      { raw: true },
     );
     if (result.ok) {
       const row = Array.isArray(result.json) ? result.json[0] : null;

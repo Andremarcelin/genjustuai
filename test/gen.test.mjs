@@ -60,7 +60,7 @@ function noSession() {
 }
 
 async function withEnv(env, fn) {
-  const keys = ["SUPABASE_URL", "SUPABASE_ANON_KEY", "SUPABASE_SERVICE_ROLE", "GEMINI_API_KEY", "GROQ_API_KEY"];
+  const keys = ["SUPABASE_URL", "SUPABASE_ANON_KEY", "SUPABASE_SERVICE_ROLE", "SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_SECRET_KEY", "GEMINI_API_KEY", "GROQ_API_KEY"];
   const previous = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
   for (const key of keys) delete process.env[key];
   Object.assign(process.env, env);
@@ -693,6 +693,21 @@ test("service role writes do not send the anon key", async () => {
     const blocked = await store.load("AB3K7Q");
     assert.equal(blocked.error, "missing_config");
     assert.equal(called, false);
+  });
+
+  await withEnv({
+    SUPABASE_URL: "https://ahzsvjimyfzjcfuhgdgw.supabase.co",
+    SUPABASE_ANON_KEY: "anon-key-do-not-use-for-writes",
+    SUPABASE_SERVICE_ROLE_KEY: "service-role-key-alias",
+  }, async () => {
+    let auth = "";
+    global.fetch = async (_url, opts) => {
+      auth = opts.headers.Authorization;
+      return new Response(JSON.stringify([]), { status: 200, headers: { "content-type": "application/json" } });
+    };
+    const store = createSupabaseHouseStore();
+    await store.load("AB3K7Q");
+    assert.equal(auth, "Bearer service-role-key-alias");
   });
 });
 
