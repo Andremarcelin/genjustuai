@@ -94,14 +94,19 @@ export function createChatHandler(deps = {}) {
         transcript = heard.text.slice(0, 2000);
       }
 
-      const current = await executeHouseTool({
+      const runTool = (tool, args) => executeHouseTool({
         sessionId: session.id,
-        tool: "get_house_state",
-        args: {},
+        tool,
+        args,
         store,
         limiter: commandLimiter,
         now: stamp,
+        fetchImpl,
+        env,
+        profileId: session.profile_id || session.profileId,
       });
+
+      const current = await runTool("get_house_state", {});
       if (current.error) {
         const infra = infraFromStore(current);
         res.status(infra.status).json(infra.body);
@@ -180,14 +185,7 @@ export function createChatHandler(deps = {}) {
         if (!calls.length) {
           const intentActions = plannedActions(parseHouseIntent(transcript), state);
           for (const plan of intentActions) {
-            const outcome = await executeHouseTool({
-              sessionId: session.id,
-              tool: plan.tool,
-              args: plan.args,
-              store,
-              limiter: commandLimiter,
-              now: stamp,
-            });
+            const outcome = await runTool(plan.tool, plan.args);
             if (outcome.error) {
               const infra = infraFromStore(outcome);
               res.status(infra.status).json(infra.body);
@@ -217,14 +215,7 @@ export function createChatHandler(deps = {}) {
           if (parsed === null) {
             outcome = { status: "rejected", reason: "invalid_args", state };
           } else {
-            outcome = await executeHouseTool({
-              sessionId: session.id,
-              tool: name,
-              args: parsed,
-              store,
-              limiter: commandLimiter,
-              now: stamp,
-            });
+            outcome = await runTool(name, parsed);
             if (outcome.error) {
               const infra = infraFromStore(outcome);
               res.status(infra.status).json(infra.body);
@@ -245,6 +236,8 @@ export function createChatHandler(deps = {}) {
               status: outcome.status,
               reason: outcome.reason || null,
               state: outcome.state || state,
+              search: outcome.search || undefined,
+              devices: outcome.devices || undefined,
             }),
           });
         }

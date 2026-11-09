@@ -27,6 +27,7 @@ export function createCommandsHandler(deps = {}) {
         res.status(400).json({ error: "invalid_request" });
         return;
       }
+      const sessionRow = session;
       const result = await executeHouseTool({
         sessionId: session.id,
         tool,
@@ -36,13 +37,16 @@ export function createCommandsHandler(deps = {}) {
         now: now(),
         limit,
         windowMs,
+        fetchImpl: deps.fetchImpl || globalThis.fetch,
+        env: deps.env || process.env,
+        profileId: sessionRow.profile_id || sessionRow.profileId,
       });
       if (result.error) {
         const infra = infraFromStore(result);
         res.status(infra.status).json(infra.body);
         return;
       }
-      if (result.status === "accepted" && tool !== "get_house_state" && tool !== "list_devices") {
+      if (result.status === "accepted" && tool !== "get_house_state" && tool !== "list_devices" && tool !== "web_search") {
         const source = req.body?.source === "voice" ? "voice" : "quest";
         try {
           await recordSessionHistory({
@@ -57,6 +61,8 @@ export function createCommandsHandler(deps = {}) {
       }
       const body = { status: result.status, state: result.state };
       if (result.reason) body.reason = result.reason;
+      if (result.search) body.search = result.search;
+      if (result.devices) body.devices = result.devices;
       res.status(200).json(body);
     } catch {
       if (!res.headersSent) res.status(503).json({ error: "supabase_unreachable" });

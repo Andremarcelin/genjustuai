@@ -4,7 +4,7 @@
   "description": "GenJutsu AI — portal da smart home cognitiva",
   "scripts": {
     "build": "node scripts/inject-gsc.js",
-    "test": "node test/personality.test.js && node --test test/guest-save.test.js test/zcea-profile.test.js test/session-api.test.mjs test/gen.test.mjs test/casa-devices.test.mjs"
+    "test": "node test/personality.test.js && node --test test/guest-save.test.js test/zcea-profile.test.js test/session-api.test.mjs test/gen.test.mjs test/casa-devices.test.mjs test/gen-media.test.mjs"
   },
   "engines": {
     "node": ">=20"

@@ -141,10 +141,50 @@
     });
   }
 
+  function allowedMediaUrl(value) {
+    try {
+      var url = new URL(String(value || ""));
+      var host = url.hostname.toLowerCase();
+      return url.protocol === "https:" && (host === "archive.org" || host.slice(-12) === ".archive.org" || host === "jamendo.com" || host.slice(-12) === ".jamendo.com");
+    } catch (err) {
+      return false;
+    }
+  }
+
+  function paintNowPlaying() {
+    var card = $("casa-now");
+    var media = state && state.media;
+    var audio = $("casa-player-audio");
+    var video = $("casa-player-video");
+    if (!media || !allowedMediaUrl(media.url)) {
+      card.hidden = true;
+      audio.pause();
+      video.pause();
+      audio.removeAttribute("src");
+      video.removeAttribute("src");
+      return;
+    }
+    card.hidden = false;
+    $("casa-now-title").textContent = media.title || "Mídia";
+    $("casa-now-artist").textContent = media.artist || "";
+    $("casa-now-license").textContent = media.license || "";
+    $("casa-now-play").textContent = media.playing === false ? "Tocar" : "Pausar";
+    var isVideo = media.type === "video";
+    audio.hidden = isVideo;
+    video.hidden = !isVideo;
+    var player = isVideo ? video : audio;
+    var other = isVideo ? audio : video;
+    other.pause();
+    if (player.getAttribute("src") !== media.url) player.src = media.url;
+    if (media.playing === false) player.pause();
+    else player.play().catch(function () {});
+  }
+
   function paint() {
     paintHeader();
     paintOverlays();
     paintDevices();
+    paintNowPlaying();
   }
 
   function take(next) {
@@ -260,6 +300,16 @@
         ambiente: { on: false, color: "#FF1A1A", intensity: 0.3 },
         main: { intensity: 0.85, color: "#FF1A1A" },
         lanterns: { intensity: 0, color: "#FF1A1A" }
+      },
+      media: {
+        type: "audio",
+        url: "https://archive.org/download/testmp3testfile/mpthreetest.mp3",
+        title: "Acoustic guitar evening",
+        artist: "Internet Archive",
+        license: "CC BY",
+        device: "tv",
+        playing: true,
+        updated_at: "2026-11-09T02:00:00.000Z"
       }
     };
     suggestions = window.GenjutsuCasaSuggestions.suggestionsFor("Acolhedor", new Date());
@@ -343,6 +393,36 @@
     $("casa-text").value = "";
     sendChat(text);
   });
+  async function patchMedia(body) {
+    var res = await fetch("/api/house/media", {
+      method: "POST",
+      headers: await authHeaders(),
+      body: JSON.stringify(body)
+    });
+    var json = await res.json().catch(function () { return null; });
+    if (json && json.state) take(json.state);
+    return json;
+  }
+
+  $("casa-now-play").addEventListener("click", function () {
+    var media = state && state.media;
+    if (!media) return;
+    if (new URLSearchParams(location.search).get("demo") === "1") {
+      media.playing = media.playing === false;
+      paintNowPlaying();
+      return;
+    }
+    patchMedia({ playing: media.playing === false });
+  });
+  $("casa-now-stop").addEventListener("click", function () {
+    if (new URLSearchParams(location.search).get("demo") === "1") {
+      if (state && state.media) state.media.playing = false;
+      paintNowPlaying();
+      return;
+    }
+    patchMedia({ stop: true });
+  });
+
   $("casa-voice").addEventListener("click", function () {
     openSheet();
     $("casa-text").placeholder = "Fale ou escreva para o Gen";
