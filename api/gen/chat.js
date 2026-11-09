@@ -311,7 +311,14 @@ export function createChatHandler(deps = {}) {
             ? [packRoutine(routinePlan)]
             : plannedActions(parseHouseIntent(transcript), state);
           if (!intentActions.length) {
-            res.status(502).json({ error: "provider_unreachable", provider: used.provider || chatPrimary(env) });
+            res.status(502).json({
+              error: "provider_unreachable",
+              provider: used.provider || chatPrimary(env),
+              meta: {
+                provider: used.provider || chatPrimary(env),
+                gemini_error: completion.gemini_error || used.gemini_error || undefined,
+              },
+            });
             return;
           }
           for (const plan of intentActions) {

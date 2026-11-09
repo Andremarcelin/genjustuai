@@ -10,16 +10,33 @@ if (!base || !share) {
   process.exit(2);
 }
 
+let cookie = "";
+
 function url(path) {
   const u = new URL(path, `${base}/`);
-  u.searchParams.set("_vercel_share", share);
   return u.toString();
+}
+
+async function bootstrapShare() {
+  const res = await fetch(`${base}/?_vercel_share=${encodeURIComponent(share)}`, { redirect: "manual" });
+  const raw = res.headers.getSetCookie?.() || [];
+  const header = res.headers.get("set-cookie") || "";
+  const parts = raw.length ? raw : (header ? [header] : []);
+  const jwt = parts.map((item) => String(item).split(";")[0]).find((item) => item.startsWith("_vercel_jwt="));
+  if (jwt) cookie = jwt;
+}
+
+function headers(extra = {}) {
+  return {
+    ...extra,
+    ...(cookie ? { Cookie: cookie } : {}),
+  };
 }
 
 async function post(path, body) {
   const res = await fetch(url(path), {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: headers({ "Content-Type": "application/json" }),
     redirect: "follow",
     body: JSON.stringify(body),
   });
@@ -28,7 +45,7 @@ async function post(path, body) {
 }
 
 async function get(path) {
-  const res = await fetch(url(path), { redirect: "follow" });
+  const res = await fetch(url(path), { headers: headers(), redirect: "follow" });
   const json = await res.json().catch(() => ({}));
   return { status: res.status, json };
 }
@@ -43,6 +60,7 @@ function fail(msg, extra) {
 }
 
 const createdIds = [];
+await bootstrapShare();
 try {
   const weather = await post("/api/gen/chat", { text: "preciso sair, qual o clima em Taboão da Serra?" });
   quote("weather", weather.json.reply_text);
@@ -89,7 +107,7 @@ try {
   for (const id of unique) {
     await fetch(url("/api/routines"), {
       method: "DELETE",
-      headers: { "Content-Type": "application/json" },
+      headers: headers({ "Content-Type": "application/json" }),
       body: JSON.stringify({ id }),
     }).catch(() => {});
   }
