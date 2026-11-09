@@ -739,6 +739,8 @@ test("pages wire the phone, the provider, and the session contract", () => {
   assert.match(html, /js\/house-state\.js/);
   assert.match(html, /href="\/gen"/);
   assert.match(html, /href="\/casa"/);
+  assert.match(html, /favicon-32\.png/);
+  assert.match(html, /og-logo\.jpg/);
   assert.match(html, /O que a casa entendeu de você/);
   assert.match(html, /Ir para a minha Casa/);
   assert.match(provider, /HouseStateProvider/);

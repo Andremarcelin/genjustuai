@@ -4,7 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Casa — GenJutsu AI</title>
-<link rel="icon" href="/assets/icon-crow.jpg">
+<link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/assets/apple-touch-icon.png">
+<link rel="manifest" href="/site.webmanifest">
 <meta name="theme-color" content="#050505">
 <meta name="description" content="A Casa GenJutsu: grupos, dispositivos e a Gen.">
 <meta name="robots" content="noindex">
@@ -19,7 +21,10 @@
 <div class="casa-app">
   <aside class="casa-rail" aria-label="Navegação">
     <a class="casa-brand" href="/">
-      <img src="/assets/icon-crow.jpg" alt="">
+      <picture>
+        <source type="image/webp" srcset="/assets/logo-crow.webp">
+        <img src="/assets/logo-crow.png" width="28" height="28" alt="">
+      </picture>
       GenJutsu
     </a>
     <nav>
@@ -33,7 +38,10 @@
   <div class="casa-stage">
     <header class="casa-top">
       <div class="casa-home-name">
-        <img src="/assets/icon-crow.jpg" alt="">
+        <picture>
+          <source type="image/webp" srcset="/assets/logo-crow.webp">
+          <img src="/assets/logo-crow.png" width="36" height="36" alt="">
+        </picture>
         <h1 id="casa-title">Sua casa</h1>
       </div>
       <button class="casa-add" type="button" id="casa-settings" aria-label="Ajustes">⚙</button>
@@ -148,7 +156,10 @@
   <div class="casa-sheet-card" role="dialog" aria-labelledby="gen-sheet-title">
     <header>
       <div>
-        <img src="/assets/icon-crow.jpg" alt="">
+        <picture>
+          <source type="image/webp" srcset="/assets/logo-crow.webp">
+          <img src="/assets/logo-crow.png" width="32" height="32" alt="">
+        </picture>
         <h2 id="gen-sheet-title">Gen</h2>
       </div>
       <button type="button" id="casa-sheet-close" aria-label="Fechar">×</button>

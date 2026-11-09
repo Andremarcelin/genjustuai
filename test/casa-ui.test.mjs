@@ -96,3 +96,27 @@ test("casa page wires a real mic button and does not leak secrets", () => {
   assert.match(js, /\/api\/gen\/chat/);
   assert.doesNotMatch(js, /SUPABASE_SERVICE_ROLE|GROQ_API_KEY|GEMINI_API_KEY/);
 });
+
+test("brand mark uses the felt crow icon set", () => {
+  const html = fs.readFileSync(new URL("../casa.html", import.meta.url), "utf8");
+  const landing = fs.readFileSync(new URL("../index.html", import.meta.url), "utf8");
+  const manifest = fs.readFileSync(new URL("../site.webmanifest", import.meta.url), "utf8");
+  assert.match(html, /logo-crow\.webp/);
+  assert.match(html, /favicon-32\.png/);
+  assert.match(html, /apple-touch-icon\.png/);
+  assert.match(landing, /og-logo\.jpg/);
+  assert.match(manifest, /icon-192\.png/);
+  assert.match(manifest, /icon-512\.png/);
+  const png32 = fs.readFileSync(new URL("../assets/favicon-32.png", import.meta.url));
+  const png180 = fs.readFileSync(new URL("../assets/apple-touch-icon.png", import.meta.url));
+  const png192 = fs.readFileSync(new URL("../assets/icon-192.png", import.meta.url));
+  const png512 = fs.readFileSync(new URL("../assets/icon-512.png", import.meta.url));
+  assert.equal(png32[0], 0x89);
+  assert.equal(png180[0], 0x89);
+  assert.equal(png192[0], 0x89);
+  assert.equal(png512[0], 0x89);
+  assert.ok(png32.length > 400);
+  assert.ok(png180.length > 8_000);
+  assert.ok(png192.length > 10_000);
+  assert.ok(png512.length > 40_000);
+});

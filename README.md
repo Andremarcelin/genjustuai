@@ -87,7 +87,7 @@ Documento mestre acadêmico (CDD): [docs/GenJutsu_AI_CDD_Completo.md](docs/GenJu
 
 - `index.html` — landing e as três situações. O botão principal salva sem conta.
 - `site.css`, `portal.css` — visual (preto fosco, neon vermelho `#FF1A1A`, Cinzel nos títulos, Inter no corpo)
-- `assets/icon-crow.jpg` — ícone do corvo; `assets/landing-frame.jpg` — fundo com circuitos e nuvens
+- `assets/logo-crow.webp` / `logo-crow.png` — marca do corvo (feltro + sharingan); `favicon-32.png`, `apple-touch-icon.png`, `icon-192.png`, `icon-512.png`; `og-logo.jpg` para Open Graph; `assets/landing-frame.jpg` — fundo com circuitos e nuvens
 - `js/zcea-profile.js` — mapa das duas respostas para `profile_id`
 - `js/guest-save.js` — `signInAnonymously()` quando não há sessão, depois dossiê + resumo
 - `js/personality.js` — nome, e-mail, avatar e texto do resumo (visitante não ganha frase de agenda)

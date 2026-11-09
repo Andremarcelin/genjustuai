@@ -50,12 +50,18 @@
   color: var(--text);
 }
 
+.nav-mark picture {
+  width: 36px;
+  height: 36px;
+  flex: none;
+}
+
 .nav-mark img {
   width: 36px;
   height: 36px;
   border-radius: 10px;
-  border: 1px solid var(--accent);
-  box-shadow: var(--glow);
+  object-fit: contain;
+  display: block;
 }
 
 .hero {
@@ -144,8 +150,8 @@
   width: 88px;
   height: 88px;
   border-radius: 22px;
-  border: 1px solid var(--accent);
-  box-shadow: var(--glow);
+  object-fit: contain;
+  display: block;
   margin-bottom: 12px;
 }
 

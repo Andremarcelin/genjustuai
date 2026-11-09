@@ -48,10 +48,17 @@ body.page-casa {
   gap: 10px;
 }
 
+.casa-home-name picture,
 .casa-home-name img {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  flex: none;
+}
+
+.casa-home-name img {
+  border-radius: 10px;
+  object-fit: contain;
+  display: block;
 }
 
 .casa-home-name h1 {
@@ -474,10 +481,17 @@ body.page-casa {
   gap: 8px;
 }
 
+.casa-sheet-card header picture,
 .casa-sheet-card header img {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  flex: none;
+}
+
+.casa-sheet-card header img {
+  border-radius: 9px;
+  object-fit: contain;
+  display: block;
 }
 
 .casa-sheet-card header h2 {
@@ -634,10 +648,17 @@ body.page-casa {
     font-family: Cinzel, serif;
   }
 
+  .casa-brand picture,
   .casa-brand img {
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    flex: none;
+  }
+
+  .casa-brand img {
+    border-radius: 9px;
+    object-fit: contain;
+    display: block;
   }
 
   .casa-rail nav {
