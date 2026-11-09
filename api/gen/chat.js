@@ -401,6 +401,9 @@ export function createChatHandler(deps = {}) {
               reason: outcome.reason || null,
               state: outcome.state || state,
             search: outcome.search || undefined,
+            sources: Array.isArray(outcome.search)
+              ? outcome.search.map((hit) => `${hit.title}: ${hit.snippet} (${hit.url})`).join("\n")
+              : undefined,
             weather: outcome.weather || undefined,
             grounded_text: outcome.grounded_text || undefined,
             devices: outcome.devices || undefined,

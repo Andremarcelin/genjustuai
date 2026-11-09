@@ -195,6 +195,31 @@ test("openaiToGeminiContents uses user/model roles and functionResponse objects"
   assert.equal(mapped.contents[2].parts[0].functionResponse.response.weather.temp, 18);
 });
 
+test("grounding 429 falls back to classic search hits for Gemini", async () => {
+  const { searchWeb } = await import("../lib/gen/media.js");
+  const hits = await searchWeb({
+    env: { GEMINI_API_KEY: "g" },
+    query: "qual o próximo jogo do Corinthians?",
+    fetchImpl: async (url, opts) => {
+      const href = String(url);
+      if (href.includes("generativelanguage.googleapis.com")) {
+        return new Response(JSON.stringify({ error: { message: "quota" } }), { status: 429 });
+      }
+      if (href.includes("ge.globo.com")) {
+        return new Response('"nome_popular":"Corinthians""nome_popular":"Botafogo""hora_realizacao":"21:30:00""data_realizacao":"2026-11-18"', { status: 200 });
+      }
+      return new Response("{}", { status: 200 });
+    },
+  });
+  assert.match(hits[0].snippet, /Botafogo/);
+  assert.match(hits[0].snippet, /21:30/);
+  const fact = parseMatchFact(`${hits[0].title} ${hits[0].snippet}`, new Date("2026-11-09T18:00:00.000Z"));
+  assert.equal(fact.hour, 21);
+  assert.equal(fact.minute, 30);
+  assert.ok(fact.datetime);
+  assert.match(fact.event, /Botafogo/i);
+});
+
 test("parseMatchFact ignores unrelated 7h routines and stores ISO kickoff", () => {
   assert.equal(parseMatchFact("todo dia às 7h acende a sala"), null);
   const fact = parseMatchFact(

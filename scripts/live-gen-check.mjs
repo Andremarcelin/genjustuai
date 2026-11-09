@@ -50,8 +50,10 @@ async function get(path) {
   return { status: res.status, json };
 }
 
-function quote(label, text) {
-  console.log(`\n--- ${label} ---\n"${String(text || "")}"\n`);
+function quote(label, text, extra) {
+  console.log(`\n--- ${label} ---\n"${String(text || "")}"`);
+  if (extra) console.log(JSON.stringify(extra));
+  console.log("");
 }
 
 function fail(msg, extra) {
@@ -63,29 +65,36 @@ const createdIds = [];
 await bootstrapShare();
 try {
   const weather = await post("/api/gen/chat", { text: "preciso sair, qual o clima em Taboão da Serra?" });
-  quote("weather", weather.json.reply_text);
+  quote("weather", weather.json.reply_text, weather.json.meta);
   if (weather.status !== 200) fail("weather http", weather);
   if (weather.json.meta?.provider !== "gemini") fail("weather provider", weather.json.meta);
   if (weather.json.actions?.[0]?.tool !== "get_weather") fail("weather tool", weather.json.actions);
 
   const news = await post("/api/gen/chat", { text: "quais as notícias de hoje sobre IA?" });
-  quote("news", news.json.reply_text);
-  if (news.json.meta?.provider !== "gemini") fail("news provider", news.json.meta);
   const newsHits = news.json.actions?.find((a) => a.tool === "web_search")?.search || [];
+  quote("news", news.json.reply_text, { meta: news.json.meta, sources: newsHits });
+  if (news.json.meta?.provider !== "gemini") fail("news provider", news.json.meta);
   if (!newsHits.length && !/Fonte:/.test(news.json.reply_text || "")) fail("news sources empty", news.json);
 
   const match = await post("/api/gen/chat", { text: "qual o próximo jogo do Corinthians?" });
-  quote("match", match.json.reply_text);
+  const matchHits = match.json.actions?.find((a) => a.tool === "web_search")?.search || [];
+  quote("match", match.json.reply_text, { meta: match.json.meta, sources: matchHits });
   if (match.json.meta?.provider !== "gemini") fail("match provider", match.json.meta);
   if (!/Botafogo/i.test(match.json.reply_text || "") && !/21h30|21:30/.test(match.json.reply_text || "")) {
     fail("match expected Botafogo 21h30", match.json);
   }
-  const matchHits = match.json.actions?.find((a) => a.tool === "web_search")?.search || [];
   if (!matchHits.length && !/Fonte:/.test(match.json.reply_text || "")) fail("match sources empty", match.json);
 
-  const game = await post("/api/gen/chat", { text: "na hora do jogo aumenta o ar e muda a iluminação" });
-  quote("game-time", game.json.reply_text);
+  const game = await post("/api/gen/chat", { text: "aumenta o ar na hora do jogo e muda a luz pras cores do time" });
+  quote("game-time", game.json.reply_text, game.json.meta);
   const routine = (game.json.actions || []).find((a) => a.tool === "create_routine");
+  quote("routine", game.json.reply_text, {
+    meta: game.json.meta,
+    hour: routine?.args?.hour,
+    minute: routine?.args?.minute,
+    once: routine?.args?.once,
+    actions: routine?.args?.actions,
+  });
   if (!routine || routine.status !== "accepted") fail("game routine missing", game.json);
   if (Number(routine.args?.hour) !== 21 || Number(routine.args?.minute) !== 30) {
     fail("kickoff must be 21:30 not another routine time", routine);

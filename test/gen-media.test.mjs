@@ -4,7 +4,7 @@ import fs from "node:fs";
 import { executeHouseTool } from "../lib/gen/executor.js";
 import { createMemoryHouseStore } from "../lib/gen/house-store.js";
 import { TOOLS, validateToolCall } from "../lib/gen/tools.js";
-import { isAllowedMediaUrl, parseArchiveSearch, pickArchiveFile, parseDuckDuckGo } from "../lib/gen/media.js";
+import { isAllowedMediaUrl, parseArchiveSearch, parseGloboNextMatch, pickArchiveFile, parseDuckDuckGo } from "../lib/gen/media.js";
 import { PROFILE_PLAYLISTS } from "../lib/gen/media-playlists.js";
 import { parseHouseIntent, plannedActions } from "../lib/gen/intent.js";
 import { createRateLimiter } from "../lib/gen/rate-limit.js";
@@ -73,6 +73,17 @@ function mockRes() {
     end() { this.headersSent = true; return this; },
   };
 }
+
+test("parseGloboNextMatch reads next kickoff from ge.globo JSON", () => {
+  const hits = parseGloboNextMatch(
+    '"nome_popular":"Corinthians","apelido":"Timão""nome_popular":"Botafogo""hora_realizacao":"21:30:00""data_realizacao":"2026-11-18"',
+    "Corinthians",
+  );
+  assert.equal(hits.length, 1);
+  assert.match(hits[0].snippet, /Botafogo/);
+  assert.match(hits[0].snippet, /18\/11\/2026/);
+  assert.match(hits[0].snippet, /21:30/);
+});
 
 test("only archive and jamendo https urls are allowed", () => {
   assert.equal(isAllowedMediaUrl("https://archive.org/download/a/b.mp3"), true);
