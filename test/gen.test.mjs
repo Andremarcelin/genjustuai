@@ -832,7 +832,6 @@ test("pages wire the phone, the provider, and the session contract", () => {
   const env = fs.readFileSync(new URL("../.env.example", import.meta.url), "utf8");
   assert.match(html, /id="house-veil"/);
   assert.match(html, /js\/house-state\.js/);
-  assert.match(html, /href="\/gen"/);
   assert.match(html, /href="\/casa"/);
   assert.match(html, /favicon-32\.png/);
   assert.match(html, /og-logo\.jpg/);

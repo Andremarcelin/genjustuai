@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Reveja sua sessão — GenJutsu AI</title>
+<link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/assets/apple-touch-icon.png">
+<link rel="manifest" href="/site.webmanifest">
+<link rel="canonical" href="https://genjutsuai.vercel.app/codigo">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#070707">
+<meta name="description" content="Digite o código da sessão GenJutsu para rever o pergaminho do perfil.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Libre+Baskerville:ital,wght@0,400;1,400&family=Noto+Serif+JP:wght@600;700&family=Oswald:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/codigo.css">
+</head>
+<body class="page-codigo">
+  <div class="wrap" id="lookup-wrap">
+    <div class="brand">
+      <img src="/assets/crow-logo.webp" alt="GenJutsu">
+      <div class="brand-text">
+        <span class="brand-name">GenJutsu</span>
+        <span class="brand-kanji" lang="ja">幻術</span>
+      </div>
+    </div>
+    <p class="hud">Código da sessão</p>
+    <h1>Reveja sua sessão</h1>
+    <p class="lead">Digite os 6 caracteres do seu código.</p>
+
+    <div class="panel">
+      <form id="code-form" autocomplete="off">
+        <div class="boxes" id="code-boxes">
+          <input maxlength="1" inputmode="text" autocapitalize="characters" autocomplete="off" spellcheck="false" aria-label="Caractere 1">
+          <input maxlength="1" inputmode="text" autocapitalize="characters" autocomplete="off" spellcheck="false" aria-label="Caractere 2">
+          <input maxlength="1" inputmode="text" autocapitalize="characters" autocomplete="off" spellcheck="false" aria-label="Caractere 3">
+          <input maxlength="1" inputmode="text" autocapitalize="characters" autocomplete="off" spellcheck="false" aria-label="Caractere 4">
+          <input maxlength="1" inputmode="text" autocapitalize="characters" autocomplete="off" spellcheck="false" aria-label="Caractere 5">
+          <input maxlength="1" inputmode="text" autocapitalize="characters" autocomplete="off" spellcheck="false" aria-label="Caractere 6">
+        </div>
+        <button class="cta" id="btn-open" type="submit">Abrir meu perfil</button>
+        <p class="hint">O código está no pergaminho da sessão e no verso do cartão.</p>
+        <p class="status" id="code-status" role="alert"></p>
+      </form>
+    </div>
+
+    <p class="preview-label">Prévia do pergaminho</p>
+    <div class="preview" aria-hidden="true">
+      <div class="scroll">
+        <div class="scroll-roll top"></div>
+        <div class="scroll-paper"></div>
+        <div class="scroll-inner">
+          <p class="seal-title">Sua sessão está pronta</p>
+          <p class="who">Visitante · perfil Zen</p>
+          <p class="horoscope">Você guarda energia pra quando importa. Observa antes de entrar e, quando entra, ninguém esquece.</p>
+          <div class="scroll-code">FM8QS7</div>
+          <p class="hint-code">Código da sessão</p>
+        </div>
+        <div class="hanko"><span lang="ja">幻術</span></div>
+        <div class="scroll-roll bot"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ready" id="screen-ready" hidden>
+    <p class="hud">Sessão pronta · 03 / 03</p>
+    <article class="scroll" id="ready-scroll">
+      <div class="scroll-roll top" aria-hidden="true"></div>
+      <div class="scroll-paper" aria-hidden="true"></div>
+      <div class="scroll-inner">
+        <p class="seal-title">Sua sessão está pronta</p>
+        <p class="who" id="ready-who"></p>
+        <p class="horoscope" id="ready-phrase"></p>
+        <p class="scroll-code" id="ready-quest-code">—</p>
+        <p class="hint-code">Código da sessão · leve pro headset</p>
+      </div>
+      <div class="hanko" aria-hidden="true"><span lang="ja">幻術</span></div>
+      <div class="scroll-roll bot" aria-hidden="true"></div>
+    </article>
+    <section class="session-record" aria-labelledby="record-title">
+      <div class="head">
+        <div>
+          <p class="hud">Registros desta sessão</p>
+          <h2 id="record-title">Salvo sem conta</h2>
+        </div>
+        <img id="ready-house-thumb" alt="" width="64" height="64">
+      </div>
+      <div class="meta">
+        <div><strong>Som</strong><span id="ready-som-card"></span></div>
+        <div><strong>Clima</strong><span id="ready-clima-card"></span></div>
+      </div>
+      <dl id="ready-records"></dl>
+    </section>
+    <button class="cta ghost" id="btn-other" type="button">Outro código</button>
+  </div>
+
+<script src="/js/zcea-profile.js"></script>
+<script src="/js/personality.js"></script>
+<script src="/js/codigo.js"></script>
+</body>
+</html>

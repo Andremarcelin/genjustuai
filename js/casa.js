@@ -72,6 +72,7 @@
     var understood = View.understoodFor ? View.understoodFor(profile) : null;
     if (!understood) {
       copy.textContent = "Responda o questionário para a casa entender o seu ritmo.";
+      if ($("casa-proverb")) $("casa-proverb").textContent = "";
       return;
     }
     var badge = document.createElement("span");
@@ -85,6 +86,14 @@
       badges.appendChild(el);
     });
     copy.textContent = understood.summary;
+    var proverbEl = $("casa-proverb");
+    if (proverbEl) {
+      var code = (session && (session.session_code || session.id)) || "";
+      var P = window.GenjutsuPersonality;
+      proverbEl.textContent = P && P.proverbFor ? (P.proverbFor(profile, code) || "") : "";
+    }
+    var hudP = $("casa-hud-profile");
+    if (hudP) hudP.textContent = profile ? "01 · " + profile : "";
   }
 
   function paintOverlays() {
@@ -439,6 +448,14 @@
   }
 
   async function start() {
+    try {
+      var bank = await fetch("/data/proverbios.json", { cache: "no-store" }).then(function (res) {
+        return res.ok ? res.json() : null;
+      });
+      if (bank && window.GenjutsuPersonality && window.GenjutsuPersonality.setProverbBank) {
+        window.GenjutsuPersonality.setProverbBank(bank);
+      }
+    } catch (e) { /* proverbio opcional */ }
     if (new URLSearchParams(location.search).get("demo") === "1") {
       demoState();
       return;

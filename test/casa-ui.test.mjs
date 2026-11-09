@@ -59,7 +59,8 @@ test("Ver tudo is a themed button that clears filters and groups filter rooms", 
 
 test("fixed dock leaves padding so chips do not cover the device list", () => {
   const css = fs.readFileSync(new URL("../casa.css", import.meta.url), "utf8");
-  assert.match(css, /padding-bottom:\s*calc\(220px/);
+  assert.match(css, /padding-bottom:\s*calc\(168px/);
+  assert.match(css, /\.casa-preview[\s\S]*padding-bottom:\s*calc\(96px/);
   assert.match(css, /\.casa-dock[\s\S]*position:\s*fixed/);
 });
 
@@ -175,6 +176,15 @@ test("casa lights are per-device glows, not rectangular room fills", () => {
   assert.equal(allOff.sala_luz.on, false);
   assert.equal(allOff.tv.on, false);
   assert.equal(allOff.ar_condicionado.on, false);
+});
+
+test("user-visible casa rail only lists Início and Casa", () => {
+  const html = fs.readFileSync(new URL("../casa.html", import.meta.url), "utf8");
+  const nav = html.match(/<nav>[\s\S]*?<\/nav>/)[0];
+  assert.match(nav, /Início/);
+  assert.match(nav, /Casa/);
+  assert.doesNotMatch(nav, />Gen</);
+  assert.doesNotMatch(nav, />Admin</);
 });
 
 test("brand mark uses the felt crow icon set", () => {
