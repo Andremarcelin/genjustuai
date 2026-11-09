@@ -122,6 +122,37 @@
     return PHRASE[id].split("{name}").join(who);
   }
 
+  var proverbBank = null;
+
+  function hashMod(value, size) {
+    var s = String(value || "").toUpperCase();
+    var h = 0;
+    var i;
+    for (i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+    return size ? h % size : 0;
+  }
+
+  function setProverbBank(bank) {
+    proverbBank = bank && typeof bank === "object" ? bank : proverbBank;
+    return proverbBank;
+  }
+
+  function defaultProverbBank() {
+    if (proverbBank) return proverbBank;
+    try {
+      if (typeof require === "function") proverbBank = require("../data/proverbios.json");
+    } catch (e) { /* o JSON entra no fetch do site */ }
+    return proverbBank || {};
+  }
+
+  function proverbFor(profileId, sessionCode, bank) {
+    var id = profileIdFrom(profileId);
+    var lists = bank || defaultProverbBank();
+    var list = id && lists ? lists[id] : null;
+    if (!list || !list.length) return "";
+    return list[hashMod(sessionCode, list.length)];
+  }
+
   function answerText(field, value) {
     var raw = String(value || "").trim();
     if (!raw) return "";
@@ -203,6 +234,9 @@
     avatarFor: avatarFor,
     formatArchetype: formatArchetype,
     phraseFor: phraseFor,
+    proverbFor: proverbFor,
+    hashMod: hashMod,
+    setProverbBank: setProverbBank,
     answerText: answerText,
     sessionFields: sessionFields,
     buildPersonality: buildPersonality

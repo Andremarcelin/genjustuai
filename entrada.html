@@ -23,12 +23,12 @@
 <meta name="twitter:image" content="https://genjutsuai.vercel.app/assets/og-logo.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Noto+Serif+JP:wght@600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Libre+Baskerville:ital,wght@0,400;1,400&family=Noto+Serif+JP:wght@600;700&family=Oswald:wght@500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/site.css">
 <link rel="stylesheet" href="/portal.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-<body>
+<body class="page-entrada">
 <a class="skip" href="#entrada">Ir para a entrada</a>
 <div class="landing hidden" id="landing" data-role="shell">
   <div class="house-veil" id="house-veil" hidden></div>
@@ -54,14 +54,13 @@
     </a>
     <div class="nav-actions">
       <a class="text-link nav-gen" href="/casa">Casa</a>
-      <a class="text-link nav-gen" href="/gen">Falar com a Gen</a>
     </div>
   </nav>
   <ol class="dojo-progress" id="dojo-progress" aria-label="Progresso da jornada, passos 1 a 4">
-    <li data-step="1"><b>1</b> Entrada</li>
-    <li data-step="2"><b>2</b> <span data-step-label>Rastro</span></li>
-    <li data-step="3"><b>3</b> Perfil</li>
-    <li data-step="4"><b>4</b> Quest</li>
+    <li data-step="1">Entrada</li>
+    <li data-step="2"><span data-step-label>Rastro</span></li>
+    <li data-step="3">Perfil</li>
+    <li data-step="4">Headset</li>
   </ol>
 
   <section class="screen on" id="screen-login">
@@ -120,26 +119,32 @@
   </section>
 
   <section class="screen" id="screen-questionnaire">
+    <div class="quiz-hud">
+      <p class="hud">Questionário</p>
+      <p class="hud" id="quiz-hud-count">02 / 03</p>
+    </div>
     <h2 class="screen-title">Seu nome e três situações</h2>
-    <p class="guest-save-note" id="guest-save-note">Sem conta. Dá para salvar como visitante: escreva o nome e responda as três perguntas. A casa é inferida — você não escolhe o dojo. O Google não é necessário.</p>
-    <label class="section-label" for="visitor-name">Como você quer ser chamado?</label>
+    <p class="guest-save-note" id="guest-save-note">Sem conta. Dá para salvar como visitante. A casa é inferida — você não escolhe o dojo.</p>
+    <div class="bar" aria-hidden="true"><i id="quiz-bar-fill"></i></div>
+    <label class="field" for="visitor-name"><span>Nome</span>
     <input type="text" id="visitor-name" name="visitor-name" maxlength="40" autocomplete="name" required aria-describedby="visitor-name-hint" placeholder="Seu nome">
+    </label>
     <p class="field-hint" id="visitor-name-hint">O nome entra na frase da sessão. Pelo menos 2 letras.</p>
-    <p class="section-label" id="label-folga">Num fim de semana livre, você…</p>
+    <div class="q"><span class="n">01</span><p class="section-label" id="label-folga">Num fim de semana livre, você…</p></div>
     <div class="option-col" role="group" aria-labelledby="label-folga">
       <button type="button" class="option" data-field="folga" data-value="ordem" aria-pressed="false">organiza o dia em silêncio e segue o plano</button>
       <button type="button" class="option" data-field="folga" data-value="sistema" aria-pressed="false">abre um aparelho ou um sistema só para ver como funciona</button>
       <button type="button" class="option" data-field="folga" data-value="impulso" aria-pressed="false">sai sem roteiro atrás de algo que nunca fez</button>
       <button type="button" class="option" data-field="folga" data-value="gente" aria-pressed="false">chama alguém e cuida do almoço e da conversa</button>
     </div>
-    <p class="section-label" id="label-problema">Quando surge um problema difícil, você…</p>
+    <div class="q"><span class="n">02</span><p class="section-label" id="label-problema">Quando surge um problema difícil, você…</p></div>
     <div class="option-col" role="group" aria-labelledby="label-problema">
       <button type="button" class="option" data-field="problema" data-value="respira" aria-pressed="false">respira, ordena os fatos e resolve um passo de cada vez</button>
       <button type="button" class="option" data-field="problema" data-value="modelo" aria-pressed="false">monta um modelo, testa hipóteses e escolhe a jogada</button>
       <button type="button" class="option" data-field="problema" data-value="atalho" aria-pressed="false">tenta um atalho ousado antes de abrir o manual</button>
       <button type="button" class="option" data-field="problema" data-value="junto" aria-pressed="false">chama quem está perto e segura o clima enquanto resolvem</button>
     </div>
-    <p class="section-label" id="label-festa">Numa festa onde conhece pouca gente, você…</p>
+    <div class="q"><span class="n">03</span><p class="section-label" id="label-festa">Numa festa onde conhece pouca gente, você…</p></div>
     <div class="option-col" role="group" aria-labelledby="label-festa">
       <button type="button" class="option" data-field="festa" data-value="canto" aria-pressed="false">fica num canto calmo, observa e entra só quando faz sentido</button>
       <button type="button" class="option" data-field="festa" data-value="mapa" aria-pressed="false">lê a sala, vê quem decide o quê e escolhe com quem falar</button>
@@ -152,20 +157,23 @@
   </section>
 
   <section class="screen" id="screen-ready">
-    <h2 class="screen-title">A casa leu você</h2>
-    <article class="makimono" id="ready-scroll">
-      <div class="makimono-roller" aria-hidden="true"><span></span></div>
+    <p class="hud" id="journey-hud">Sessão pronta · 03 / 03</p>
+    <h2 class="screen-title vis-hide">A casa leu você</h2>
+    <article class="makimono scroll" id="ready-scroll">
+      <div class="scroll-roll top makimono-roller" aria-hidden="true"></div>
+      <div class="scroll-paper" aria-hidden="true"></div>
       <div class="parchment" aria-labelledby="ready-kicker">
-      <p class="parchment-kicker" id="ready-kicker">O que a casa entendeu de você</p>
-      <p class="parchment-name" id="ready-name"></p>
-      <div class="seal-row">
-        <p class="hanko" id="ready-kanji" aria-hidden="true"></p>
-        <div>
-          <p class="parchment-sign" id="ready-profile" hidden></p>
-          <p class="seal-title" id="ready-title"></p>
-        </div>
-      </div>
-      <p class="parchment-phrase" id="ready-phrase"></p>
+      <p class="parchment-kicker seal-title" id="ready-kicker">Sua sessão está pronta</p>
+      <p class="parchment-name vis-hide" id="ready-name"></p>
+      <p class="who" id="ready-who"></p>
+      <p class="parchment-sign vis-hide" id="ready-profile" hidden></p>
+      <p class="seal-title vis-hide" id="ready-title"></p>
+      <p class="parchment-phrase horoscope" id="ready-phrase"></p>
+      <p class="hanko" id="ready-kanji" aria-hidden="true" lang="ja">幻術</p>
+      <p class="quest-code scroll-code" id="ready-quest-code" data-session-code>—</p>
+      <p class="hint">Código da sessão · leve pro headset</p>
+      <p class="quest-step vis-hide">Sua sessão está pronta — coloque o Quest</p>
+      <div class="ready-extra">
       <h3 class="parchment-sub">O alvo</h3>
       <div class="alvo-wrap">
         <div class="alvo" id="ready-alvo" role="img" aria-label="Alvo dos quatro perfis"></div>
@@ -203,14 +211,23 @@
       </ul>
       <h3 class="parchment-sub">O que aconteceu com a casa</h3>
       <ol class="history" id="ready-timeline"></ol>
-      <p class="quest-step">Sua sessão está pronta — coloque o Quest</p>
-      <p class="quest-code" id="ready-quest-code" data-session-code>—</p>
       </div>
-      <div class="makimono-roller" aria-hidden="true"><span></span></div>
+      </div>
+      <div class="scroll-roll bot makimono-roller" aria-hidden="true"></div>
     </article>
-    <section class="session-record" aria-labelledby="record-title">
-      <h3 id="record-title">Registros desta sessão</h3>
-      <p class="guest-save-note" id="ready-guest-note">Salvo sem conta, como visitante.</p>
+    <section class="session-record card" aria-labelledby="record-title">
+      <div class="head">
+        <div>
+          <p class="hud">Registros desta sessão</p>
+          <h3 id="record-title">Salvo sem conta</h3>
+          <p class="guest-save-note" id="ready-guest-note">Salvo sem conta, como visitante.</p>
+        </div>
+        <img id="ready-house-thumb" alt="" width="64" height="64">
+      </div>
+      <div class="meta">
+        <div><strong>Som</strong><span id="ready-som-card"></span></div>
+        <div><strong>Clima</strong><span id="ready-clima-card"></span></div>
+      </div>
       <dl id="ready-records"></dl>
       <div class="session-box parchment-pass">
         <div class="lbl">Mostre este código ao staff para o Quest</div>
@@ -219,8 +236,9 @@
         <a class="session-link" href="#" target="_blank" rel="noopener">Abrir resumo</a>
       </div>
       <p class="record-foot">Esta sessão passa a ser a do Quest. O admin ainda pode trocar o código em /admin.</p>
+      <a class="cta cta-google" id="btn-goto-casa" href="/casa">Abrir a Casa</a>
+      <span class="vis-hide">Ir para a minha Casa. O que a casa entendeu de você</span>
     </section>
-    <a class="cta cta-google" id="btn-goto-casa" href="/casa">Ir para a minha Casa</a>
     <button class="cta ghost" id="btn-leave-ready" type="button">Sair e escolher de novo</button>
   </section>
 </div>

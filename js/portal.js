@@ -133,9 +133,18 @@
     var guest = guestIntent || (currentPaintUser ? P.isGuest(currentPaintUser) : false);
     var step = { "screen-login": 1, "screen-sync": 2, "screen-questionnaire": 3, "screen-ready": 4 }[id] || 1;
     setProgress(step, guest);
+    var hud = $("journey-hud");
+    if (hud) {
+      if (id === "screen-ready") hud.textContent = "Sessão pronta · 03 / 03";
+      else if (id === "screen-questionnaire") hud.textContent = "Questionário · 02 / 03";
+      else hud.textContent = guest && id === "screen-login" ? "Entrada · 01 / 03" : "Jornada";
+    }
+    var quizHud = $("quiz-hud-count");
+    if (quizHud) quizHud.textContent = "02 / 03";
     if (id === "screen-questionnaire") {
       paintSaveCopy();
       prefillVisitorName();
+      paintQuizBar();
     }
     var title = screen && screen.querySelector(".screen-title");
     if (title) {
@@ -587,10 +596,19 @@
     var btn = $("btn-save-questionnaire");
     if (note) {
       note.textContent = guest
-        ? "Sem conta. Dá para salvar como visitante: escreva o nome e responda as três perguntas. A casa é inferida — você não escolhe o dojo. O Google não é necessário."
-        : "Conta Google conectada. O nome pode ser o da conta. Salvar grava o perfil inferido neste código. Quem não tem conta usa o mesmo questionário como visitante.";
+        ? "Sem conta. A casa é inferida — você não escolhe o dojo."
+        : "Conta Google conectada. A casa é inferida — você não escolhe o dojo.";
     }
     if (btn) btn.textContent = guest ? "Salvar sem conta e gerar o código" : "Salvar perfil e gerar o código";
+  }
+
+  function compactRecordLabel(label) {
+    var raw = String(label || "");
+    if (raw.indexOf("fim de semana") !== -1) return "Fim de semana";
+    if (raw.indexOf("problema difícil") !== -1) return "Problema difícil";
+    if (raw.indexOf("festa") !== -1) return "Festa";
+    if (raw === "Nome" || raw === "profile_id") return raw;
+    return "";
   }
 
   function renderSessionFields(fields) {
@@ -598,14 +616,25 @@
     if (!dl) return;
     dl.replaceChildren();
     (fields || []).forEach(function (pair) {
+      var label = compactRecordLabel(pair[0]);
+      if (!label) return;
+      var value = String(pair[1] || "");
+      var short = value.match(/\(([a-z]+)\)\s*$/);
+      if (short) value = short[1];
       var dt = document.createElement("dt");
-      dt.textContent = pair[0];
+      dt.textContent = label;
       var dd = document.createElement("dd");
-      dd.textContent = pair[1];
-      if (pair[0] === "Código da sessão") dd.className = "record-code";
+      dd.textContent = value;
       dl.appendChild(dt);
       dl.appendChild(dd);
     });
+  }
+
+  function paintQuizBar() {
+    var bar = $("quiz-bar-fill");
+    if (!bar) return;
+    var n = quizAnswers().filter(Boolean).length;
+    bar.style.width = Math.max(8, Math.round((n / 3) * 100)) + "%";
   }
 
   function paintTraits(scores) {
@@ -639,6 +668,8 @@
     ["luz", "som", "clima"].forEach(function (key) {
       var el = $("ready-" + key);
       if (el) el.textContent = house && house[key] ? house[key] : "";
+      var card = $("ready-" + key + "-card");
+      if (card) card.textContent = house && house[key] ? house[key] : "";
     });
   }
 
@@ -753,19 +784,23 @@
   }
 
   function paintReady(saved) {
-    var phrase = saved && saved.persona ? saved.persona.phrase : "";
-    if ($("ready-phrase")) $("ready-phrase").textContent = phrase || "";
     var profile = saved && saved.profile;
     var meta = profile && Z && Z.META[profile.profile_id];
+    var name = saved && saved.persona ? saved.persona.displayName : "";
+    var who = $("ready-who");
+    if (who) who.textContent = name && meta ? (name + " · perfil " + meta.archetype) : (name || "");
+    var code = (saved && saved.sessionCode) || sessionCode || "";
+    var proverb = P.proverbFor ? P.proverbFor(profile && profile.profile_id, code) : "";
+    if ($("ready-phrase")) $("ready-phrase").textContent = proverb || (saved && saved.persona ? saved.persona.phrase : "") || "";
     var sign = $("ready-profile");
     if (sign) {
       sign.hidden = !meta;
       sign.textContent = meta ? meta.archetype : "";
     }
     var kanji = $("ready-kanji");
-    if (kanji) kanji.textContent = meta ? meta.kanji : "";
+    if (kanji) kanji.textContent = "幻術";
     var title = $("ready-title");
-    if (title) title.textContent = meta ? meta.title : "";
+    if (title) title.textContent = "Sua sessão está pronta";
     paintTraits(profile && profile.scores);
     paintAlvo(profile && profile.scores);
     var sumi = $("ready-sumi");
@@ -776,7 +811,15 @@
     if (codeEl) codeEl.textContent = code || "—";
     renderSessionFields(saved && saved.fields);
     var readyNote = $("ready-guest-note");
-    if (readyNote) readyNote.hidden = !(saved && saved.guest);
+    if (readyNote) {
+      readyNote.hidden = false;
+      readyNote.textContent = saved && saved.guest ? "Salvo sem conta" : "Salvo na conta";
+    }
+    var thumb = $("ready-house-thumb");
+    if (thumb && profile && profile.profile_id) {
+      thumb.src = "/assets/casa/" + String(profile.profile_id).toLowerCase() + ".jpg";
+      thumb.alt = "Casa " + profile.profile_id;
+    }
     revealParchment();
     watchHistory(saved && saved.user);
   }
@@ -849,6 +892,7 @@
         b.setAttribute("aria-pressed", on ? "true" : "false");
       });
       renderQuestProfile(G.selection.apply(null, quizAnswers()));
+      paintQuizBar();
     });
   });
 
@@ -996,6 +1040,12 @@
   }
 
   configReady = (async function main() {
+    try {
+      var bank = await fetch("/data/proverbios.json", { cache: "no-store" }).then(function (res) {
+        return res.ok ? res.json() : null;
+      });
+      if (bank && P.setProverbBank) P.setProverbBank(bank);
+    } catch (e) { /* o fallback do personality.js cobre os testes */ }
     var config = await loadConfig();
     if (config) setupSupabaseClient(config.supabaseUrl, config.supabaseAnonKey, config.source);
     if (!onEntryRoute()) return;
