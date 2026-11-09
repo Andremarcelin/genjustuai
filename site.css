@@ -103,7 +103,7 @@ button, input, select { font: inherit; }
 .wrap {
   max-width: 760px;
   margin: 0 auto;
-  padding: 28px 22px 80px;
+  padding: calc(env(safe-area-inset-top, 0px) + 28px) 22px calc(80px + env(safe-area-inset-bottom, 0px));
 }
 
 .legal-nav, .landing-nav {

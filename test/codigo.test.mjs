@@ -29,6 +29,8 @@ test("codigo page copy matches the mock and is not in main nav", () => {
   assert.match(css, /overflow-x:\s*hidden/);
   assert.match(css, /\.ready[\s\S]*max-width:\s*100%/);
   assert.match(css, /\.scroll-roll[\s\S]*max-width:\s*100%/);
+  assert.match(css, /\.ready\[hidden\][\s\S]*display:\s*none\s*!important/);
+  assert.match(css, /flex-direction:\s*column/);
   assert.match(vercel, /"\/codigo"/);
   assert.match(vercel, /"\/codigo\/"/);
   assert.doesNotMatch(landing, /href="\/codigo"/);

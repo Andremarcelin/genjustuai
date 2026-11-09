@@ -1,6 +1,8 @@
 .page-casa {
   background: #070707;
   min-height: 100vh;
+  max-width: 100%;
+  overflow-x: hidden;
   color: #F7F3EE;
   font-family: Inter, system-ui, sans-serif;
 }
