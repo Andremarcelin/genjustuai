@@ -265,6 +265,7 @@
     if (!next || (session && next.session_id && next.session_id !== session.id)) return;
     if (state && typeof next.version === "number" && next.version < state.version) return;
     state = next;
+    if (next.gen_style) paintStyle(next.gen_style);
     paint();
   }
 
@@ -445,6 +446,9 @@
     paintChips();
     if (suggestions[0]) appendBubble("gen", suggestions[0].message);
     appendBubble("gen", "Ar no 22. Tá suave.");
+    if (new URLSearchParams(location.search).get("settings") === "1") {
+      $("casa-settings-sheet").hidden = false;
+    }
   }
 
   async function start() {
@@ -483,6 +487,9 @@
     loadHistory();
     loadRoutines();
     loadPrefs();
+    if (new URLSearchParams(location.search).get("settings") === "1") {
+      $("casa-settings-sheet").hidden = false;
+    }
   }
 
   async function loadRoutines() {
@@ -496,12 +503,19 @@
     } catch (err) {}
   }
 
+  function paintStyle(style) {
+    var value = style === "ironica" || style === "zen" ? style : "comum";
+    document.querySelectorAll("input[name='gen-style']").forEach(function (el) {
+      el.checked = el.value === value;
+    });
+  }
+
   async function loadPrefs() {
-    if (!token) return;
     try {
       var res = await fetch("/api/house/prefs", { headers: await authHeaders(), cache: "no-store" });
       var json = await res.json().catch(function () { return null; });
-      if (json && $("pref-profanity")) $("pref-profanity").checked = json.profanity !== false && json.server !== false;
+      if (json && json.gen_style) paintStyle(json.gen_style);
+      else if (state && state.gen_style) paintStyle(state.gen_style);
     } catch (err) {}
   }
 
@@ -608,12 +622,15 @@
   });
   $("casa-settings").addEventListener("click", function () { $("casa-settings-sheet").hidden = false; });
   $("casa-settings-close").addEventListener("click", function () { $("casa-settings-sheet").hidden = true; });
-  $("pref-profanity").addEventListener("change", async function () {
-    if (new URLSearchParams(location.search).get("demo") === "1") return;
-    await fetch("/api/house/prefs", {
-      method: "POST",
-      headers: await authHeaders(),
-      body: JSON.stringify({ profanity: $("pref-profanity").checked })
+  document.querySelectorAll("input[name='gen-style']").forEach(function (el) {
+    el.addEventListener("change", async function () {
+      if (!el.checked) return;
+      if (new URLSearchParams(location.search).get("demo") === "1") return;
+      await fetch("/api/house/prefs", {
+        method: "POST",
+        headers: await authHeaders(),
+        body: JSON.stringify({ gen_style: el.value })
+      });
     });
   });
   $("btn-groups-all").addEventListener("click", showAllDevices);

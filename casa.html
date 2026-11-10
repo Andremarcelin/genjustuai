@@ -144,11 +144,13 @@
       <div><h2 id="casa-settings-title">Ajustes</h2></div>
       <button type="button" id="casa-settings-close" aria-label="Fechar">×</button>
     </header>
-    <label class="casa-pref">
-      <input type="checkbox" id="pref-profanity" checked>
-      Palavrões leves da Gen
-    </label>
-    <p class="casa-understood-copy">Desligue em apresentações. A Gen continua informal e nunca xinga você.</p>
+    <fieldset class="casa-style" id="casa-style">
+      <legend>Tom da Gen</legend>
+      <label class="casa-style-opt"><input type="radio" name="gen-style" value="comum" checked> Comum</label>
+      <label class="casa-style-opt"><input type="radio" name="gen-style" value="ironica"> Irônica</label>
+      <label class="casa-style-opt"><input type="radio" name="gen-style" value="zen"> Zen</label>
+    </fieldset>
+    <p class="casa-understood-copy">Isso é só o jeito da Gen falar. Não mistura com o seu perfil da visita. Palavrão ainda obedece ao interruptor de apresentação no servidor.</p>
   </div>
 </div>
 

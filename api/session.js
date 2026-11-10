@@ -1,6 +1,8 @@
 import { supabaseRest } from "../lib/supabase-rest.cjs";
 import { userIdFromBearer } from "../lib/gen/http.js";
+import { readHouseState } from "../lib/gen/house-store.js";
 import { summarizeVisit } from "../lib/gen/visit-summary.js";
+import { normalizeGenStyle } from "../lib/gen/style.js";
 
 const PROFILE_IDS = new Set(["Zen", "Cyber", "Excentrico", "Acolhedor"]);
 const SESSION_STATUSES = new Set(["ready", "active", "ended"]);
@@ -60,7 +62,23 @@ export function toPublicSession(row, fallbackStatus) {
     archetype: row?.archetype ?? null,
     profile_id: profileIdFromRow(row),
     status,
+    gen_style: "comum",
   };
+}
+
+async function withHouseStyle(session) {
+  if (!session?.id) return session;
+  try {
+    const row = await readHouseState(session.id);
+    const style = normalizeGenStyle(row?.state?.gen_style);
+    return {
+      ...session,
+      gen_style: style,
+      voice_reload_at: row?.state?.voice_reload_at || null,
+    };
+  } catch {
+    return { ...session, gen_style: session.gen_style || "comum" };
+  }
 }
 
 async function summaryFor(code, fallbackStatus) {
@@ -185,7 +203,8 @@ export default async function handler(req, res) {
         sendError(res, active.status || 503, active.error);
         return;
       }
-      res.status(200).json({ session: active.session });
+      const session = await withHouseStyle(active.session);
+      res.status(200).json({ session });
       return;
     }
 
@@ -205,7 +224,8 @@ export default async function handler(req, res) {
     } catch {
       visit = summarizeVisit({});
     }
-    res.status(200).json({ session: found.data, visit });
+    const session = await withHouseStyle(found.data);
+    res.status(200).json({ session, visit });
   } catch {
     if (!res.headersSent) sendError(res, 503, "supabase_unreachable");
   }

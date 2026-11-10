@@ -5,7 +5,11 @@ import { infraFromStore, initApi, requireActiveSession } from "../../lib/gen/htt
 import { createSupabaseHouseStore } from "../../lib/gen/house-store.js";
 import { createLiveToken } from "../../lib/gen/providers.js";
 import { loadMemoryForSession } from "../../lib/gen/history.js";
+import { createSessionMemoryStore } from "../../lib/gen/session-memory.js";
 import { clientIp, createRateLimiter } from "../../lib/gen/rate-limit.js";
+import { profanityAllowed } from "../../lib/gen/profanity.js";
+import { normalizeGenStyle } from "../../lib/gen/style.js";
+import { supabaseRest } from "../../lib/supabase-rest.cjs";
 
 const sharedSessionLimiter = createRateLimiter({ limit: VOICE_TOKEN_LIMIT, windowMs: VOICE_TOKEN_WINDOW_MS });
 const sharedIpLimiter = createRateLimiter({ limit: IP_LIMIT, windowMs: IP_WINDOW_MS });
@@ -19,6 +23,17 @@ export function createVoiceHandler(deps = {}) {
   const store = deps.store || createSupabaseHouseStore();
   const now = deps.now || (() => Date.now());
   const loadMemory = deps.loadMemory || loadMemoryForSession;
+  const sessionMemory = deps.sessionMemory || createSessionMemoryStore();
+  const loadPrefs = deps.loadPrefs || (async (userId) => {
+    if (!userId) return true;
+    const result = await supabaseRest(
+      `house_prefs?user_id=eq.${encodeURIComponent(userId)}&select=profanity`,
+      { serviceRoleOnly: true, raw: true }
+    );
+    if (!result.ok) return true;
+    const row = Array.isArray(result.json) ? result.json[0] : result.json;
+    return row?.profanity !== false;
+  });
 
   return async function handler(req, res) {
     if (initApi(req, res, ["POST"])) return;
@@ -49,6 +64,16 @@ export function createVoiceHandler(deps = {}) {
       } catch {
         memory = "";
       }
+      try {
+        const recalled = await sessionMemory.load(session.id);
+        if (recalled?.text) memory = [memory, recalled.text].filter(Boolean).join("\n");
+      } catch {
+        /* memória curta opcional */
+      }
+      let userPref = true;
+      try { userPref = await loadPrefs(session.user_id); } catch { userPref = true; }
+      const allowSwear = profanityAllowed(env, userPref);
+      const style = normalizeGenStyle(current.state?.gen_style);
       const token = await createLiveToken({
         fetchImpl,
         env,
@@ -56,6 +81,8 @@ export function createVoiceHandler(deps = {}) {
         state: current.state,
         memory,
         now: stamp,
+        profanity: allowSwear,
+        style,
       });
       if (token.error === "missing_config") {
         res.status(503).json({ error: "missing_config", hint: token.hint });
@@ -78,6 +105,7 @@ export function createVoiceHandler(deps = {}) {
         systemInstruction: token.systemInstruction,
         tools: token.tools,
         voiceName: token.voiceName,
+        gen_style: style,
       });
     } catch {
       if (!res.headersSent) res.status(503).json({ error: "supabase_unreachable" });

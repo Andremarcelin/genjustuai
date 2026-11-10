@@ -23,6 +23,12 @@
     <p id="pick-code" class="cd">—</p>
     <p id="pick-profile" class="muted">Sem perfil do Quest</p>
     <p id="pick-status" class="muted">Nenhuma sessão ativa</p>
+    <fieldset class="admin-style" id="admin-style">
+      <legend>Tom da Gen</legend>
+      <label><input type="radio" name="admin-gen-style" value="comum" checked> Comum</label>
+      <label><input type="radio" name="admin-gen-style" value="ironica"> Irônica</label>
+      <label><input type="radio" name="admin-gen-style" value="zen"> Zen</label>
+    </fieldset>
     <button class="secondary" id="end" type="button" hidden>Finalizar sessão</button>
   </div>
   <h2>Sessões</h2>
@@ -126,6 +132,23 @@
     else if (data.current_session_code && !endedCurrent) showPick("Sessão atual", data.current_session_code, "");
     else showPick("", "", "");
     markActive(cur ? data.current_session_code : "");
+    loadStyle();
+  }
+  function paintAdminStyle(style) {
+    var value = style === "ironica" || style === "zen" ? style : "comum";
+    document.querySelectorAll("input[name='admin-gen-style']").forEach(function (el) {
+      el.checked = el.value === value;
+    });
+  }
+  async function loadStyle() {
+    try {
+      var house = await fetch("/api/house/prefs", { credentials: "same-origin", cache: "no-store" }).then(function (r) { return r.json(); });
+      if (house && house.gen_style) paintAdminStyle(house.gen_style);
+      else {
+        var sess = await fetch("/api/session", { credentials: "same-origin", cache: "no-store" }).then(function (r) { return r.json(); });
+        if (sess && sess.session && sess.session.gen_style) paintAdminStyle(sess.session.gen_style);
+      }
+    } catch (e) {}
   }
   $("save").onclick = async function () {
     var typed = $("manual").value.trim().toUpperCase();
@@ -193,6 +216,22 @@
       setStatus("Sessão " + endedCode + " encerrada. O Quest volta para a sala branca.", false);
     }).catch(function () {});
   };
+  document.querySelectorAll("input[name='admin-gen-style']").forEach(function (el) {
+    el.addEventListener("change", async function () {
+      if (!el.checked) return;
+      try {
+        await fetch("/api/house/prefs", {
+          method: "POST",
+          headers: headers(),
+          credentials: "same-origin",
+          body: JSON.stringify({ gen_style: el.value })
+        });
+        setStatus("Tom da Gen: " + (el.value === "ironica" ? "irônico" : el.value) + ". Na voz Live, reconecta pra valer a voz nova.", false);
+      } catch (e) {
+        setStatus("Não deu pra gravar o tom.", true);
+      }
+    });
+  });
   $("load").onclick = function () { load().catch(function () {}); };
   $("manual").addEventListener("input", function () {
     $("manual").value = $("manual").value.toUpperCase();

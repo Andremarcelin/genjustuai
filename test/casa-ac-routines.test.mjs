@@ -111,6 +111,38 @@ test("GEN_PROFANITY and per-user toggle change the system prompt", () => {
   assert.match(hot, /ar_condicionado/);
 });
 
+test("once-routine past kickoff fires on later tick but not before or if created already late", () => {
+  const game = {
+    enabled: true,
+    created_at: "2026-11-09T18:00:00.000Z",
+    schedule: {
+      hour: 21,
+      minute: 30,
+      days: [3],
+      once: true,
+      at: "2026-11-18T21:30:00-03:00",
+      tz: "America/Sao_Paulo",
+    },
+    last_run_at: null,
+  };
+  assert.equal(isRoutineDue(game, new Date("2026-11-18T21:00:00-03:00")), false);
+  assert.equal(isRoutineDue(game, new Date("2026-11-18T21:31:00-03:00")), true);
+  assert.equal(isRoutineDue(game, new Date("2026-11-19T10:00:00.000Z")), true);
+  const late = {
+    ...game,
+    created_at: "2026-11-18T22:00:00-03:00",
+    schedule: { ...game.schedule, at: "2026-11-18T21:30:00-03:00" },
+  };
+  assert.equal(isRoutineDue(late, new Date("2026-11-18T22:01:00-03:00")), false);
+  const seven = {
+    enabled: true,
+    created_at: "2026-11-09T17:45:00.000Z",
+    schedule: { hour: 7, minute: 0, days: [1], once: true, tz: "America/Sao_Paulo" },
+    last_run_at: null,
+  };
+  assert.equal(isRoutineDue(seven, new Date("2026-11-09T17:45:00.000Z")), false);
+});
+
 test("web_search uses DuckDuckGo then Wikipedia and cites titles", async () => {
   const ddg = parseDuckDuckGo({
     Heading: "Brasil",

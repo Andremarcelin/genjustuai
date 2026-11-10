@@ -371,7 +371,7 @@ test("acceptance: Corinthians match then na hora do jogo creates one-shot routin
     ipLimiter: createRateLimiter({ limit: 20, windowMs: 60_000 }),
     commandLimiter: createRateLimiter({ limit: 20, windowMs: 60_000 }),
     now: () => Date.parse("2026-11-09T18:00:00.000Z"),
-    fetchImpl,
+    fetchImpl: async () => geminiText(""),
   });
   const missing = mockRes();
   await askTime({
@@ -380,6 +380,86 @@ test("acceptance: Corinthians match then na hora do jogo creates one-shot routin
     body: { text: "na hora do jogo aumenta o ar" },
   }, missing);
   assert.match(missing.body.reply_text, /horário do jogo/i);
+});
+
+test("one-shot game phrase searches and schedules Corinthians x Botafogo 21h30", async () => {
+  assert.equal(isGameTimeRequest("quando for o próximo jogo do Corinthians, liga o ar no 20 e deixa as luzes nas cores do time"), true);
+  const sessionMemory = createMemorySessionStore();
+  const routines = createMemoryRoutineStore();
+  const handler = createChatHandler({
+    loadSession: async () => ({ session: SESSION }),
+    env: { GEMINI_API_KEY: "g" },
+    store: createMemoryHouseStore(),
+    routineStore: routines,
+    sessionMemory,
+    loadPrefs: async () => true,
+    chatLimiter: createRateLimiter({ limit: 20, windowMs: 60_000 }),
+    ipLimiter: createRateLimiter({ limit: 20, windowMs: 60_000 }),
+    commandLimiter: createRateLimiter({ limit: 20, windowMs: 60_000 }),
+    now: () => Date.parse("2026-11-09T18:00:00.000Z"),
+    fetchImpl: async () => geminiText(
+      "Corinthians x Botafogo, quarta 18/11/2026 às 21h30 na Neo Química Arena.",
+      { groundingMetadata: { groundingChunks: [{ web: { uri: "https://ge.globo.com", title: "ge.globo" } }] } },
+    ),
+  });
+  const res = mockRes();
+  await handler({
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: { text: "na hora do jogo do Corinthians liga o ar no 20 e deixa as luzes nas cores do time" },
+  }, res);
+  assert.equal(res.statusCode, 200);
+  const search = res.body.actions.find((item) => item.tool === "web_search");
+  const created = res.body.actions.find((item) => item.tool === "create_routine");
+  assert.ok(search);
+  assert.equal(created.status, "accepted");
+  assert.equal(created.args.hour, 21);
+  assert.equal(created.args.minute, 30);
+  assert.equal(created.args.once, true);
+  assert.match(created.args.at || "", /2026-11-1[89]/);
+  assert.match(res.body.reply_text, /Fechado: quarta às 21h30/i);
+  assert.match(res.body.reply_text, /20 °C/);
+  const mem = await sessionMemory.load(SESSION.id);
+  assert.equal(hasKickoff(mem.facts.match), true);
+  assert.match(mem.facts.match.opponent, /Botafogo/i);
+  assert.doesNotMatch(mem.facts.match.opponent, /Arena/i);
+});
+
+test("stray 7h is not kickoff and rejected create_routine does not confirm", async () => {
+  assert.equal(parseMatchFact("todo dia às 7h acende a sala"), null);
+  const mixed = parseMatchFact(
+    "todo dia às 7h acende a sala\nO próximo jogo do Corinthians é quarta 18/11/2026 às 21h30 contra o Botafogo.",
+    new Date("2026-11-09T18:00:00.000Z"),
+  );
+  assert.equal(mixed.hour, 21);
+  assert.equal(mixed.minute, 30);
+
+  const failing = createMemoryRoutineStore();
+  const original = failing.create.bind(failing);
+  failing.create = async () => ({ error: "invalid_args", status: 400 });
+  const handler = createChatHandler({
+    loadSession: async () => ({ session: SESSION }),
+    env: { GEMINI_API_KEY: "g" },
+    store: createMemoryHouseStore(),
+    routineStore: failing,
+    sessionMemory: createMemorySessionStore(),
+    loadPrefs: async () => true,
+    chatLimiter: createRateLimiter({ limit: 20, windowMs: 60_000 }),
+    ipLimiter: createRateLimiter({ limit: 20, windowMs: 60_000 }),
+    commandLimiter: createRateLimiter({ limit: 20, windowMs: 60_000 }),
+    now: () => Date.parse("2026-11-09T18:00:00.000Z"),
+    fetchImpl: async () => geminiText("Corinthians x Botafogo quarta 18/11/2026 21h30"),
+  });
+  const res = mockRes();
+  await handler({
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: { text: "na hora do jogo do Corinthians liga o ar no 20" },
+  }, res);
+  if (res.statusCode === 200) {
+    assert.doesNotMatch(res.body.reply_text || "", /Fechado: quarta/i);
+  }
+  failing.create = original;
 });
 
 test("live Gemini grounding for a current-news question if keys exist", async (t) => {
