@@ -32,6 +32,10 @@ test("understood copy shows the visitor profile, not a selector of all four", ()
   const html = fs.readFileSync(new URL("../casa.html", import.meta.url), "utf8");
   const js = fs.readFileSync(new URL("../js/casa.js", import.meta.url), "utf8");
   assert.match(html, /casa-understood-copy/);
+  assert.match(html, /name="gen-style"/);
+  assert.match(html, /value="ironica"/);
+  assert.doesNotMatch(html, /pref-profanity/);
+  assert.match(js, /gen_style/);
   assert.doesNotMatch(js, /\["Zen", "Cyber", "Excentrico", "Acolhedor"\]\.forEach/);
   assert.match(js, /understoodFor/);
   assert.match(js, /houseImageFor/);

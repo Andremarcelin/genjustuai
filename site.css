@@ -253,6 +253,33 @@ button, input, select { font: inherit; }
 
 .page-admin #end { margin-top: 8px; }
 
+.page-admin .admin-style {
+  border: 1px solid var(--line-soft);
+  border-radius: 12px;
+  padding: 12px;
+  margin: 12px 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  align-items: center;
+}
+
+.page-admin .admin-style legend {
+  font-family: var(--display);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+  padding: 0 6px;
+}
+
+.page-admin .admin-style label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-family: Inter, sans-serif;
+  color: var(--text);
+}
+
 .page-admin .nm { font-weight: 600; }
 
 .page-admin .cd {

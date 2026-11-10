@@ -21,7 +21,9 @@ import {
   isGameTimeRequest,
   missingKickoffReply,
   parseMatchFact,
+  teamFromText,
 } from "../../lib/gen/session-memory.js";
+import { normalizeGenStyle, parseStyleRequest, stylePhrase } from "../../lib/gen/style.js";
 import { runDueRoutines } from "../../lib/gen/run-routines.js";
 import { profanityAllowed } from "../../lib/gen/profanity.js";
 import { supabaseRest } from "../../lib/supabase-rest.cjs";
@@ -30,9 +32,9 @@ const sharedChatLimiter = createRateLimiter({ limit: CHAT_LIMIT, windowMs: CHAT_
 const sharedIpLimiter = createRateLimiter({ limit: IP_LIMIT, windowMs: IP_WINDOW_MS });
 const sharedCommandLimiter = createRateLimiter({ limit: 20, windowMs: 60_000 });
 
-function replyText(modelText, actions, transcript, state) {
+function replyText(modelText, actions, transcript, state, style) {
   const search = (actions || []).find((item) => item.tool === "web_search" && item.search)?.search;
-  return chooseReply({ modelText, actions, transcript, state, search });
+  return chooseReply({ modelText, actions, transcript, state, search, style });
 }
 
 async function readTurn(req) {
@@ -189,7 +191,7 @@ export function createChatHandler(deps = {}) {
             await sessionMemory.remember(session.id, {
               transcript: body.transcript,
               reply: body.reply_text,
-              fact,
+              fact: hasKickoff(fact) ? fact : null,
             });
           } catch {
             /* memória curta não derruba a resposta */
@@ -240,33 +242,109 @@ export function createChatHandler(deps = {}) {
       let userPref = true;
       try { userPref = await loadPrefs(session.user_id); } catch { userPref = true; }
       const allowSwear = profanityAllowed(env, userPref);
+      let style = normalizeGenStyle(state?.gen_style);
+      const styleAsk = parseStyleRequest(transcript);
+      if (styleAsk) {
+        const outcome = await runTool("set_gen_style", { style: styleAsk });
+        if (outcome.error) {
+          const infra = infraFromStore(outcome);
+          res.status(infra.status).json(infra.body);
+          return;
+        }
+        if (outcome.state) state = outcome.state;
+        style = normalizeGenStyle(styleAsk);
+        actions.push({
+          tool: "set_gen_style",
+          args: { style: styleAsk },
+          status: outcome.status,
+          reason: outcome.reason || null,
+        });
+      }
       const gameAsk = isGameTimeRequest(transcript);
-      if (gameAsk && !hasKickoff(recalled.facts?.match)) {
+      if (gameAsk) {
+        let match = recalled.facts?.match;
+        if (!hasKickoff(match)) {
+          const team = teamFromText(transcript) || match?.team || "Corinthians";
+          const query = `próximo jogo do ${team} horário data`;
+          const searched = await runTool("web_search", { query });
+          if (searched.error) {
+            const infra = infraFromStore(searched);
+            res.status(infra.status).json(infra.body);
+            return;
+          }
+          actions.push({
+            tool: "web_search",
+            args: { query },
+            status: searched.status,
+            reason: searched.reason || null,
+            search: searched.search || undefined,
+            grounded_text: searched.grounded_text || undefined,
+            grounded: searched.grounded || undefined,
+          });
+          const blob = [
+            searched.grounded_text,
+            ...(Array.isArray(searched.search) ? searched.search.map((hit) => `${hit.title} ${hit.snippet}`) : []),
+          ].join("\n");
+          match = parseMatchFact(`${transcript}\n${blob}`, new Date(stamp))
+            || parseMatchFact(blob, new Date(stamp));
+          if (hasKickoff(match)) {
+            recalled.facts = { ...recalled.facts, match };
+            try {
+              await sessionMemory.remember(session.id, { fact: match });
+            } catch { /* fato local */ }
+          }
+        }
+        if (!hasKickoff(match)) {
+          await sendTurn({
+            transcript,
+            reply_text: missingKickoffReply(),
+            actions,
+            state,
+            meta: { provider: "none", model: null },
+          });
+          return;
+        }
+        const game = gameRoutineFromFact(match);
+        const created = await runTool("create_routine", game);
+        if (created.error) {
+          const infra = infraFromStore(created);
+          res.status(infra.status).json(infra.body);
+          return;
+        }
+        if (created.state) state = created.state;
+        actions.push({
+          tool: "create_routine",
+          args: game,
+          status: created.status,
+          reason: created.reason || null,
+        });
+        const reply = created.status === "accepted"
+          ? confirmGameRoutine(match)
+          : "Não consegui gravar a rotina do jogo. Tenta de novo.";
         await sendTurn({
           transcript,
-          reply_text: missingKickoffReply(),
-          actions: [],
+          reply_text: reply,
+          actions,
           state,
           meta: { provider: "none", model: null },
         });
         return;
       }
-      let routinePlan = gameAsk ? null : parseRoutineRequest(transcript);
-      if (gameAsk && hasKickoff(recalled.facts?.match)) {
-        const game = gameRoutineFromFact(recalled.facts.match);
-        routinePlan = {
-          name: game.name,
-          schedule: {
-            hour: game.hour,
-            minute: game.minute,
-            days: game.days,
-            once: true,
-          },
-          actions: game.actions,
-        };
+      if (styleAsk && !parseRoutineRequest(transcript)) {
+        await sendTurn({
+          transcript,
+          reply_text: actions.some((item) => item.tool === "set_gen_style" && item.status === "accepted")
+            ? stylePhrase(style, { voicePending: true })
+            : "Não consegui mudar o tom agora.",
+          actions,
+          state,
+          meta: { provider: "none", model: null },
+        });
+        return;
       }
+      let routinePlan = parseRoutineRequest(transcript);
       const messages = [
-        { role: "system", content: buildSystemInstruction(session, state, memory, { profanity: allowSwear, now: new Date(stamp) }) },
+        { role: "system", content: buildSystemInstruction(session, state, memory, { profanity: allowSwear, style, now: new Date(stamp) }) },
         { role: "user", content: transcript },
       ];
       const tools = toGroqTools();
@@ -332,9 +410,7 @@ export function createChatHandler(deps = {}) {
             if (outcome.state) state = outcome.state;
             pushAction(plan.tool, plan.args, outcome);
           }
-          const reply = gameAsk && hasKickoff(recalled.facts?.match)
-            ? confirmGameRoutine(recalled.facts.match)
-            : replyText("", actions, transcript, state);
+          const reply = replyText("", actions, transcript, state, style);
           await sendTurn({
             transcript,
             reply_text: reply,
@@ -365,9 +441,7 @@ export function createChatHandler(deps = {}) {
             if (outcome.state) state = outcome.state;
             pushAction(plan.tool, plan.args, outcome);
           }
-          const reply = gameAsk && hasKickoff(recalled.facts?.match)
-            ? confirmGameRoutine(recalled.facts.match)
-            : replyText(visibleReply(message.content), actions, transcript, state);
+          const reply = replyText(visibleReply(message.content), actions, transcript, state, style);
           await sendTurn({ transcript, reply_text: reply, actions, state, meta: used });
           return;
         }
@@ -379,17 +453,6 @@ export function createChatHandler(deps = {}) {
         for (const call of calls) {
           const name = call?.function?.name;
           let parsed = parseToolArguments(call?.function?.arguments);
-          if (gameAsk && hasKickoff(recalled.facts?.match) && name === "create_routine" && parsed) {
-            const game = gameRoutineFromFact(recalled.facts.match);
-            parsed = {
-              name: game.name,
-              hour: game.hour,
-              minute: game.minute,
-              days: game.days,
-              actions: game.actions,
-              once: true,
-            };
-          }
           let outcome;
           if (parsed === null) {
             outcome = { status: "rejected", reason: "invalid_args", state };
@@ -435,7 +498,7 @@ export function createChatHandler(deps = {}) {
       if (finalTurn.error) {
         await sendTurn({
           transcript,
-          reply_text: replyText("", actions, transcript, state),
+          reply_text: replyText("", actions, transcript, state, style),
           actions,
           state,
           meta: used,
@@ -444,7 +507,7 @@ export function createChatHandler(deps = {}) {
       }
       await sendTurn({
         transcript,
-        reply_text: replyText(visibleReply(finalTurn.message?.content), actions, transcript, state),
+        reply_text: replyText(visibleReply(finalTurn.message?.content), actions, transcript, state, style),
         actions,
         state,
         meta: used,
