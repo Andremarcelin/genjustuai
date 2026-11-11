@@ -23,7 +23,8 @@ function allCombos() {
 test("each option weights one profile more than the others", () => {
   assert.equal(zcea.QUESTIONS.length, 3);
   for (const question of zcea.QUESTIONS) {
-    assert.equal(question.options.length, 4);
+    const expected = question.id === "folga" ? 5 : 4;
+    assert.equal(question.options.length, expected);
     const primaries = new Set();
     for (const option of question.options) {
       const top = [...zcea.PROFILE_IDS].sort((a, b) => option.scores[b] - option.scores[a])[0];
@@ -35,6 +36,11 @@ test("each option weights one profile more than the others", () => {
     }
     assert.deepEqual([...primaries].sort(), [...zcea.PROFILE_IDS].sort());
   }
+  const dormir = zcea.QUESTIONS[0].options.find((option) => option.id === "dormir");
+  assert.ok(dormir);
+  assert.equal(dormir.primary, "Zen");
+  assert.deepEqual(dormir.scores, { Zen: 4, Acolhedor: 3, Cyber: 0, Excentrico: 0 });
+  assert.match(dormir.label, /dorme até tarde e passa o dia descansando/);
 });
 
 test("three answers map to one profile, and every profile is reachable", () => {
@@ -51,11 +57,11 @@ test("three answers map to one profile, and every profile is reachable", () => {
   assert.deepEqual([...seen].sort(), [...zcea.PROFILE_IDS].sort());
 });
 
-test("all 64 combinations resolve, with a balanced deterministic split", () => {
+test("all 80 combinations resolve, with a balanced deterministic split", () => {
   const counts = { Zen: 0, Cyber: 0, Excentrico: 0, Acolhedor: 0 };
   let ties = 0;
   const combos = allCombos();
-  assert.equal(combos.length, 64);
+  assert.equal(combos.length, 80);
   for (const [a, b, c] of combos) {
     const first = zcea.resolve(a, b, c);
     const second = zcea.resolve({ folga: a, problema: b, festa: c });
@@ -64,10 +70,21 @@ test("all 64 combinations resolve, with a balanced deterministic split", () => {
     counts[first.profile_id] += 1;
     if (first.tie) ties += 1;
   }
-  assert.deepEqual(counts, { Zen: 17, Cyber: 13, Excentrico: 16, Acolhedor: 18 });
-  assert.equal(ties, 5);
-  assert.equal(Object.values(counts).reduce((sum, n) => sum + n, 0), 64);
-  for (const id of zcea.PROFILE_IDS) assert.ok(counts[id] >= 12 && counts[id] <= 20);
+  assert.deepEqual(counts, { Zen: 24, Cyber: 15, Excentrico: 18, Acolhedor: 23 });
+  assert.equal(ties, 7);
+  assert.equal(Object.values(counts).reduce((sum, n) => sum + n, 0), 80);
+  for (const id of zcea.PROFILE_IDS) assert.ok(counts[id] >= 12 && counts[id] <= 28);
+});
+
+test("choosing dormir still yields a valid ZCEA profile", () => {
+  const got = zcea.resolve("dormir", "respira", "canto");
+  assert.equal(got.profile_id, "Zen");
+  assert.equal(got.letter, "Z");
+  assert.equal(got.archetype, "Zen");
+  assert.ok(zcea.PROFILE_IDS.includes(got.profile_id));
+  assert.equal(got.scores.Zen, 14);
+  assert.equal(got.scores.Acolhedor, 6);
+  assert.equal(zcea.optionLabel("folga", "dormir"), "dorme até tarde e passa o dia descansando");
 });
 
 test("ties break in a fixed order and incomplete answers stay empty", () => {

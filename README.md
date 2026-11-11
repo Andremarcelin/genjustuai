@@ -11,7 +11,7 @@ Microsoft aparece só como “ou Microsoft”, fora desse par.
 
 O perfil do Quest é ZCEA, não as casas de marketing (Acolhedora / Elétrica / Ardente) nem os 8 arquétipos do CDD. `profile_id` é o id estável. `archetype` é o alias legível (`Excentrico` → `Excêntrico`).
 
-As três perguntas (`folga`, `problema`, `festa`) descrevem o que a pessoa faz, não o cômodo. `js/zcea-profile.js` soma os pesos. Empate, nesta ordem: Zen, Acolhedor, Cyber, Excentrico. Nas 64 combinações a conta é Zen 17, Cyber 13, Excentrico 16, Acolhedor 18.
+As três perguntas (`folga`, `problema`, `festa`) descrevem o que a pessoa faz, não o cômodo. `folga` tem cinco opções (incluindo `dormir`); as outras, quatro. `js/zcea-profile.js` soma os pesos. Empate, nesta ordem: Zen, Acolhedor, Cyber, Excentrico. Nas 80 combinações a conta é Zen 24, Cyber 15, Excentrico 18, Acolhedor 23.
 
 | folga | problema | festa | profile_id | archetype |
 | --- | --- | --- | --- | --- |
@@ -19,6 +19,7 @@ As três perguntas (`folga`, `problema`, `festa`) descrevem o que a pessoa faz, 
 | sistema | modelo | mapa | Cyber | Cyber |
 | impulso | atalho | pista | Excentrico | Excêntrico |
 | gente | junto | anel | Acolhedor | Acolhedor |
+| dormir | respira | canto | Zen | Zen |
 
 O resumo que o Quest lê (`session_summaries`) só nasce quando as três respostas fecham um `profile_id`. Ao salvar, essa sessão vira a ativa e a anterior deixa de ser `active`. Login sem as três respostas não grava `Perfil em formação` no lugar do perfil. O nome no Quest é o da conta Google, se existir; senão, o nome escrito na visita. Quem já tinha `preferencias` sem `profile_id` é preenchido por [`sql/backfill_profile_id.sql`](sql/backfill_profile_id.sql).
 

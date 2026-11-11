@@ -88,7 +88,7 @@ Erros, sempre JSON `{ "error": "..." }` e sem URL, chave ou corpo do Supabase. A
 
 ## Mapa do questionário → ProfileId
 
-Três situações (`folga`, `problema`, `festa`), quatro opções cada. A pessoa não escolhe a casa. `js/zcea-profile.js` soma os pesos e, no empate, escolhe nesta ordem: Zen, Acolhedor, Cyber, Excentrico. Exemplos fechados:
+Três situações (`folga`, `problema`, `festa`). `folga` tem cinco opções; as outras, quatro. A pessoa não escolhe a casa. `js/zcea-profile.js` soma os pesos e, no empate, escolhe nesta ordem: Zen, Acolhedor, Cyber, Excentrico. Exemplos fechados:
 
 | folga | problema | festa | profile_id |
 |---|---|---|---|
@@ -96,6 +96,7 @@ Três situações (`folga`, `problema`, `festa`), quatro opções cada. A pessoa
 | sistema | modelo | mapa | Cyber |
 | impulso | atalho | pista | Excentrico |
 | gente | junto | anel | Acolhedor |
+| dormir | respira | canto | Zen |
 
 O visitante grava `profile_id` em `dossiers`, em `dossier_data.preferencias` e em `session_summaries` sem login Google. O resumo público só é gravado quando as três respostas fecham um desses quatro ids. Entrar com Google, sem responder o questionário, não publica `Perfil em formação` nem apaga um quiz já salvo. `display_name` é o nome da conta, se houver, senão o nome escrito na visita.
 

@@ -1065,9 +1065,11 @@ body.page-entrada .q {
 body.page-entrada .q .n { color: #E02828; font-size: 1rem; }
 body.page-entrada .q .section-label { margin: 0; color: #fff; }
 
+body.page-entrada .option-col { gap: 6px; }
+
 body.page-entrada .option {
   border-radius: 10px;
-  padding: 0.65rem 0.75rem;
+  padding: 0.55rem 0.75rem;
   font-size: 0.78rem;
   border: 1px solid rgba(224, 40, 40, 0.4);
   background: rgba(12, 8, 8, 0.72);
