@@ -79,6 +79,7 @@ Documento mestre acadêmico (CDD): [docs/GenJutsu_AI_CDD_Completo.md](docs/GenJu
    - `GEMINI_API_KEY` (Gemini Live, free tier, só no servidor). Opcionais `GEMINI_API_KEY_2` … `GEMINI_API_KEY_9` para rotação.
    - `GEN_VOICE_NAME` (opcional; voz masculina do Live, padrão `Charon`)
    - `GROQ_API_KEY` (Whisper turbo + `openai/gpt-oss-20b`, free tier, só no servidor)
+   - Maquete física (opcional): `MQTT_URL` (`wss://….hivemq.cloud:8884/mqtt`), `MQTT_USERNAME`, `MQTT_PASSWORD`, `MQTT_TOPIC` (padrão `genjutsu/maquete/estado`). Sem elas o site não publica. Ver `hardware/esp32-maquete/README.md`.
 
 `ADMIN_SECRET` não é lida neste MVP. `/admin` e `GET`/`POST /api/admin/session` abrem sem PIN. A variável pode sair da Vercel. Para travar de novo, volte a exigir o segredo em `api/admin/session.js` e recoloque o campo de PIN em `admin.html`.
 4. Deploy. A rota `/api/config` entrega essas variáveis ao site.
