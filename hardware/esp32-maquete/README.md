@@ -10,7 +10,7 @@ Espelha a casa virtual no strip WS2812B. O site publica JSON retido em `genjutsu
 1. Crie um deployment Serverless em [EMQX Cloud](https://www.emqx.com/en/cloud) e um usuário MQTT (não use a senha da conta web).
 2. Anote o host. No site (Vercel): `MQTT_URL=wss://<host>:8084/mqtt`, `MQTT_USERNAME`, `MQTT_PASSWORD`. Tópico opcional: `MQTT_TOPIC=genjutsu/maquete/estado`.
 3. No ESP32, copie `config.example.h` para `config.h` e preencha `MQTT_HOST`, `MQTT_PORT` 8883, usuário e senha.
-4. Grave o sketch. Por padrão o TLS usa `setInsecure()` (sobe na hora). Para validar o certificado, descomente `#define MQTT_USE_CA` (CA DigiCert Global Root G2).
+4. Grave o sketch. Por padrão `#define MQTT_USE_CA` valida o certificado (DigiCert Global Root G2 + Root CA). Só use `MQTT_INSECURE_FALLBACK` para diagnóstico.
 5. Teste no console WebSocket da EMQX: publique o JSON de exemplo abaixo com **Retain** e QoS 1 no tópico `genjutsu/maquete/estado`.
 
 ## Mapeamento do payload

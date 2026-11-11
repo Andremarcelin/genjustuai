@@ -10,9 +10,10 @@
 #define MQTT_PASS "emqx-pass"
 #define MQTT_TOPIC "genjutsu/maquete/estado"
 
-// Sem isto o firmware usa WiFiClientSecure.setInsecure() (MVP).
-// Descomente para validar o certificado com DigiCert Global Root G2 (EMQX Serverless).
-// #define MQTT_USE_CA
+// Valida o certificado com DigiCert Global Root G2 + Root CA (EmqxCa.h).
+#define MQTT_USE_CA
+// Só para diagnóstico se o TLS com CA falhar.
+// #define MQTT_INSECURE_FALLBACK
 
 #define NUM_LEDS 30
 #define DATA_PIN 16
