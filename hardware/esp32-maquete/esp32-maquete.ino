@@ -5,6 +5,9 @@
 #include <FastLED.h>
 #include "config.h"
 #include "MaqueteMap.h"
+#ifdef MQTT_USE_CA
+#include "EmqxCa.h"
+#endif
 
 #ifndef MQTT_MAX_PACKET_SIZE
 #define MQTT_MAX_PACKET_SIZE 1024
@@ -111,7 +114,11 @@ void setup() {
     delay(200);
   }
 
+#ifdef MQTT_USE_CA
+  net.setCACert(EMQX_CA_CERT);
+#else
   net.setInsecure();
+#endif
   mqtt.setBufferSize(1024);
   mqtt.setServer(MQTT_HOST, MQTT_PORT);
   mqtt.setCallback(onMessage);

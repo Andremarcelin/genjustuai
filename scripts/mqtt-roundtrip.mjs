@@ -6,7 +6,7 @@ import { houseStateToMaquetePayload } from "../lib/gen/maquete-payload.js";
 import { publishMaqueteState } from "../lib/gen/maquete-mqtt.js";
 
 const topic = process.env.MQTT_TOPIC || `genjutsu/maquete/teste-${Math.random().toString(16).slice(2, 10)}`;
-const url = process.env.MQTT_URL || "wss://broker.hivemq.com:8884/mqtt";
+const url = process.env.MQTT_URL || "wss://broker.emqx.io:8084/mqtt";
 const session = "TSTQ1A";
 
 const state = defaultHouseState(session);

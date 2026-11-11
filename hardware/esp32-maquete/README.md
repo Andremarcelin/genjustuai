@@ -1,6 +1,17 @@
 # Maquete ESP32 — GenJutsu
 
-Espelha a casa virtual no strip WS2812B. O site publica JSON retido em `genjutsu/maquete/estado` (HiveMQ Cloud, TLS 8883 no firmware / WSS 8884 no site).
+Espelha a casa virtual no strip WS2812B. O site publica JSON retido em `genjutsu/maquete/estado`. O broker de referência é **EMQX Cloud Serverless**; qualquer broker MQTT (TLS/WSS) funciona.
+
+- Site: `MQTT_URL` no formato `wss://<host>:8084/mqtt` (EMQX Serverless) + `MQTT_USERNAME` / `MQTT_PASSWORD`.
+- Firmware: `MQTT_HOST` + porta **8883** (TLS). O Serverless da EMQX exige TLS e usuário/senha.
+
+## Passo a passo (EMQX Cloud Serverless)
+
+1. Crie um deployment Serverless em [EMQX Cloud](https://www.emqx.com/en/cloud) e um usuário MQTT (não use a senha da conta web).
+2. Anote o host. No site (Vercel): `MQTT_URL=wss://<host>:8084/mqtt`, `MQTT_USERNAME`, `MQTT_PASSWORD`. Tópico opcional: `MQTT_TOPIC=genjutsu/maquete/estado`.
+3. No ESP32, copie `config.example.h` para `config.h` e preencha `MQTT_HOST`, `MQTT_PORT` 8883, usuário e senha.
+4. Grave o sketch. Por padrão o TLS usa `setInsecure()` (sobe na hora). Para validar o certificado, descomente `#define MQTT_USE_CA` (CA DigiCert Global Root G2).
+5. Teste no console WebSocket da EMQX: publique o JSON de exemplo abaixo com **Retain** e QoS 1 no tópico `genjutsu/maquete/estado`.
 
 ## Mapeamento do payload
 
@@ -44,27 +55,24 @@ Segmentos (1 LED apagado entre cada bloco): sala 0–3, gap 4, quarto 5–8, gap
 
 1. Instale o core **esp32 by Espressif** (placa `ESP32 Dev Module`).
 2. Bibliotecas: **FastLED**, **PubSubClient**, **ArduinoJson** (v7).
-3. Copie `config.example.h` para `config.h` (este arquivo está no `.gitignore`) e preencha Wi‑Fi + HiveMQ.
+3. Copie `config.example.h` para `config.h` (este arquivo está no `.gitignore`) e preencha Wi‑Fi + host MQTT.
 4. Abra `esp32-maquete.ino` e grave.
 
-O firmware usa `WiFiClientSecure.setInsecure()` (MVP: não valida o certificado). Para produção, carregue o CA da HiveMQ.
-
-`PubSubClient` tem o buffer em 1024 bytes (`mqtt.setBufferSize(1024)`).
-
-Brilho mestre padrão: 60 (USB).
+`PubSubClient` tem o buffer em 1024 bytes (`mqtt.setBufferSize(1024)`). Brilho mestre padrão: 60 (USB).
 
 Comportamento: conecta Wi‑Fi + MQTT, assina o tópico, aplica o retained no (re)connect, ignora `version` ≤ última (aceita versão menor se o código da sessão mudou), reconecta com backoff, loop não bloqueante para pulsar / arco-íris / cores do time. TV ligada = flicker azul suave. Ar = azul claro (`normal`) ou azul forte (`forte`).
 
-## Teste manual no HiveMQ web client
+## Teste manual
 
-1. Conecte no cluster (WebSocket 8884, path `/mqtt`).
-2. Publique em `genjutsu/maquete/estado` com **Retain** e QoS 1, usando o JSON de exemplo acima (troque `session` se quiser).
-3. A fita deve acender sala vermelha, fita em arco-íris, TV e ar azuis, quarto apagado, LEDs de gap pretos.
+No console WebSocket da EMQX (`wss://<host>:8084/mqtt`, usuário/senha do deployment):
 
-CLI (broker público de teste, **nunca** use o tópico de produção nem credenciais reais):
+1. Publique em `genjutsu/maquete/estado` com **Retain** e QoS 1, usando o JSON de exemplo (troque `session` se quiser).
+2. A fita deve acender sala vermelha, fita em arco-íris, TV e ar azuis, quarto apagado, LEDs de gap pretos.
+
+CLI contra um broker público de teste (sem credenciais reais, tópico descartável):
 
 ```bash
-mosquitto_pub -h broker.hivemq.com -p 8883 --capath /etc/ssl/certs \
+mosquitto_pub -h broker.emqx.io -p 8883 --capath /etc/ssl/certs \
   -t "genjutsu/maquete/teste" -q 1 -r \
   -m '{"version":1,"session":"TESTE1","sala":{"on":true,"cor":"#FF1A1A","brilho":200},"quarto":{"on":false,"cor":"#000000","brilho":0},"fita":{"on":true,"efeito":"fixo","cores":["#7C3AED"],"brilho":180},"tv":{"on":false},"ar":{"on":false,"modo":"normal"}}'
 ```
