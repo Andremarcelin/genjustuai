@@ -280,6 +280,26 @@ test("a missing profile_id column still stores the session code", async () => {
   assert.match(G.savedMessage(CODE, saved.profile, { guest: true, profilePendingSql: true }), /sql\/profile_id\.sql/);
 });
 
+test("choosing dormir saves and still yields a valid ZCEA profile", async () => {
+  const user = guestUser();
+  const auth = authWith(null, user);
+  const deps = depsFor(auth, { visitorName: "Lina" });
+  deps.folga = "dormir";
+  deps.problema = "respira";
+  deps.festa = "canto";
+  const saved = await G.saveWithoutLogin(deps);
+
+  assert.equal(saved.profile.profile_id, "Zen");
+  assert.equal(saved.profile.letter, "Z");
+  assert.equal(saved.profile.archetype, "Zen");
+  assert.ok(["Zen", "Cyber", "Excentrico", "Acolhedor"].includes(saved.profile.profile_id));
+  assert.equal(deps.writes.dossier[0].dossier_data.preferencias.folga, "dormir");
+  assert.equal(deps.writes.dossier[0].profile_id, "Zen");
+  assert.equal(deps.writes.summary[0].profile_id, "Zen");
+  const labels = Object.fromEntries(saved.fields);
+  assert.equal(labels["Num fim de semana livre, você…"], "dorme até tarde e passa o dia descansando (dormir)");
+});
+
 test("the page copy tells the visitor they are saving without an account", () => {
   const index = fs.readFileSync(path.join(__dirname, "..", "entrada.html"), "utf8");
   const portal = fs.readFileSync(path.join(__dirname, "..", "js", "portal.js"), "utf8");
@@ -298,6 +318,8 @@ test("the page copy tells the visitor they are saving without an account", () =>
   assert.match(index, /data-value="ordem"/);
   assert.match(index, /data-value="sistema"/);
   assert.match(index, /data-value="pista"/);
+  assert.match(index, /data-value="dormir"/);
+  assert.match(index, /dorme até tarde e passa o dia descansando/);
   assert.match(index, /Como sua casa vai responder/);
   assert.match(index, /Sua sessão está pronta — coloque o Quest/);
   assert.match(index, /id="ready-kanji"/);

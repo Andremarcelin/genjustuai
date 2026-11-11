@@ -73,7 +73,8 @@
         option("ordem", "organiza o dia em silêncio e segue o plano", "Zen", 5, 2, 0, 0),
         option("sistema", "abre um aparelho ou um sistema só para ver como funciona", "Cyber", 0, 0, 5, 2),
         option("impulso", "sai sem roteiro atrás de algo que nunca fez", "Excentrico", 0, 0, 2, 5),
-        option("gente", "chama alguém e cuida do almoço e da conversa", "Acolhedor", 2, 5, 0, 0)
+        option("gente", "chama alguém e cuida do almoço e da conversa", "Acolhedor", 2, 5, 0, 0),
+        option("dormir", "dorme até tarde e passa o dia descansando", "Zen", 4, 3, 0, 0)
       ]
     },
     {
