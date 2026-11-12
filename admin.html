@@ -30,6 +30,29 @@
       <label><input type="radio" name="admin-gen-style" value="zen"> Zen</label>
     </fieldset>
     <button class="secondary" id="end" type="button" hidden>Finalizar sessão</button>
+    <div class="admin-house" id="admin-house">
+      <p class="muted">Controles da casa</p>
+      <div class="admin-house-row">
+        <span>Porta</span>
+        <button type="button" class="secondary" id="admin-porta-abrir">Abrir</button>
+        <button type="button" class="secondary" id="admin-porta-trancar">Trancar</button>
+      </div>
+      <p class="muted" id="admin-porta-status">Porta: —</p>
+      <div class="admin-house-row">
+        <span>Cafeteira</span>
+        <button type="button" class="secondary" id="admin-cafe-fazer">Fazer café</button>
+        <button type="button" class="secondary" id="admin-cafe-off">Desligar</button>
+      </div>
+      <p class="muted" id="admin-cafe-status">Cafeteira: —</p>
+      <div class="admin-house-row">
+        <span>Ventilador</span>
+        <button type="button" class="secondary" data-admin-fan="0">Off</button>
+        <button type="button" class="secondary" data-admin-fan="1">1</button>
+        <button type="button" class="secondary" data-admin-fan="2">2</button>
+        <button type="button" class="secondary" data-admin-fan="3">3</button>
+      </div>
+      <p class="muted" id="admin-fan-status">Ventilador: —</p>
+    </div>
   </div>
   <h2>Sessões</h2>
   <div id="list"></div>
@@ -232,11 +255,47 @@
       }
     });
   });
-  $("load").onclick = function () { load().catch(function () {}); };
+  function paintHouse(state) {
+    var lights = (state && state.lights) || {};
+    var porta = lights.porta || {};
+    var cafe = lights.cafe || {};
+    var fan = lights.ventilador || {};
+    $("admin-porta-status").textContent = "Porta: " + (porta.aberta ? "aberta" : "fechada") + " · " + (porta.trancada ? "trancada" : "destrancada");
+    $("admin-cafe-status").textContent = "Cafeteira: " + (cafe.estado || "desligada");
+    $("admin-fan-status").textContent = "Ventilador: " + (fan.vel ? "velocidade " + fan.vel : "desligado");
+  }
+  async function loadHouse() {
+    try {
+      var house = await fetch("/api/house/state", { credentials: "same-origin", cache: "no-store" }).then(function (r) { return r.json(); });
+      if (house && house.state) paintHouse(house.state);
+    } catch (e) {}
+  }
+  async function patchHouse(body) {
+    try {
+      var res = await fetch("/api/house/device", {
+        method: "POST",
+        headers: headers(),
+        credentials: "same-origin",
+        body: JSON.stringify(body)
+      });
+      var json = await res.json();
+      if (json && json.state) paintHouse(json.state);
+    } catch (e) {
+      setStatus("Não deu pra mudar o dispositivo.", true);
+    }
+  }
+  $("admin-porta-abrir").onclick = function () { patchHouse({ device_id: "porta", aberta: true, trancada: false }); };
+  $("admin-porta-trancar").onclick = function () { patchHouse({ device_id: "porta", trancada: true, aberta: false }); };
+  $("admin-cafe-fazer").onclick = function () { patchHouse({ device_id: "cafe", estado: "preparando" }); };
+  $("admin-cafe-off").onclick = function () { patchHouse({ device_id: "cafe", estado: "desligada" }); };
+  document.querySelectorAll("[data-admin-fan]").forEach(function (btn) {
+    btn.onclick = function () { patchHouse({ device_id: "ventilador", vel: Number(btn.getAttribute("data-admin-fan")) }); };
+  });
+  $("load").onclick = function () { load().then(loadHouse).catch(function () {}); };
   $("manual").addEventListener("input", function () {
     $("manual").value = $("manual").value.toUpperCase();
   });
-  load().catch(function () {});
+  load().then(loadHouse).catch(function () {});
 </script>
 </body>
 </html>

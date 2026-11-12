@@ -122,7 +122,7 @@ test("casa lights are per-device glows, not rectangular room fills", () => {
   ["Zen", "Cyber", "Excentrico", "Acolhedor"].forEach((profile) => {
     const layers = View.lightLayersFor(profile);
     const devices = new Set(layers.map((layer) => layer.device));
-    ["sala_luz", "quarto_luz", "abajur", "fita_led", "tv", "ambiente", "ar_condicionado"].forEach((id) => {
+    ["sala_luz", "quarto_luz", "abajur", "fita_led", "tv", "ambiente", "ar_condicionado", "porta", "cafe", "ventilador"].forEach((id) => {
       assert.equal(devices.has(id), true, profile + " missing " + id);
     });
     assert.ok(layers.some((layer) => layer.device === "fita_led" && layer.kind === "strip"));

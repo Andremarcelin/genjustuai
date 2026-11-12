@@ -8,7 +8,10 @@
     { id: "fita_led", label: "Fita LED", room: "Sala", kind: "led", overlay: "sala", icon: "led" },
     { id: "tv", label: "TV", room: "Sala", kind: "media", overlay: "sala", icon: "tv" },
     { id: "ambiente", label: "Ambiente", room: "Casa", kind: "ambience", overlay: "casa", icon: "fan" },
-    { id: "ar_condicionado", label: "Ar-condicionado", room: "Sala", kind: "climate", overlay: "sala", icon: "ac" }
+    { id: "ar_condicionado", label: "Ar-condicionado", room: "Sala", kind: "climate", overlay: "sala", icon: "ac" },
+    { id: "porta", label: "Porta", room: "Sala", kind: "door", overlay: "sala", icon: "door" },
+    { id: "cafe", label: "Cafeteira", room: "Cozinha", kind: "appliance", overlay: "cozinha", icon: "cafe" },
+    { id: "ventilador", label: "Ventilador", room: "Sala", kind: "fan", overlay: "sala", icon: "fan" }
   ];
   var SWATCHES = ["#FF1A1A", "#FFF4E0", "#3B82F6", "#7C3AED"];
   var ICONS = {
@@ -18,7 +21,9 @@
     led: '<svg viewBox="0 0 24 24" width="22" height="22"><path d="M4 12h16M7 9v6M12 8v8M17 9v6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',
     tv: '<svg viewBox="0 0 24 24" width="22" height="22"><rect x="3" y="6" width="18" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 21h8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',
     fan: '<svg viewBox="0 0 24 24" width="22" height="22"><circle cx="12" cy="12" r="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 4c3 2 4 5 3 7M20 12c-2 3-5 4-7 3M12 20c-3-2-4-5-3-7M4 12c2-3 5-4 7-3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',
-    ac: '<svg viewBox="0 0 24 24" width="22" height="22"><rect x="3" y="8" width="18" height="8" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M7 16v2M12 16v3M17 16v2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>'
+    ac: '<svg viewBox="0 0 24 24" width="22" height="22"><rect x="3" y="8" width="18" height="8" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M7 16v2M12 16v3M17 16v2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',
+    door: '<svg viewBox="0 0 24 24" width="22" height="22"><rect x="6" y="3" width="12" height="18" rx="1" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="15" cy="12" r="1" fill="currentColor"/></svg>',
+    cafe: '<svg viewBox="0 0 24 24" width="22" height="22"><path d="M6 8h10v7a4 4 0 0 1-4 4H10a4 4 0 0 1-4-4V8zM16 10h2.5a2.5 2.5 0 0 1 0 5H16" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>'
   };
 
   var $ = function (id) { return document.getElementById(id); };
@@ -32,6 +37,14 @@
   var recognition = null;
   var listening = false;
   var routines = [];
+  var cafeTimer = null;
+
+  function scheduleCafeReady() {
+    if (cafeTimer) clearTimeout(cafeTimer);
+    cafeTimer = setTimeout(function () {
+      patchDevice({ device_id: "cafe", estado: "pronta" });
+    }, 60000);
+  }
 
   function hex(value) {
     return /^#[0-9A-Fa-f]{6}$/.test(String(value || "")) ? String(value).toUpperCase() : "#FF1A1A";
@@ -53,7 +66,11 @@
       intensity: clamp(raw.intensity, 0.35),
       temp: Number.isFinite(Number(raw.temp)) ? Number(raw.temp) : 22,
       mode: raw.mode || "frio",
-      fan: raw.fan || "auto"
+      fan: raw.fan || "auto",
+      aberta: !!raw.aberta,
+      trancada: raw.trancada !== false,
+      estado: raw.estado || "desligada",
+      vel: Number.isFinite(Number(raw.vel)) ? Number(raw.vel) : 0
     });
   }
 
@@ -206,6 +223,36 @@
             return '<option value="' + fan + '"' + (String(item.fan) === fan ? " selected" : "") + ">Fan " + fan + "</option>";
           }).join("")
           + "</select></label></div>";
+      } else if (item.kind === "door") {
+        li.innerHTML = '<div class="casa-device-row">'
+          + '<span class="casa-device-icon">' + ICONS.door + "</span>"
+          + "<span>" + item.label + "</span>"
+          + '<span class="casa-device-status">' + (item.aberta ? "Aberta" : "Fechada") + " · " + (item.trancada ? "Trancada" : "Destrancada") + "</span></div>"
+          + '<div class="casa-ac-controls">'
+          + '<button type="button" class="casa-toggle' + (item.aberta ? " is-on" : "") + '" data-porta-aberta="' + item.id + '">'
+          + (item.aberta ? "Fechar" : "Abrir") + "</button>"
+          + '<button type="button" class="casa-toggle' + (item.trancada ? " is-on" : "") + '" data-porta-tranca="' + item.id + '">'
+          + (item.trancada ? "Destrancar" : "Trancar") + "</button></div>";
+      } else if (item.kind === "appliance") {
+        var cafeLabel = item.estado === "preparando" ? "Preparando" : item.estado === "pronta" ? "Pronta" : "Desligada";
+        li.innerHTML = '<div class="casa-device-row">'
+          + '<span class="casa-device-icon">' + ICONS.cafe + "</span>"
+          + "<span>" + item.label + "</span>"
+          + '<span class="casa-device-status">' + cafeLabel + "</span></div>"
+          + '<div class="casa-ac-controls">'
+          + '<button type="button" class="casa-toggle' + (item.estado !== "desligada" ? " is-on" : "") + '" data-cafe="' + item.id + '" data-estado="preparando">Fazer café</button>'
+          + '<button type="button" class="casa-toggle" data-cafe="' + item.id + '" data-estado="desligada">Desligar</button></div>';
+      } else if (item.kind === "fan") {
+        li.innerHTML = '<div class="casa-device-row">'
+          + '<span class="casa-device-icon">' + ICONS.fan + "</span>"
+          + "<span>" + item.label + "</span>"
+          + '<span class="casa-device-status">' + (item.vel ? "Velocidade " + item.vel : "Desligado") + "</span></div>"
+          + '<div class="casa-ac-controls">'
+          + [0, 1, 2, 3].map(function (vel) {
+            var label = vel === 0 ? "Off" : String(vel);
+            return '<button type="button" class="casa-toggle' + (Number(item.vel) === vel ? " is-on" : "") + '" data-fan-vel="' + item.id + '" data-vel="' + vel + '">' + label + "</button>";
+          }).join("")
+          + "</div>";
       } else {
         li.innerHTML = '<div class="casa-device-row">'
           + '<span class="casa-device-icon">' + (ICONS[item.icon] || ICONS.bulb) + "</span>"
@@ -285,11 +332,28 @@
       if (body.temp != null) cur.temp = body.temp;
       if (body.mode) cur.mode = body.mode;
       if (body.fan) cur.fan = body.fan;
+      if (body.aberta !== undefined) cur.aberta = body.aberta;
+      if (body.trancada !== undefined) cur.trancada = body.trancada;
+      if (body.estado) cur.estado = body.estado;
+      if (body.vel != null) cur.vel = body.vel;
+      if (body.device_id === "porta") {
+        if (cur.aberta) cur.trancada = false;
+        if (cur.trancada) cur.aberta = false;
+        cur.on = !!cur.aberta;
+      }
+      if (body.device_id === "cafe") {
+        cur.on = cur.estado !== "desligada";
+        if (cur.estado === "preparando") scheduleCafeReady();
+      }
+      if (body.device_id === "ventilador") {
+        cur.on = Number(cur.vel) > 0;
+      }
       lights[body.device_id] = cur;
       state.lights = lights;
       paint();
       return { state: state };
     }
+    if (body.device_id === "cafe" && body.estado === "preparando") scheduleCafeReady();
     var res = await fetch("/api/house/device", {
       method: "POST",
       headers: await authHeaders(),
@@ -406,7 +470,10 @@
       fita_led: { on: false, color: "#7C3AED", intensity: 0.55 },
       tv: { on: true, color: "#3B82F6", intensity: 0.7 },
       ambiente: { on: false, color: "#FF1A1A", intensity: 0.3 },
-      ar_condicionado: { on: true, temp: 22, mode: "frio", fan: "auto", color: "#7DD3FC", intensity: 0.45 }
+      ar_condicionado: { on: true, temp: 22, mode: "frio", fan: "auto", color: "#7DD3FC", intensity: 0.45 },
+      porta: { on: false, aberta: false, trancada: true, color: "#8B5A2B", intensity: 0.2 },
+      cafe: { on: false, estado: "desligada", color: "#FF8C00", intensity: 0.2 },
+      ventilador: { on: false, vel: 0, color: "#94A3B8", intensity: 0.15 }
     };
     lights.main = { intensity: lights.sala_luz.on ? lights.sala_luz.intensity : 0, color: lights.sala_luz.color };
     lights.lanterns = { intensity: lights.quarto_luz.on ? lights.quarto_luz.intensity : 0, color: lights.quarto_luz.color };
@@ -536,6 +603,28 @@
       var ac = deviceFromState(tempBtn.getAttribute("data-ac-temp"));
       var next = ac.temp + Number(tempBtn.getAttribute("data-delta"));
       patchDevice({ device_id: ac.id, on: true, temp: next });
+      return;
+    }
+    var openDoor = event.target.closest("[data-porta-aberta]");
+    if (openDoor) {
+      var door = deviceFromState(openDoor.getAttribute("data-porta-aberta"));
+      patchDevice({ device_id: door.id, aberta: !door.aberta, trancada: door.aberta ? door.trancada : false });
+      return;
+    }
+    var lockDoor = event.target.closest("[data-porta-tranca]");
+    if (lockDoor) {
+      var lock = deviceFromState(lockDoor.getAttribute("data-porta-tranca"));
+      patchDevice({ device_id: lock.id, trancada: !lock.trancada, aberta: lock.trancada ? lock.aberta : false });
+      return;
+    }
+    var cafeBtn = event.target.closest("[data-cafe]");
+    if (cafeBtn) {
+      patchDevice({ device_id: cafeBtn.getAttribute("data-cafe"), estado: cafeBtn.getAttribute("data-estado") });
+      return;
+    }
+    var fanBtn = event.target.closest("[data-fan-vel]");
+    if (fanBtn) {
+      patchDevice({ device_id: fanBtn.getAttribute("data-fan-vel"), vel: Number(fanBtn.getAttribute("data-vel")) });
       return;
     }
     var toggle = event.target.closest("[data-toggle]");

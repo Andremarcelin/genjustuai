@@ -17,4 +17,6 @@
 
 #define NUM_LEDS 30
 #define DATA_PIN 16
+#define SERVO_PIN 18
+#define FAN_PIN 19
 #define MASTER_BRIGHTNESS 60

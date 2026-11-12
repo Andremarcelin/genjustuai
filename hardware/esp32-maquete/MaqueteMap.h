@@ -7,7 +7,8 @@
 
 // Payload → LED mapping with no Arduino / FastLED dependency.
 // Layout (NUM_LEDS default 30), one dark LED between segments:
-//   sala 0-3, gap 4, quarto 5-8, gap 9, fita 10-19, gap 20, tv 21, gap 22, ar 23, rest off
+//   sala 0-3, gap 4, quarto 5-8, gap 9, fita 10-19, gap 20, tv 21, gap 22, ar 23,
+//   gap 24, porta lock 25, gap 26, cafe 27, gap 28, ventilador 29
 
 struct MaqueteRgb {
   uint8_t r;
@@ -38,6 +39,10 @@ struct MaqueteState {
   bool tvOn;
   bool arOn;
   char arModo[16];
+  bool portaAberta;
+  bool portaTrancada;
+  char cafeEstado[16];
+  uint8_t ventiladorVel;
 };
 
 struct MaqueteSegment {
@@ -64,7 +69,24 @@ static const MaqueteSegment kMaqueteSegments[] = {
   {"tv", 21, 1},
   {"gap_tv", 22, 1},
   {"ar", 23, 1},
+  {"gap_ar", 24, 1},
+  {"porta", 25, 1},
+  {"gap_porta", 26, 1},
+  {"cafe", 27, 1},
+  {"gap_cafe", 28, 1},
+  {"ventilador", 29, 1},
 };
+
+inline uint8_t maqueteFanDuty(uint8_t vel) {
+  if (vel >= 3) return 255;
+  if (vel == 2) return 178;
+  if (vel == 1) return 102;
+  return 0;
+}
+
+inline uint8_t maqueteServoDeg(bool aberta) {
+  return aberta ? 90 : 0;
+}
 
 inline bool maqueteShouldApply(uint32_t version, const char* session,
                                uint32_t lastVersion, const char* lastSession) {
@@ -171,6 +193,25 @@ inline void maqueteRender(const MaqueteState& st, MaqueteRgb* leds, uint16_t n,
     const bool forte = std::strcmp(st.arModo, "forte") == 0;
     if (forte) leds[23] = maqueteScale(0x1D, 0x4E, 0xD8, 220, master);
     else leds[23] = maqueteScale(0x7D, 0xD3, 0xFC, 160, master);
+  }
+
+  if (n > 25) {
+    if (st.portaTrancada) leds[25] = maqueteScale(0xFF, 0x1A, 0x1A, 200, master);
+    else leds[25] = maqueteScale(0x22, 0xC5, 0x5E, 200, master);
+  }
+
+  if (n > 27) {
+    if (std::strcmp(st.cafeEstado, "preparando") == 0) {
+      MaqueteRgb pulsed = maquetePulse(MaqueteRgb{0xFF, 0x8C, 0x00}, nowMs);
+      leds[27] = maqueteScale(pulsed.r, pulsed.g, pulsed.b, 220, master);
+    } else if (std::strcmp(st.cafeEstado, "pronta") == 0) {
+      leds[27] = maqueteScale(0xFF, 0x8C, 0x00, 230, master);
+    }
+  }
+
+  if (n > 29 && st.ventiladorVel) {
+    const uint8_t spin = static_cast<uint8_t>(80 + ((nowMs / (40u / (st.ventiladorVel ? st.ventiladorVel : 1))) % 140u));
+    leds[29] = maqueteScale(0x94, 0xA3, 0xB8, spin, master);
   }
 }
 
@@ -299,6 +340,28 @@ inline bool maqueteParsePayload(const char* json, MaqueteState* st) {
       st->arOn = maqueteExtractBool(ar, "on", false);
       maqueteExtractString(ar, "modo", st->arModo, sizeof(st->arModo), "normal");
     }
+  }
+  const char* porta = maqueteFindKey(json, "porta");
+  if (porta) {
+    porta = std::strchr(porta, '{');
+    if (porta) {
+      st->portaAberta = maqueteExtractBool(porta, "aberta", false);
+      st->portaTrancada = maqueteExtractBool(porta, "trancada", true);
+    }
+  } else {
+    st->portaTrancada = true;
+  }
+  const char* cafe = maqueteFindKey(json, "cafe");
+  if (cafe) {
+    cafe = std::strchr(cafe, '{');
+    if (cafe) maqueteExtractString(cafe, "estado", st->cafeEstado, sizeof(st->cafeEstado), "desligada");
+  } else {
+    std::snprintf(st->cafeEstado, sizeof(st->cafeEstado), "desligada");
+  }
+  const char* vent = maqueteFindKey(json, "ventilador");
+  if (vent) {
+    vent = std::strchr(vent, '{');
+    if (vent) st->ventiladorVel = static_cast<uint8_t>(maqueteExtractU32(vent, "vel", 0));
   }
   return st->session[0] != 0;
 }

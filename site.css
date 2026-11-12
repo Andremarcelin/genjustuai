@@ -280,6 +280,27 @@ button, input, select { font: inherit; }
   color: var(--text);
 }
 
+.page-admin .admin-house {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 26, 26, 0.25);
+}
+.page-admin .admin-house-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 8px 0;
+}
+.page-admin .admin-house-row span {
+  min-width: 90px;
+  color: #f5f5f5;
+}
+.page-admin .admin-house-row button {
+  width: auto;
+  min-height: 40px;
+  margin: 0;
+}
 .page-admin .nm { font-weight: 600; }
 
 .page-admin .cd {

@@ -69,6 +69,13 @@ export function createDeviceHandler(deps = {}) {
       if (temp !== undefined) args.temp = temp;
       if (payload.mode != null) args.mode = payload.mode;
       if (payload.fan != null) args.fan = String(payload.fan);
+      const aberta = asBoolean(payload.aberta);
+      if (aberta !== undefined) args.aberta = aberta;
+      const trancada = asBoolean(payload.trancada);
+      if (trancada !== undefined) args.trancada = trancada;
+      if (payload.estado != null) args.estado = payload.estado;
+      const vel = asNumber(payload.vel);
+      if (vel !== undefined) args.vel = vel;
 
       const result = await executeHouseTool({
         sessionId: session.id,
