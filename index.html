@@ -124,8 +124,8 @@ h1.hero-title .line{display:inline-block;white-space:nowrap;max-width:none;font-
 .gen-app-head .name{font-family:Oswald,sans-serif;font-weight:700;letter-spacing:.06em;text-transform:uppercase;font-size:1.05rem}
 .gen-app-head .status{display:inline-flex;align-items:center;gap:.4rem;font-size:.78rem;color:var(--muted)}
 .gen-app-head .dot{width:8px;height:8px;border-radius:50%;background:#3DDF6A;box-shadow:0 0 10px rgba(61,223,106,.7)}
-.gen-msgs{flex:1;display:flex;flex-direction:column;gap:.7rem;padding:1rem 1rem .5rem;overflow:auto;min-height:0}
-.bubble{max-width:88%;padding:.75rem .95rem;border-radius:16px;font-size:.94rem;line-height:1.45;font-family:Inter,system-ui,sans-serif;opacity:0;transform:translateY(10px);transition:opacity .55s ease,transform .55s ease}
+.gen-msgs{flex:1;display:flex;flex-direction:column;gap:.7rem;padding:1rem 1rem .5rem;overflow-x:hidden;overflow-y:auto;min-height:0;max-width:100%;box-sizing:border-box}
+.bubble{box-sizing:border-box;width:fit-content;max-width:88%;min-width:0;padding:.75rem .95rem;border-radius:16px;font-size:.94rem;line-height:1.45;font-family:Inter,system-ui,sans-serif;opacity:0;transform:translateY(10px);transition:opacity .55s ease,transform .55s ease;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word}
 .bubble.in{opacity:1;transform:none}
 .bubble.you{align-self:flex-end;background:#1d1d1d;border:1px solid rgba(255,255,255,.12);border-bottom-right-radius:6px}
 .bubble.gen{align-self:flex-start;background:rgba(224,40,40,.1);border:1px solid rgba(224,40,40,.45);box-shadow:0 0 20px rgba(224,40,40,.12);border-bottom-left-radius:6px}

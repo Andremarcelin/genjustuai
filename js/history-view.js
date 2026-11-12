@@ -28,7 +28,9 @@
       name.className = "history-who";
       name.textContent = who(row.role);
       var text = document.createElement("p");
-      text.textContent = String(row.body || "");
+      var Format = (typeof globalThis !== "undefined" && globalThis.GenjutsuChatFormat) || {};
+      if (Format.formatChatHtml) text.innerHTML = Format.formatChatHtml(row.body);
+      else text.textContent = String(row.body || "");
       li.appendChild(name);
       li.appendChild(text);
       list.appendChild(li);
