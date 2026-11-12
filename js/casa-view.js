@@ -59,7 +59,10 @@
     fita_led: { on: false, color: "#7C3AED", intensity: 0.55 },
     tv: { on: false, color: "#3B82F6", intensity: 0.7 },
     ambiente: { on: false, color: "#FF1A1A", intensity: 0.3 },
-    ar_condicionado: { on: false, color: "#7DD3FC", intensity: 0.45, temp: 22, mode: "frio", fan: "auto" }
+    ar_condicionado: { on: false, color: "#7DD3FC", intensity: 0.45, temp: 22, mode: "frio", fan: "auto" },
+    porta: { on: false, aberta: false, trancada: true, color: "#8B5A2B", intensity: 0.2 },
+    cafe: { on: false, estado: "desligada", color: "#FF8C00", intensity: 0.2 },
+    ventilador: { on: false, vel: 0, color: "#94A3B8", intensity: 0.15 }
   };
 
   function layer(id, device, kind, x, y, w, h, extra) {
@@ -89,7 +92,10 @@
     layer("tv-screen", "tv", "tv", 47.4, 51.2, 10, 12),
     layer("tv-bloom", "tv", "bloom", 47.4, 51.2, 28, 24),
     layer("ac-core", "ar_condicionado", "ac", 73.5, 36.5, 22, 20),
-    layer("ac-wash", "ar_condicionado", "ac", 70, 46, 32, 26)
+    layer("ac-wash", "ar_condicionado", "ac", 70, 46, 32, 26),
+    layer("porta-core", "porta", "door", 88, 62, 10, 22),
+    layer("cafe-core", "cafe", "appliance", 58, 28, 10, 10),
+    layer("fan-core", "ventilador", "fan", 80, 22, 12, 12)
   ];
 
   var PROFILE_LED = {
@@ -147,6 +153,9 @@
     if (kind === "tv") return 0.55 + i * 0.4;
     if (kind === "cone") return 0.4 + i * 0.45;
     if (kind === "ac") return 0.28 + i * 0.4;
+    if (kind === "door") return 0.35 + i * 0.4;
+    if (kind === "appliance") return 0.4 + i * 0.45;
+    if (kind === "fan") return 0.3 + i * 0.5;
     if (kind === "darken") return 0;
     return 0.55 + i * 0.4;
   }
@@ -182,6 +191,15 @@
     if (kind === "ac") {
       return "radial-gradient(circle at 50% 40%, rgba(125,211,252," + (0.55 + i * 0.35) + ") 0%, rgba(125,211,252,0.18) 48%, transparent 74%)";
     }
+    if (kind === "door") {
+      return "linear-gradient(180deg, " + rgba(color, 0.85) + " 0%, " + rgba(color, 0.2) + " 100%)";
+    }
+    if (kind === "appliance") {
+      return "radial-gradient(circle at 50% 50%, rgba(255,140,0," + (0.5 + i * 0.4) + ") 0%, transparent 72%)";
+    }
+    if (kind === "fan") {
+      return "radial-gradient(circle at 50% 50%, rgba(148,163,184," + (0.45 + i * 0.4) + ") 0%, transparent 70%)";
+    }
     return "radial-gradient(circle at 50% 42%, " + rgba(bright, 1) + " 0%, " + rgba(color, 0.62) + " 38%, transparent 74%)";
   }
 
@@ -216,7 +234,7 @@
   function frameAmbient(devices) {
     var list = devices || [];
     var lit = list.filter(function (item) {
-      return item && item.on && item.id !== "ar_condicionado";
+      return item && item.on && item.id !== "ar_condicionado" && item.id !== "porta" && item.id !== "cafe" && item.id !== "ventilador";
     });
     var dark = lit.length === 0;
     var mean = lit.length

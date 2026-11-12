@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 520" role="img" aria-label="Ligações da maquete ESP32">
+  <rect width="920" height="520" fill="#0b0b0b"/>
+  <text x="24" y="36" fill="#FF1A1A" font-family="monospace" font-size="18">GenJutsu maquete  ligações v2</text>
+  <rect x="24" y="56" width="180" height="220" rx="8" fill="#151515" stroke="#FF1A1A"/>
+  <text x="40" y="84" fill="#F7F3EE" font-family="sans-serif" font-size="14">ESP32 DevKit</text>
+  <text x="40" y="112" fill="#c9c4be" font-family="monospace" font-size="12">VIN 5V</text>
+  <text x="40" y="132" fill="#c9c4be" font-family="monospace" font-size="12">GND</text>
+  <text x="40" y="152" fill="#c9c4be" font-family="monospace" font-size="12">GPIO16 DIN LED</text>
+  <text x="40" y="172" fill="#c9c4be" font-family="monospace" font-size="12">GPIO18 servo</text>
+  <text x="40" y="192" fill="#c9c4be" font-family="monospace" font-size="12">GPIO19 PWM fan</text>
+  <rect x="260" y="56" width="200" height="90" rx="8" fill="#151515" stroke="#888"/>
+  <text x="276" y="84" fill="#F7F3EE" font-size="14">WS2812B 30 LEDs</text>
+  <text x="276" y="108" fill="#c9c4be" font-size="12">330© no DIN</text>
+  <rect x="260" y="168" width="200" height="90" rx="8" fill="#151515" stroke="#888"/>
+  <text x="276" y="196" fill="#F7F3EE" font-size="14">SG90 porta</text>
+  <text x="276" y="220" fill="#c9c4be" font-size="12">0° fechada / 90° aberta</text>
+  <rect x="520" y="56" width="360" height="220" rx="8" fill="#151515" stroke="#888"/>
+  <text x="536" y="84" fill="#F7F3EE" font-size="14">Motor 5V + NPN + diodo</text>
+  <text x="536" y="112" fill="#c9c4be" font-size="12">GPIO19 ’ 1k© ’ base 2N2222/TIP120</text>
+  <text x="536" y="136" fill="#c9c4be" font-size="12">Emissor ’ GND</text>
+  <text x="536" y="160" fill="#c9c4be" font-size="12">Coletor ’ motor </text>
+  <text x="536" y="184" fill="#c9c4be" font-size="12">Motor + ’ 5V</text>
+  <text x="536" y="208" fill="#c9c4be" font-size="12">1N4007 no motor (cátodo no 5V)</text>
+  <text x="536" y="232" fill="#c9c4be" font-size="12">PWM 0 / 40 / 70 / 100%</text>
+  <text x="24" y="320" fill="#F7F3EE" font-family="monospace" font-size="12">
+LEDs: sala 0-3 | gap | quarto 5-8 | gap | fita 10-19 | gap | tv 21 | gap | ar 23 | gap | porta 25 | gap | cafe 27 | gap | vent 29
+  </text>
+  <text x="24" y="360" fill="#c9c4be" font-size="13">Porta LED 25: vermelho trancada / verde destrancada. Café 27: laranja pulsa / sólido. Ventilador 29: brilho girando.</text>
+  <polyline points="204,152 260,96" fill="none" stroke="#FF1A1A" stroke-width="2"/>
+  <polyline points="204,172 260,210" fill="none" stroke="#FF1A1A" stroke-width="2"/>
+  <polyline points="204,192 520,160" fill="none" stroke="#FF1A1A" stroke-width="2"/>
+</svg>

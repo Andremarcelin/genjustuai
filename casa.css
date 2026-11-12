@@ -716,6 +716,12 @@ body.page-casa {
   text-align: center;
 }
 
+.casa-device-status {
+  margin-left: auto;
+  color: #c9c4be;
+  font-size: 0.82rem;
+}
+
 .casa-ac-controls select {
   background: #111;
   color: #f5f5f5;

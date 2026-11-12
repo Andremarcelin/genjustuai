@@ -28,11 +28,14 @@ O servidor monta o JSON a partir de `public.house_state` da **sessão ativa** (`
 | `fita.cores` | cor da fita; em `time`, cores da sala e do quarto |
 | `tv.on` | `lights.tv.on` ou mídia tocando na TV |
 | `ar.on/modo` | `lights.ar_condicionado`. `modo` = `forte` se `fan=3` ou `temp≤18`, senão `normal` |
+| `porta.aberta/trancada` | `lights.porta` |
+| `cafe.estado` | `lights.cafe.estado`: `desligada` \| `preparando` \| `pronta` |
+| `ventilador.vel` | `lights.ventilador.vel` 0..3 |
 
 Exemplo:
 
 ```json
-{"version":7,"session":"ABC123","sala":{"on":true,"cor":"#FF1A1A","brilho":89},"quarto":{"on":false,"cor":"#FF1A1A","brilho":51},"fita":{"on":true,"efeito":"arcoiris","cores":["#7C3AED","#00FF88","#3B82F6"],"brilho":140},"tv":{"on":true},"ar":{"on":true,"modo":"forte"}}
+{"version":7,"session":"ABC123","sala":{"on":true,"cor":"#FF1A1A","brilho":89},"quarto":{"on":false,"cor":"#FF1A1A","brilho":51},"fita":{"on":true,"efeito":"arcoiris","cores":["#7C3AED","#00FF88","#3B82F6"],"brilho":140},"tv":{"on":true},"ar":{"on":true,"modo":"forte"},"porta":{"aberta":false,"trancada":true},"cafe":{"estado":"desligada"},"ventilador":{"vel":0}}
 ```
 
 A publicação só ocorre depois de um `house_state` gravado com sucesso (chat, voz, painel `/casa`, rotinas) e **nunca** quebra a API: sem `MQTT_*` ou timeout (~2 s) vira `console.warn`.
@@ -42,19 +45,38 @@ A publicação só ocorre depois de um `house_state` gravado com sucesso (chat, 
 - ESP32 DevKit
 - 1 fita WS2812B (30 LEDs sugeridos)
 - Resistor 330 Ω no DIN
+- Servo SG90 (porta)
+- Mini motor 5 V + transistor NPN (2N2222 ou TIP120) + diodo 1N4007 (flyback) + resistor ~1 kΩ na base
 
 Ligações:
 
 - VIN do ESP32 → 5 V da fita (USB 5 V serve para testes curtos; prefira fonte 5 V se a fita for longa)
-- GND → GND
-- GPIO16 → 330 Ω → DIN
+- GND → GND (comum com servo, motor e transistor)
+- GPIO16 → 330 Ω → DIN da fita
+- GPIO18 → sinal do SG90; 5 V e GND do servo na fonte
+- GPIO19 → 1 kΩ → base do NPN; emissor no GND; coletor no polo negativo do motor; polo positivo do motor em 5 V; 1N4007 em paralelo com o motor (cátodo no 5 V)
 
-Segmentos (1 LED apagado entre cada bloco): sala 0–3, gap 4, quarto 5–8, gap 9, fita 10–19, gap 20, TV 21, gap 22, ar 23, resto apagado. Edite a tabela `kMaqueteSegments` em `MaqueteMap.h`.
+Segmentos (1 LED apagado entre cada bloco): sala 0–3, gap 4, quarto 5–8, gap 9, fita 10–19, gap 20, TV 21, gap 22, ar 23, gap 24, porta/tranca 25, gap 26, café 27, gap 28, ventilador 29. Edite a tabela `kMaqueteSegments` em `MaqueteMap.h`. Diagrama: `docs/maquete-ligacoes-v2.svg`.
+
+ASCII:
+
+```
+5V ----+---- fita VIN ---- servo VCC ---- motor +
+       |                                      |
+      ESP32 VIN                          1N4007 (cátodo aqui)
+       |                                      |
+GND ---+---- fita GND ---- servo GND ---- motor − ---- coletor NPN
+       |                                              |
+    GPIO16 --330Ω-- DIN                          emissor → GND
+    GPIO18 -------- servo sinal                  base ← 1kΩ ← GPIO19
+```
+
+Servo: 0° fechada, 90° aberta. LED 25 vermelho = trancada, verde = destrancada. Café 27 laranja pulsa em `preparando`, sólido em `pronta`. Ventilador: PWM 0/40/70/100% no GPIO19 + LED 29 com brilho girando.
 
 ## Arduino IDE
 
 1. Instale o core **esp32 by Espressif** (placa `ESP32 Dev Module`).
-2. Bibliotecas: **FastLED**, **PubSubClient**, **ArduinoJson** (v7).
+2. Bibliotecas: **FastLED**, **PubSubClient**, **ArduinoJson** (v7), **ESP32Servo**.
 3. Copie `config.example.h` para `config.h` (este arquivo está no `.gitignore`) e preencha Wi‑Fi + host MQTT.
 4. Abra `esp32-maquete.ino` e grave.
 
@@ -74,7 +96,7 @@ CLI contra um broker público de teste (sem credenciais reais, tópico descartá
 ```bash
 mosquitto_pub -h broker.emqx.io -p 8883 --capath /etc/ssl/certs \
   -t "genjutsu/maquete/teste" -q 1 -r \
-  -m '{"version":1,"session":"TESTE1","sala":{"on":true,"cor":"#FF1A1A","brilho":200},"quarto":{"on":false,"cor":"#000000","brilho":0},"fita":{"on":true,"efeito":"fixo","cores":["#7C3AED"],"brilho":180},"tv":{"on":false},"ar":{"on":false,"modo":"normal"}}'
+  -m '{"version":1,"session":"TESTE1","sala":{"on":true,"cor":"#FF1A1A","brilho":200},"quarto":{"on":false,"cor":"#000000","brilho":0},"fita":{"on":true,"efeito":"fixo","cores":["#7C3AED"],"brilho":180},"tv":{"on":false},"ar":{"on":false,"modo":"normal"},"porta":{"aberta":false,"trancada":true},"cafe":{"estado":"desligada"},"ventilador":{"vel":0}}'
 ```
 
 Teste do mapeamento no host (sem placa):

@@ -3,6 +3,7 @@
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
 #include <FastLED.h>
+#include <ESP32Servo.h>
 #include <time.h>
 #include "config.h"
 #include "MaqueteMap.h"
@@ -14,9 +15,20 @@
 #define MQTT_MAX_PACKET_SIZE 1024
 #endif
 
+#ifndef SERVO_PIN
+#define SERVO_PIN 18
+#endif
+#ifndef FAN_PIN
+#define FAN_PIN 19
+#endif
+#ifndef FAN_PWM_CH
+#define FAN_PWM_CH 0
+#endif
+
 CRGB leds[NUM_LEDS];
 WiFiClientSecure net;
 PubSubClient mqtt(net);
+Servo portaServo;
 
 MaqueteState currentState;
 uint32_t lastVersion = 0;
@@ -34,6 +46,12 @@ void applyState(const MaqueteState& st, uint32_t nowMs) {
   }
   for (int i = n; i < NUM_LEDS; ++i) leds[i] = CRGB::Black;
   FastLED.show();
+  portaServo.write(maqueteServoDeg(st.portaAberta));
+#if defined(ESP_ARDUINO_VERSION) && ESP_ARDUINO_VERSION >= ESP_ARDUINO_VERSION_VAL(3, 0, 0)
+  ledcWrite(FAN_PIN, maqueteFanDuty(st.ventiladorVel));
+#else
+  ledcWrite(FAN_PWM_CH, maqueteFanDuty(st.ventiladorVel));
+#endif
 }
 
 void onMessage(char* topic, byte* payload, unsigned int length) {
@@ -75,6 +93,10 @@ void onMessage(char* topic, byte* payload, unsigned int length) {
     next.tvOn = doc["tv"]["on"] | false;
     next.arOn = doc["ar"]["on"] | false;
     strncpy(next.arModo, doc["ar"]["modo"] | "normal", sizeof(next.arModo) - 1);
+    next.portaAberta = doc["porta"]["aberta"] | false;
+    next.portaTrancada = doc["porta"]["trancada"] | true;
+    strncpy(next.cafeEstado, doc["cafe"]["estado"] | "desligada", sizeof(next.cafeEstado) - 1);
+    next.ventiladorVel = doc["ventilador"]["vel"] | 0;
   }
 
   if (!maqueteShouldApply(next.version, next.session, lastVersion, lastSession)) {
@@ -143,6 +165,20 @@ void setup() {
   FastLED.addLeds<WS2812B, DATA_PIN, GRB>(leds, NUM_LEDS);
   FastLED.setBrightness(MASTER_BRIGHTNESS);
   FastLED.clear(true);
+
+  ESP32PWM::allocateTimer(0);
+  ESP32PWM::allocateTimer(1);
+  portaServo.setPeriodHertz(50);
+  portaServo.attach(SERVO_PIN, 500, 2400);
+  portaServo.write(0);
+#if defined(ESP_ARDUINO_VERSION) && ESP_ARDUINO_VERSION >= ESP_ARDUINO_VERSION_VAL(3, 0, 0)
+  ledcAttach(FAN_PIN, 20000, 8);
+  ledcWrite(FAN_PIN, 0);
+#else
+  ledcSetup(FAN_PWM_CH, 20000, 8);
+  ledcAttachPin(FAN_PIN, FAN_PWM_CH);
+  ledcWrite(FAN_PWM_CH, 0);
+#endif
 
   WiFi.mode(WIFI_STA);
   WiFi.begin(WIFI_SSID, WIFI_PASS);
