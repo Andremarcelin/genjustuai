@@ -590,10 +590,11 @@ button, input, select { font: inherit; }
   letter-spacing: 0.12em;
 }
 
-.page-gen .history { gap: 12px; }
+.page-gen .history { gap: 12px; overflow-x: hidden; max-width: 100%; }
 .page-gen .history-who { color: #ffb4b4; }
 .page-gen .history-item p,
-.page-gen .history-empty { margin: 2px 0 0; color: var(--text); }
+.page-gen .history-empty { margin: 2px 0 0; color: var(--text); overflow-wrap: anywhere; word-break: break-word; white-space: pre-wrap; }
+.page-gen .history-item a { color: #ffb4b4; }
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }

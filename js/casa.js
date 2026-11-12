@@ -1,6 +1,7 @@
 (function () {
   var View = window.GenjutsuCasaView || {};
   var Voice = window.GenjutsuCasaVoice || {};
+  var ChatFormat = window.GenjutsuChatFormat || {};
   var DEVICES = [
     { id: "sala_luz", label: "Luz Sala", room: "Sala", kind: "light", overlay: "sala", icon: "bulb" },
     { id: "quarto_luz", label: "Luz Quarto", room: "Quarto", kind: "light", overlay: "quarto", icon: "lamp" },
@@ -304,7 +305,8 @@
     var thread = $("casa-thread");
     var li = document.createElement("li");
     li.className = "casa-bubble" + (role === "you" ? " is-you" : "");
-    li.textContent = text;
+    if (ChatFormat.formatChatHtml) li.innerHTML = ChatFormat.formatChatHtml(text);
+    else li.textContent = text;
     thread.appendChild(li);
     thread.scrollTop = thread.scrollHeight;
   }

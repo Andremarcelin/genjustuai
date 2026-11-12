@@ -886,9 +886,11 @@ input::placeholder { color: var(--faint); }
   display: flex;
   flex-direction: column;
   gap: 10px;
+  overflow-x: hidden;
+  max-width: 100%;
 }
 
-.history-item { margin: 0; }
+.history-item { margin: 0; min-width: 0; }
 .history-who {
   display: block;
   font-family: Inter, system-ui, sans-serif;
@@ -898,7 +900,13 @@ input::placeholder { color: var(--faint); }
   text-transform: uppercase;
   color: #8d2a24;
 }
-.history-item p { margin: 2px 0 0; color: #24160d; }
+.history-item p {
+  margin: 2px 0 0;
+  color: #24160d;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
 .history-empty { color: #5c4030; font-style: italic; }
 
 @media (max-width: 860px) {
