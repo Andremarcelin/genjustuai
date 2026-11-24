@@ -24,6 +24,9 @@
   var configReady = Promise.resolve();
   var READY_STORE = "genjutsu_ready_v1";
   var waitLineTimer = null;
+  var waitHideTimer = null;
+  var waitShownAt = 0;
+  var WAIT_MIN_MS = 1200;
   var WAIT_LINES = [
     "O Gen arruma o seu espaço segundo o perfil que você mostrou.",
     "A tinta ainda corre no pergaminho da sessão.",
@@ -60,9 +63,14 @@
   function showSessionWait() {
     var wait = $("session-wait");
     if (!wait) return;
+    if (waitHideTimer) {
+      clearTimeout(waitHideTimer);
+      waitHideTimer = null;
+    }
     wait.hidden = false;
     wait.setAttribute("aria-hidden", "false");
     document.body.classList.add("is-session-wait");
+    waitShownAt = Date.now();
     waitLineIndex = 0;
     setWaitLine();
     if (waitLineTimer) clearInterval(waitLineTimer);
@@ -83,6 +91,24 @@
       clearInterval(waitLineTimer);
       waitLineTimer = null;
     }
+    if (waitHideTimer) {
+      clearTimeout(waitHideTimer);
+      waitHideTimer = null;
+    }
+  }
+
+  function hideSessionWaitSoon(force) {
+    if (force) {
+      hideSessionWait();
+      return;
+    }
+    var remain = WAIT_MIN_MS - (Date.now() - waitShownAt);
+    if (remain <= 0) {
+      hideSessionWait();
+      return;
+    }
+    if (waitHideTimer) clearTimeout(waitHideTimer);
+    waitHideTimer = setTimeout(hideSessionWait, remain);
   }
 
   function randomSessionCode() {
@@ -1146,7 +1172,7 @@
       paintReady(saved);
       journeyPhase = "ready";
       showScreen("screen-ready");
-      hideSessionWait();
+      hideSessionWaitSoon(false);
     }
     try {
       var saved = await G.saveWithoutLogin({
@@ -1197,11 +1223,11 @@
       watchHistory(saved.user);
       setStatus("status-questionnaire", "");
     } catch (err) {
-      hideSessionWait();
+      hideSessionWaitSoon(true);
       setStatus("status-questionnaire", err.message || "Erro ao salvar.", true);
     } finally {
       saveInProgress = false;
-      hideSessionWait();
+      if (!readyShown) hideSessionWaitSoon(true);
       var saveBtn = $("btn-save-questionnaire");
       if (saveBtn) saveBtn.disabled = false;
     }

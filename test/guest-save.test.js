@@ -365,8 +365,12 @@ test("the page copy tells the visitor they are saving without an account", () =>
   assert.match(index, /id="session-wait-line"/);
   assert.match(index, /class="parchment"/);
   assert.match(css, /session-wait/);
+  assert.match(css, /safe-area-inset-top/);
+  assert.match(css, /100dvh/);
   assert.match(portal, /onSessionCode/);
   assert.match(portal, /showSessionWait/);
+  assert.match(portal, /WAIT_MIN_MS/);
+  assert.match(portal, /hideSessionWaitSoon/);
   assert.doesNotMatch(index, /não é só/i);
   assert.doesNotMatch(index, /revolucionar|ecossistema|engenharia invisível/i);
   assert.doesNotMatch(index, /ESP32|fox|raposa/i);
