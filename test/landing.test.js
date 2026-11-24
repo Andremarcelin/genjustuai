@@ -13,6 +13,8 @@ assert.match(landing, /brand-kanji/);
 assert.match(landing, /幻術/);
 assert.match(landing, /href="\/entrada\?via=guest"/);
 assert.match(landing, /href="\/entrada\?via=google"/);
+assert.match(landing, />Começar</);
+assert.match(landing, /Já tem conta\? Entrar com Google/);
 assert.match(landing, /h === "entrada"/);
 assert.match(landing, /location\.replace\("\/entrada"/);
 assert.doesNotMatch(landing, /href="\/casa"/);
