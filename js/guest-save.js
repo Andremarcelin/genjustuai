@@ -247,18 +247,6 @@
       updated_at: now
     };
 
-    var dossierWrite = await writeRow(deps.writeDossier, dossierRow);
-    var summaryWrite = await writeRow(deps.writeSummary, summaryRow);
-    var activated = false;
-    if (typeof deps.activateSession === "function") {
-      try {
-        var activation = await deps.activateSession(sessionCode);
-        activated = !(activation && activation.error);
-      } catch (activateErr) {
-        activated = false;
-      }
-    }
-    var profilePendingSql = dossierWrite.profilePendingSql || summaryWrite.profilePendingSql;
     var recordSource = {
       display_name: persona.displayName,
       preferencias: base.preferencias,
@@ -280,7 +268,7 @@
       recordSource.tasks_count = (base.tasks || []).length;
     }
     var fields = fieldsFor(recordSource);
-    return {
+    var early = {
       sessionCode: sessionCode,
       user: namedUser,
       visitorName: persona.displayName,
@@ -289,10 +277,30 @@
       profile: picked,
       persona: persona,
       dossier: base,
-      fields: fields,
+      fields: fields
+    };
+    if (typeof deps.onSessionCode === "function") deps.onSessionCode(early);
+
+    var writes = await Promise.all([
+      writeRow(deps.writeDossier, dossierRow),
+      writeRow(deps.writeSummary, summaryRow)
+    ]);
+    var dossierWrite = writes[0];
+    var summaryWrite = writes[1];
+    var activated = false;
+    if (typeof deps.activateSession === "function") {
+      try {
+        var activation = await deps.activateSession(sessionCode);
+        activated = !(activation && activation.error);
+      } catch (activateErr) {
+        activated = false;
+      }
+    }
+    var profilePendingSql = dossierWrite.profilePendingSql || summaryWrite.profilePendingSql;
+    return Object.assign(early, {
       profilePendingSql: profilePendingSql,
       activated: activated
-    };
+    });
   }
 
   return {

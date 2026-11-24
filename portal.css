@@ -1363,3 +1363,103 @@ body.page-entrada #btn-leave-ready {
   margin: 12px 0 0;
   width: 100%;
 }
+
+.session-wait[hidden] { display: none !important; }
+
+.session-wait {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.session-wait-veil {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 50% 18%, rgba(122, 15, 15, 0.55), transparent 48%),
+    rgba(5, 5, 5, 0.88);
+}
+
+.session-wait-card {
+  position: relative;
+  z-index: 1;
+  width: min(22rem, 100%);
+  text-align: center;
+  padding: 1.4rem 1.2rem 1.5rem;
+  border-radius: 18px;
+  border: 1px solid rgba(224, 40, 40, 0.45);
+  background: linear-gradient(180deg, rgba(18, 8, 8, 0.96), rgba(8, 4, 4, 0.96));
+  box-shadow: 0 0 28px rgba(224, 40, 40, 0.18);
+}
+
+.session-wait-crow {
+  display: block;
+  margin: 0 auto 0.7rem;
+}
+
+.session-wait-crow .crow-wing {
+  transform-origin: 52px 44px;
+  animation: crow-ink 2.4s ease-in-out infinite;
+}
+
+.session-wait-crow .ink-stroke {
+  stroke-dasharray: 140;
+  stroke-dashoffset: 140;
+  animation: ink-write 2.8s ease-in-out infinite;
+}
+
+.session-wait-crow .wait-kanji {
+  opacity: 0.55;
+  animation: kanji-breathe 3.2s ease-in-out infinite;
+}
+
+.session-wait-title {
+  margin: 0 0 0.45rem;
+  font-family: var(--display);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-size: 0.82rem;
+  color: #ff8a8a;
+}
+
+.session-wait-line {
+  margin: 0;
+  min-height: 3.2em;
+  color: #f5f5f5;
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+@keyframes crow-ink {
+  0%, 100% { transform: rotate(0deg) translateY(0); opacity: 1; }
+  50% { transform: rotate(-8deg) translateY(-3px); opacity: 0.85; }
+}
+
+@keyframes ink-write {
+  0% { stroke-dashoffset: 140; opacity: 0.2; }
+  45% { stroke-dashoffset: 0; opacity: 0.85; }
+  100% { stroke-dashoffset: -20; opacity: 0.2; }
+}
+
+@keyframes kanji-breathe {
+  0%, 100% { opacity: 0.28; }
+  50% { opacity: 0.8; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .session-wait-crow .crow-wing,
+  .session-wait-crow .ink-stroke,
+  .session-wait-crow .wait-kanji {
+    animation: none;
+  }
+  .session-wait-crow .ink-stroke { stroke-dashoffset: 0; opacity: 0.7; }
+  .session-wait-crow .wait-kanji { opacity: 0.7; }
+}
+
+@media (max-width: 430px) {
+  .session-wait { padding: 16px; }
+  .session-wait-card { padding: 1.15rem 1rem 1.25rem; }
+}
