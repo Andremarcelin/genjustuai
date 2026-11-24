@@ -1,8 +1,10 @@
 import { readSupabaseConfig, supabaseRest } from "../../lib/supabase-rest.cjs";
 import { sanitizeProfileId } from "../session.js";
+import { publicTokenFields } from "../../lib/gen/token-usage.js";
+import { tokensFromSummaryRow } from "../../lib/gen/session-tokens.js";
 
 const CODE_RE = /^[A-HJ-NP-Z2-9]{6}$/i;
-const SQL_HINT = "SQL ainda não rodou neste Supabase. No SQL Editor, nesta ordem: sql/dossiers.sql, sql/sessions.sql, sql/app_state.sql, sql/admin_read.sql, sql/anonymous_auth.sql, sql/profile_id.sql e sql/session_lifecycle.sql. Em Authentication → Providers, ative Anonymous sign-ins.";
+const SQL_HINT = "SQL ainda não rodou neste Supabase. No SQL Editor, nesta ordem: sql/dossiers.sql, sql/sessions.sql, sql/app_state.sql, sql/admin_read.sql, sql/anonymous_auth.sql, sql/profile_id.sql, sql/session_lifecycle.sql e sql/session_tokens.sql. Em Authentication → Providers, ative Anonymous sign-ins.";
 
 // MVP: /admin is intentionally open. ADMIN_SECRET is not read, and this
 // handler does not require a PIN, Authorization, x-admin-secret, or the
@@ -47,6 +49,7 @@ function resolveStatus(row, currentCode) {
 
 async function listSummaries() {
   const selects = [
+    "session_code,display_name,profile_id,status,ended_at,updated_at,tokens_in,tokens_out,tokens_total,token_calls,tokens_estimated",
     "session_code,display_name,profile_id,status,ended_at,updated_at",
     "session_code,display_name,profile_id,updated_at",
     "session_code,display_name,updated_at",
@@ -72,6 +75,7 @@ async function listSummaries() {
 
 function toAdminRow(row, currentCode) {
   const code = String(row.session_code || "").toUpperCase();
+  const tokens = tokensFromSummaryRow(row);
   return {
     session_code: row.session_code,
     display_name: row.display_name || row.email || "Sem nome",
@@ -80,6 +84,8 @@ function toAdminRow(row, currentCode) {
     status: resolveStatus(row, currentCode),
     ended_at: row.ended_at || null,
     updated_at: row.updated_at,
+    ...publicTokenFields(tokens),
+    tokens_estimated: Boolean(tokens.estimated),
   };
 }
 

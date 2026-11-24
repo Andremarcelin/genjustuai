@@ -252,6 +252,13 @@
         dl.appendChild(row);
       });
     }
+    var T = scopeTokens();
+    if (T) T.paint(document.getElementById("ready-tokens"), session);
+  }
+
+  function scopeTokens() {
+    var scope = root || (typeof window !== "undefined" ? window : globalThis);
+    return scope.GenjutsuSessionTokens || null;
   }
 
   function codeFromLocation(loc) {

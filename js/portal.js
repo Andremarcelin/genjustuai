@@ -876,6 +876,20 @@
       .subscribe();
   }
 
+  function paintSessionTokens(code) {
+    var el = $("ready-tokens");
+    var T = window.GenjutsuSessionTokens;
+    if (!el || !T) return;
+    T.paint(el, { tokens_in: 0, tokens_out: 0, tokens_total: 0, calls: 0 });
+    if (!code) return;
+    fetch("/api/session?code=" + encodeURIComponent(code), { cache: "no-store" })
+      .then(function (res) { return res.json(); })
+      .then(function (body) {
+        T.paint(el, body && (body.session || body));
+      })
+      .catch(function () {});
+  }
+
   function paintReady(saved) {
     var profile = saved && saved.profile;
     var meta = profile && Z && Z.META[profile.profile_id];
@@ -910,6 +924,7 @@
     var titleEl = $("record-title");
     if (titleEl) titleEl.textContent = saved && saved.guest === false ? "Salvo na conta" : "Salvo sem conta";
     persistReadySnapshot(saved);
+    paintSessionTokens(code);
     var thumb = $("ready-house-thumb");
     if (thumb && profile && profile.profile_id) {
       thumb.src = "/assets/casa/" + String(profile.profile_id).toLowerCase() + ".jpg";

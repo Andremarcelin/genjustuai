@@ -53,5 +53,7 @@ assert.match(portal, /via === "guest"/);
 assert.match(portal, /onEntryRoute/);
 assert.match(portal, /genjutsu_ready_v1/);
 assert.match(portal, /restoreReady/);
+assert.match(portal, /paintSessionTokens/);
+assert.match(portal, /ready-tokens/);
 
 console.log("landing tests ok");
