@@ -1,10 +1,10 @@
 import { supabaseRest } from "../lib/supabase-rest.cjs";
-import { userIdFromBearer } from "../lib/gen/http.js";
+import { requireActiveSession, userIdFromBearer } from "../lib/gen/http.js";
 import { readHouseState } from "../lib/gen/house-store.js";
 import { summarizeVisit } from "../lib/gen/visit-summary.js";
 import { normalizeGenStyle } from "../lib/gen/style.js";
-import { publicTokenFields } from "../lib/gen/token-usage.js";
-import { tokensFromSummaryRow } from "../lib/gen/session-tokens.js";
+import { normalizeUsage, publicTokenFields } from "../lib/gen/token-usage.js";
+import { addSessionTokens, tokensFromSummaryRow } from "../lib/gen/session-tokens.js";
 
 const PROFILE_IDS = new Set(["Zen", "Cyber", "Excentrico", "Acolhedor"]);
 const SESSION_STATUSES = new Set(["ready", "active", "ended"]);
@@ -199,10 +199,37 @@ export async function loadActiveSession() {
   return { session: found.data };
 }
 
+async function handleUsagePost(req, res) {
+  const found = await requireActiveSession(res, loadSessionForRequest, req);
+  if (!found) return;
+  const body = req.body && typeof req.body === "object" ? req.body : {};
+  const usage = normalizeUsage({
+    tokens_in: body.tokens_in ?? body.inputTokens,
+    tokens_out: body.tokens_out ?? body.outputTokens,
+    tokens_total: body.tokens_total ?? body.totalTokens,
+    calls: body.calls ?? 1,
+    estimated: body.estimated,
+  });
+  if (!usage.calls && !usage.tokens_total) {
+    res.status(200).json({ ok: true, skipped: true, ...publicTokenFields(usage) });
+    return;
+  }
+  await addSessionTokens(found.id, usage);
+  res.status(200).json({ ok: true, ...publicTokenFields(usage) });
+}
+
 export default async function handler(req, res) {
   cors(res);
   if (req.method === "OPTIONS") {
     res.status(204).end();
+    return;
+  }
+  if (req.method === "POST") {
+    try {
+      await handleUsagePost(req, res);
+    } catch {
+      if (!res.headersSent) sendError(res, 503, "supabase_unreachable");
+    }
     return;
   }
   if (req.method !== "GET") {

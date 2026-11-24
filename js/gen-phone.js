@@ -265,7 +265,7 @@ import {
     var payload = liveUsage;
     liveUsage = { tokens_in: 0, tokens_out: 0, tokens_total: 0, calls: 0 };
     try {
-      await fetch("/api/gen/usage", {
+      await fetch("/api/session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

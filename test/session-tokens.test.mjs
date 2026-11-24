@@ -134,5 +134,6 @@ test("sql migration and screens include the counter", () => {
   const admin = fs.readFileSync(new URL("../admin.html", import.meta.url), "utf8");
   assert.match(entrada, /id="ready-tokens"/);
   assert.match(codigo, /id="ready-tokens"/);
-  assert.match(admin, /tokenLine/);
+  assert.match(admin, /tokenHtml/);
+  assert.equal(fs.existsSync(new URL("../api/gen/usage.js", import.meta.url)), false);
 });

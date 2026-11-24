@@ -103,6 +103,44 @@ test("empty app_state is session null and a missing summary is not_found", async
   });
 });
 
+test("POST /api/session records live usage on the active session", async () => {
+  const rpc = [];
+  global.fetch = async (url, options) => {
+    const target = String(url);
+    if (target.includes("app_state")) return jsonResponse([{ current_session_code: "AB3K7Q" }]);
+    if (target.includes("genjutsu_add_session_tokens")) {
+      rpc.push(options && options.body);
+      return jsonResponse({ tokens_total: 15, calls: 1 });
+    }
+    return jsonResponse([{
+      session_code: "AB3K7Q",
+      display_name: "Lina",
+      personality_text: "frase",
+      archetype: "Zen",
+      profile_id: "Zen",
+      status: "active",
+    }]);
+  };
+  await withEnv({
+    SUPABASE_URL: "https://example.supabase.co",
+    SUPABASE_ANON_KEY: ANON,
+    SUPABASE_SERVICE_ROLE: SERVICE,
+  }, async () => {
+    const res = mockRes();
+    await sessionHandler({
+      method: "POST",
+      query: {},
+      headers: { "content-type": "application/json" },
+      body: { tokens_in: 12, tokens_out: 3, tokens_total: 15, calls: 1 },
+    }, res);
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.body.ok, true);
+    assert.equal(res.body.tokens_total, 15);
+    assert.equal(rpc.length, 1);
+    assert.match(String(rpc[0]), /AB3K7Q/);
+  });
+});
+
 test("summary JSON includes a sanitized profile_id and keeps archetype", async () => {
   global.fetch = async () => jsonResponse([{
     session_code: "AB3K7Q",
