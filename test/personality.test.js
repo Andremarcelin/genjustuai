@@ -94,6 +94,8 @@ assert.ok(styleLines < 200, "inline CSS lines: " + styleLines);
 assert.ok(index.includes("Continuar com Google"));
 assert.ok(index.includes("Continuar sem conta"));
 assert.ok(index.includes("ou Microsoft"));
+assert.ok(landing.includes("Começar"));
+assert.ok(landing.includes("Já tem conta? Entrar com Google"));
 assert.ok(landing.includes("Continuar com Google"));
 assert.ok(landing.includes("Continuar sem conta"));
 assert.ok(landing.includes('href="/entrada?via=guest"'));
