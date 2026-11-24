@@ -24,6 +24,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Libre+Baskerville:ital,wght@0,400;1,400&family=Noto+Serif+JP:wght@600;700&family=Oswald:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="preload" href="/assets/tex-parchment.jpg" as="image">
+<link rel="preload" href="/assets/scroll-paper.webp" as="image">
 <link rel="stylesheet" href="/site.css">
 <link rel="stylesheet" href="/portal.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -258,6 +260,25 @@
       <button class="cta ghost" id="btn-close-config" type="button">Voltar</button>
     </div>
     <div class="status" id="status-config" role="status"></div>
+  </div>
+</div>
+
+<div class="session-wait" id="session-wait" hidden>
+  <div class="session-wait-veil" aria-hidden="true"></div>
+  <div class="session-wait-card" role="status" aria-live="polite" aria-busy="true">
+    <svg class="session-wait-crow" viewBox="0 0 140 96" width="96" height="66" aria-hidden="true">
+      <g fill="none" stroke="#E02828" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+        <path class="crow-body" d="M28 62c4-16 16-28 34-32 12-3 24 0 34 8 6 4 10 6 16 6 8 0 14-4 20-2-6 7-8 16-4 24-12 0-22 6-34 12-14 8-30 10-46 4-10-4-18-12-20-20z"/>
+        <path class="crow-wing" d="M48 50c10-18 28-26 48-22 4 10 0 22-12 30"/>
+        <path class="crow-beak" d="M112 42l22 6-20 10"/>
+        <path d="M36 70l-10 10M44 74l-8 12"/>
+        <circle cx="96" cy="42" r="2.2" fill="#E02828" stroke="none"/>
+        <path class="ink-stroke" d="M20 86c22-8 40 2 62-4 18-5 32-2 46 8" stroke-width="1.3" opacity=".7"/>
+      </g>
+      <text class="wait-kanji" x="48" y="26" text-anchor="middle" fill="#9b1c1c" font-family="Noto Serif JP, serif" font-size="13">幻術</text>
+    </svg>
+    <p class="session-wait-title">Preparando a sua sessão</p>
+    <p class="session-wait-line" id="session-wait-line">O Gen arruma o seu espaço segundo o perfil que você mostrou.</p>
   </div>
 </div>
 

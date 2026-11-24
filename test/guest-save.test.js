@@ -231,6 +231,39 @@ test("a guest without a name does not open an anonymous session", async () => {
   assert.equal(G.normalizeVisitorName("   "), "");
 });
 
+test("dossier and summary writes start together after the session code", async () => {
+  const order = [];
+  const deps = depsFor(authWith(null, guestUser()), { visitorName: "Lina" });
+  deps.onSessionCode = function (partial) {
+    order.push("code:" + partial.sessionCode);
+  };
+  deps.writeDossier = async function (row) {
+    order.push("dossier-start");
+    await new Promise(function (resolve) { setTimeout(resolve, 40); });
+    deps.writes.dossier.push(row);
+    order.push("dossier-end");
+    return { error: null };
+  };
+  deps.writeSummary = async function (row) {
+    order.push("summary-start");
+    await new Promise(function (resolve) { setTimeout(resolve, 40); });
+    deps.writes.summary.push(row);
+    order.push("summary-end");
+    return { error: null };
+  };
+  deps.activateSession = async function (code) {
+    order.push("activate:" + code);
+    return { data: code, error: null };
+  };
+  const saved = await G.saveWithoutLogin(deps);
+  assert.equal(saved.sessionCode, CODE);
+  assert.equal(order[0], "code:" + CODE);
+  assert.equal(order[1], "dossier-start");
+  assert.equal(order[2], "summary-start");
+  assert.ok(order.indexOf("activate:" + CODE) > order.indexOf("dossier-end"));
+  assert.ok(order.indexOf("activate:" + CODE) > order.indexOf("summary-end"));
+});
+
 test("saving a visitor activates that session and drops the previous active one", async () => {
   const deps = depsFor(authWith(null, guestUser()), { visitorName: "Lina" });
   const calls = [];
@@ -328,14 +361,27 @@ test("the page copy tells the visitor they are saving without an account", () =>
   assert.match(index, /id="quiz-profile"/);
   assert.match(index, /id="ready-profile"/);
   assert.match(index, /id="ready-records"/);
+  assert.match(index, /id="session-wait"/);
+  assert.match(index, /id="session-wait-line"/);
   assert.match(index, /class="parchment"/);
+  assert.match(css, /session-wait/);
+  assert.match(css, /safe-area-inset-top/);
+  assert.match(css, /100dvh/);
+  assert.match(portal, /onSessionCode/);
+  assert.match(portal, /showSessionWait/);
+  assert.match(portal, /WAIT_MIN_MS/);
+  assert.match(portal, /hideSessionWaitSoon/);
+  assert.doesNotMatch(index, /não é só/i);
+  assert.doesNotMatch(index, /revolucionar|ecossistema|engenharia invisível/i);
+  assert.doesNotMatch(index, /ESP32|fox|raposa/i);
   assert.doesNotMatch(index, /house-card|data-house|Escolha a casa|Escolha o dojo/);
   assert.match(portal, /signInWithOAuth/);
   assert.match(portal, /saveWithoutLogin/);
   assert.match(portal, /loadStoredDossier/);
   assert.match(portal, /if \(!persona\.profile_id\) return;/);
   assert.match(portal, /genjutsu_allocate_session_code/);
-  assert.match(portal, /ensureSession:\s*allocateSessionCode/);
+  assert.match(portal, /ensureSession:\s*async function/);
+  assert.match(portal, /allocateSessionCode\(user\)/);
   assert.match(portal, /from\("session_summaries"\)\.insert\(row\)/);
   assert.doesNotMatch(portal, /onConflict:\s*"profile_id"/);
   assert.doesNotMatch(portal, /Sessão expirada/);

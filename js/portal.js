@@ -23,6 +23,93 @@
   var guestIntent = false;
   var configReady = Promise.resolve();
   var READY_STORE = "genjutsu_ready_v1";
+  var waitLineTimer = null;
+  var waitHideTimer = null;
+  var waitShownAt = 0;
+  var WAIT_MIN_MS = 1200;
+  var WAIT_LINES = [
+    "O Gen arruma o seu espaço segundo o perfil que você mostrou.",
+    "A tinta ainda corre no pergaminho da sessão.",
+    "O corvo anota o código que você leva ao headset.",
+    "Luz, som e clima se acomodam ao jeito da sua casa."
+  ];
+  var waitLineIndex = 0;
+
+  function markTime(label, started) {
+    var now = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
+    if (started != null) console.info("[genjutsu-timing]", label, Math.round(now - started) + "ms");
+    return now;
+  }
+
+  function preloadReadyAssets(profileId) {
+    ["/assets/tex-parchment.jpg", "/assets/scroll-paper.webp"].forEach(function (href) {
+      var img = new Image();
+      img.src = href;
+    });
+    var id = profileId ? String(profileId).toLowerCase() : "";
+    if (id) {
+      var house = new Image();
+      house.src = "/assets/casa/" + id + ".jpg";
+    }
+  }
+
+  function setWaitLine() {
+    var el = $("session-wait-line");
+    if (!el) return;
+    el.textContent = WAIT_LINES[waitLineIndex % WAIT_LINES.length];
+    waitLineIndex += 1;
+  }
+
+  function showSessionWait() {
+    var wait = $("session-wait");
+    if (!wait) return;
+    if (waitHideTimer) {
+      clearTimeout(waitHideTimer);
+      waitHideTimer = null;
+    }
+    wait.hidden = false;
+    wait.setAttribute("aria-hidden", "false");
+    document.body.classList.add("is-session-wait");
+    waitShownAt = Date.now();
+    waitLineIndex = 0;
+    setWaitLine();
+    if (waitLineTimer) clearInterval(waitLineTimer);
+    var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (!reduce) waitLineTimer = setInterval(setWaitLine, 2400);
+    var btn = $("btn-save-questionnaire");
+    if (btn) btn.disabled = true;
+  }
+
+  function hideSessionWait() {
+    var wait = $("session-wait");
+    if (wait) {
+      wait.hidden = true;
+      wait.setAttribute("aria-hidden", "true");
+    }
+    document.body.classList.remove("is-session-wait");
+    if (waitLineTimer) {
+      clearInterval(waitLineTimer);
+      waitLineTimer = null;
+    }
+    if (waitHideTimer) {
+      clearTimeout(waitHideTimer);
+      waitHideTimer = null;
+    }
+  }
+
+  function hideSessionWaitSoon(force) {
+    if (force) {
+      hideSessionWait();
+      return;
+    }
+    var remain = WAIT_MIN_MS - (Date.now() - waitShownAt);
+    if (remain <= 0) {
+      hideSessionWait();
+      return;
+    }
+    if (waitHideTimer) clearTimeout(waitHideTimer);
+    waitHideTimer = setTimeout(hideSessionWait, remain);
+  }
 
   function randomSessionCode() {
     var out = "";
@@ -146,6 +233,7 @@
       paintSaveCopy();
       prefillVisitorName();
       paintQuizBar();
+      preloadReadyAssets();
     }
     var title = screen && screen.querySelector(".screen-title");
     if (title) {
@@ -931,7 +1019,13 @@
       thumb.alt = "Casa " + profile.profile_id;
     }
     revealParchment();
-    watchHistory(saved && saved.user);
+    if (!saved || !saved.deferHistory) {
+      if (typeof requestAnimationFrame === "function") {
+        requestAnimationFrame(function () { watchHistory(saved && saved.user); });
+      } else {
+        setTimeout(function () { watchHistory(saved && saved.user); }, 0);
+      }
+    }
   }
 
   function renderQuestProfile(resolved) {
@@ -1049,6 +1143,7 @@
   $("btn-leave-ready").addEventListener("click", leaveJourney);
 
   $("btn-save-questionnaire").addEventListener("click", async function () {
+    if (saveInProgress) return;
     var answers = quizAnswers();
     var visitorName = visitorNameValue();
     var savingAsGuest = guestIntent || !currentPaintUser || P.isGuest(currentPaintUser);
@@ -1062,7 +1157,8 @@
       return;
     }
     if (nameInput) nameInput.removeAttribute("aria-invalid");
-    if (!G.selection(answers[0], answers[1], answers[2])) {
+    var picked = G.selection(answers[0], answers[1], answers[2]);
+    if (!picked) {
       setStatus("status-questionnaire", "Responda as três perguntas antes de salvar.", true);
       return;
     }
@@ -1070,10 +1166,29 @@
       setStatus("status-questionnaire", "A conexão com o Supabase não está pronta.", true);
       return;
     }
+    preloadReadyAssets(picked.profile_id);
     setStatus("status-questionnaire", savingAsGuest
       ? "Salvando como visitante, sem conta…"
       : "Salvando suas preferências…");
     saveInProgress = true;
+    var t0 = markTime("quiz-save start");
+    var readyShown = false;
+    showSessionWait();
+    function openReady(saved) {
+      if (readyShown || !saved || !saved.sessionCode) return;
+      readyShown = true;
+      markTime("ready screen (code in hand)", t0);
+      guestIntent = saved.guest;
+      journeyUserId = saved.user.id;
+      currentPaintUser = saved.user;
+      renderSessionCode(saved.sessionCode);
+      paintIdentity(saved.user);
+      saved.deferHistory = true;
+      paintReady(saved);
+      journeyPhase = "ready";
+      showScreen("screen-ready");
+      hideSessionWaitSoon(false);
+    }
     try {
       var saved = await G.saveWithoutLogin({
         auth: sb.auth,
@@ -1091,7 +1206,16 @@
         visitorName: visitorName,
         personality: P.buildPersonality,
         remember: function (dossier) { globalDossie = dossier; },
-        ensureSession: allocateSessionCode,
+        ensureSession: async function (user) {
+          var tCode = markTime("allocateSessionCode start");
+          var code = await allocateSessionCode(user);
+          markTime("allocateSessionCode done", tCode);
+          return code;
+        },
+        onSessionCode: function (partial) {
+          markTime("onSessionCode", t0);
+          openReady(partial);
+        },
         activateSession: function (code) {
           return sb.rpc("genjutsu_set_current_session", { p_code: code });
         },
@@ -1102,34 +1226,25 @@
           return sb.from("session_summaries").insert(row);
         }
       });
-      guestIntent = saved.guest;
-      journeyUserId = saved.user.id;
-      currentPaintUser = saved.user;
+      markTime("saveWithoutLogin complete (writes+activate)", t0);
+      openReady(saved);
       if (saved.guest && visitorName) {
         var avatar = location.origin + "/assets/guest-avatar.jpg";
-        try {
-          await sb.auth.updateUser({
-            data: { full_name: visitorName, avatar_url: avatar, guest: true }
-          });
-        } catch (e) {
-          console.warn("nome do visitante:", e);
-        }
+        sb.auth.updateUser({
+          data: { full_name: visitorName, avatar_url: avatar, guest: true }
+        }).catch(function (e) { console.warn("nome do visitante:", e); });
       }
-      renderSessionCode(saved.sessionCode);
-      paintIdentity(saved.user);
-      paintReady(saved);
-      await logInteraction(saved.user, "quiz", globalDossie.preferencias);
-      setStatus("status-questionnaire", G.savedMessage(saved.sessionCode, saved.profile, {
-        guest: saved.guest,
-        profilePendingSql: saved.profilePendingSql
-      }));
-      journeyPhase = "ready";
-      showScreen("screen-ready");
+      logInteraction(saved.user, "quiz", globalDossie.preferencias);
+      watchHistory(saved.user);
       setStatus("status-questionnaire", "");
     } catch (err) {
+      hideSessionWaitSoon(true);
       setStatus("status-questionnaire", err.message || "Erro ao salvar.", true);
     } finally {
       saveInProgress = false;
+      if (!readyShown) hideSessionWaitSoon(true);
+      var saveBtn = $("btn-save-questionnaire");
+      if (saveBtn) saveBtn.disabled = false;
     }
   });
 
