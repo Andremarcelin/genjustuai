@@ -71,6 +71,26 @@
   function profileLabel(profileId) {
     return profileId ? "Perfil do Quest: " + profileId : "Sem perfil do Quest";
   }
+  function formatPt(value) {
+    return Math.max(0, Math.floor(Number(value) || 0)).toLocaleString("pt-BR");
+  }
+  function tokenLine(row) {
+    var total = formatPt(row && row.tokens_total);
+    var inn = formatPt(row && row.tokens_in);
+    var out = formatPt(row && row.tokens_out);
+    var calls = formatPt(row && row.calls);
+    var extra = row && row.tokens_estimated ? " · parte estimada" : "";
+    return "Tokens: " + total + " (entrada " + inn + " · saída " + out + " · " + calls + " chamadas)" + extra;
+  }
+  function tokenHtml(row) {
+    var extra = row && row.tokens_estimated ? " · parte estimada" : "";
+    return '<div class="tokens">'
+      + '<span class="tokens-total">Tokens: ' + esc(formatPt(row && row.tokens_total)) + "</span>"
+      + '<span class="tokens-split">entrada ' + esc(formatPt(row && row.tokens_in))
+      + " · saída " + esc(formatPt(row && row.tokens_out))
+      + " · " + esc(formatPt(row && row.calls)) + " chamadas" + extra + "</span>"
+      + "</div>";
+  }
   function statusLabel(status) {
     if (status === "active") return "Ativa";
     if (status === "ended") return "Encerrada";
@@ -122,6 +142,7 @@
         + '<div class="muted">' + email + "</div>"
         + '<div class="muted">' + esc(profileLabel(r.profile_id)) + "</div>"
         + '<div class="muted">Status: ' + esc(statusLabel(r.status)) + "</div>"
+        + tokenHtml(r)
         + '<div class="cd">' + esc(r.session_code) + "</div>"
         + "</button>";
     }).join("") || "<p class='muted'>Nenhuma sessão gravada ainda.</p>";

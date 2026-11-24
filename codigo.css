@@ -206,6 +206,36 @@ h1 {
   color: rgba(210, 203, 195, 0.55);
 }
 
+.session-tokens {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin: 0.85rem 0 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  letter-spacing: 0.02em;
+  color: #e02828;
+  background: #050505;
+  border: 1px solid rgba(224, 40, 40, 0.35);
+  border-radius: 8px;
+  padding: 0.55rem 0.7rem;
+}
+
+.session-tokens-total,
+.session-tokens-split {
+  display: block;
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+
+.session-tokens-split {
+  color: #ff6b6b;
+  font-size: 0.72rem;
+  letter-spacing: 0.01em;
+}
+
 .status {
   margin: 0.65rem 0 0;
   text-align: center;

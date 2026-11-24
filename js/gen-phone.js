@@ -243,6 +243,41 @@ import {
     }
   }
 
+  var liveUsage = { tokens_in: 0, tokens_out: 0, tokens_total: 0, calls: 0 };
+
+  function takeLiveUsage(msg) {
+    var meta = (msg && (msg.usageMetadata || msg.usage_metadata || msg.usage))
+      || (msg && msg.serverContent && (msg.serverContent.usageMetadata || msg.serverContent.usage_metadata))
+      || (msg && msg.server_content && (msg.server_content.usageMetadata || msg.server_content.usage_metadata));
+    if (!meta) return;
+    var inn = Number(meta.promptTokenCount || meta.prompt_token_count || meta.prompt_tokens || meta.input_tokens) || 0;
+    var out = Number(meta.candidatesTokenCount || meta.responseTokenCount || meta.completion_tokens || meta.output_tokens) || 0;
+    var total = Number(meta.totalTokenCount || meta.total_tokens) || (inn + out);
+    if (!inn && !out && !total) return;
+    liveUsage.tokens_in += inn;
+    liveUsage.tokens_out += out;
+    liveUsage.tokens_total += total;
+    liveUsage.calls += 1;
+  }
+
+  async function flushLiveUsage() {
+    if (!liveUsage.calls && !liveUsage.tokens_total) return;
+    var payload = liveUsage;
+    liveUsage = { tokens_in: 0, tokens_out: 0, tokens_total: 0, calls: 0 };
+    try {
+      await fetch("/api/gen/usage", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+    } catch (err) {
+      liveUsage.tokens_in += payload.tokens_in;
+      liveUsage.tokens_out += payload.tokens_out;
+      liveUsage.tokens_total += payload.tokens_total;
+      liveUsage.calls += payload.calls;
+    }
+  }
+
   async function rememberTurn() {
     var user = captionUser.textContent.trim();
     var reply = captionGen.textContent.trim();
@@ -254,6 +289,7 @@ import {
       postedGen = reply;
       await postVoiceLine("gen", reply);
     }
+    await flushLiveUsage();
     refreshGenHistory();
   }
 
@@ -314,6 +350,7 @@ import {
     if (!text) return;
     var msg;
     try { msg = JSON.parse(text); } catch (err) { return; }
+    takeLiveUsage(msg);
     if (msg.setupComplete || msg.setup_complete) {
       setupReady = true;
       mode = "live";

@@ -27,6 +27,8 @@ import { normalizeGenStyle, parseStyleRequest, stylePhrase } from "../../lib/gen
 import { runDueRoutines } from "../../lib/gen/run-routines.js";
 import { profanityAllowed } from "../../lib/gen/profanity.js";
 import { supabaseRest } from "../../lib/supabase-rest.cjs";
+import { addSessionTokens } from "../../lib/gen/session-tokens.js";
+import { addUsage, emptyUsage } from "../../lib/gen/token-usage.js";
 
 const sharedChatLimiter = createRateLimiter({ limit: CHAT_LIMIT, windowMs: CHAT_WINDOW_MS });
 const sharedIpLimiter = createRateLimiter({ limit: IP_LIMIT, windowMs: IP_WINDOW_MS });
@@ -77,6 +79,7 @@ export function createChatHandler(deps = {}) {
   const loadMemory = deps.loadMemory || loadMemoryForSession;
   const sessionMemory = deps.sessionMemory || createSessionMemoryStore();
   const routineStore = deps.routineStore || createRoutineStore();
+  const persistTokens = deps.addSessionTokens || addSessionTokens;
   const loadPrefs = deps.loadPrefs || (async (userId) => {
     if (!userId) return true;
     const result = await supabaseRest(
@@ -105,6 +108,10 @@ export function createChatHandler(deps = {}) {
       }
 
       let transcript = turn.text || "";
+      let usageBag = emptyUsage();
+      function takeUsage(piece) {
+        if (piece) usageBag = addUsage(usageBag, piece);
+      }
       if (turn.audio) {
         const heard = await transcribeAudio({
           fetchImpl,
@@ -121,6 +128,7 @@ export function createChatHandler(deps = {}) {
           return;
         }
         transcript = heard.text.slice(0, 2000);
+        takeUsage(heard.usage);
       }
 
       const runTool = (tool, args) => executeHouseTool({
@@ -159,6 +167,11 @@ export function createChatHandler(deps = {}) {
       }
 
       async function sendTurn(payload) {
+        try {
+          await persistTokens(session.id, usageBag);
+        } catch {
+          /* contador não pode derrubar a resposta */
+        }
         const body = {
           ...payload,
           meta: {
@@ -272,6 +285,7 @@ export function createChatHandler(deps = {}) {
             res.status(infra.status).json(infra.body);
             return;
           }
+          takeUsage(searched.usage);
           actions.push({
             tool: "web_search",
             args: { query },
@@ -371,6 +385,7 @@ export function createChatHandler(deps = {}) {
           grounded: outcome.grounded || undefined,
         });
         if (outcome.gemini_error && !used.gemini_error) used.gemini_error = outcome.gemini_error;
+        takeUsage(outcome.usage);
       }
 
       for (let round = 0; round < 2; round += 1) {
@@ -381,6 +396,7 @@ export function createChatHandler(deps = {}) {
           tools,
           toolChoice: "auto",
         });
+        takeUsage(completion.usage);
         if (completion.error === "missing_config") {
           res.status(503).json({ error: "missing_config", hint: completion.hint });
           return;
@@ -488,6 +504,7 @@ export function createChatHandler(deps = {}) {
       }
 
       const finalTurn = await completeChat({ fetchImpl, env, messages, toolChoice: "none" });
+      takeUsage(finalTurn.usage);
       if (!finalTurn.error) {
         used = {
           provider: finalTurn.provider || used.provider,

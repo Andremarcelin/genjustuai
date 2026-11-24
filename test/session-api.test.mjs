@@ -279,6 +279,8 @@ test("admin is open without a PIN even when ADMIN_SECRET is set", async () => {
     assert.equal(res.body.recent[0].display_name, "Visitante AB3K7Q");
     assert.equal(res.body.recent[0].status, "active");
     assert.equal(res.body.recent[0].profile_id, "Zen");
+    assert.equal(res.body.recent[0].tokens_total, 0);
+    assert.equal(res.body.recent[0].calls, 0);
     assert.equal(res.headers["Set-Cookie"], undefined);
     const raw = leaked(res);
     assert.equal(raw.includes("custom-pin-should-be-ignored"), false);
@@ -362,6 +364,12 @@ test("polling returns the active session id and null after it is ended", async (
     assert.equal(active.body.session.profile_id, "Zen");
     assert.equal(active.body.session.status, "active");
     assert.equal(active.body.session.display_name, "Lina");
+    assert.equal(active.body.session.tokens_in, 0);
+    assert.equal(active.body.session.tokens_out, 0);
+    assert.equal(active.body.session.tokens_total, 0);
+    assert.equal(active.body.session.calls, 0);
+    assert.equal(active.body.tokens_total, 0);
+    assert.equal(active.body.calls, 0);
 
     global.fetch = async (url) => {
       const target = String(url);

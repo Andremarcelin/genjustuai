@@ -3,6 +3,8 @@ import { userIdFromBearer } from "../lib/gen/http.js";
 import { readHouseState } from "../lib/gen/house-store.js";
 import { summarizeVisit } from "../lib/gen/visit-summary.js";
 import { normalizeGenStyle } from "../lib/gen/style.js";
+import { publicTokenFields } from "../lib/gen/token-usage.js";
+import { tokensFromSummaryRow } from "../lib/gen/session-tokens.js";
 
 const PROFILE_IDS = new Set(["Zen", "Cyber", "Excentrico", "Acolhedor"]);
 const SESSION_STATUSES = new Set(["ready", "active", "ended"]);
@@ -12,7 +14,8 @@ export function sanitizeProfileId(value) {
 }
 
 export const CODE_RE = /^[A-HJ-NP-Z2-9]{6}$/i;
-const SUMMARY_FIELDS = ["session_code", "display_name", "personality_text", "archetype", "profile_id", "status"];
+const TOKEN_FIELDS = ["tokens_in", "tokens_out", "tokens_total", "token_calls", "tokens_estimated"];
+const SUMMARY_FIELDS = ["session_code", "display_name", "personality_text", "archetype", "profile_id", "status", ...TOKEN_FIELDS];
 
 function cors(res) {
   res.setHeader("Cache-Control", "no-store, max-age=0");
@@ -54,6 +57,7 @@ export function toPublicSession(row, fallbackStatus) {
   const code = String(row?.session_code || "").toUpperCase();
   const raw = String(row?.status || "").trim().toLowerCase();
   const status = SESSION_STATUSES.has(raw) ? raw : (fallbackStatus || "ready");
+  const tokens = tokensFromSummaryRow(row);
   return {
     id: code,
     session_code: code,
@@ -63,6 +67,8 @@ export function toPublicSession(row, fallbackStatus) {
     profile_id: profileIdFromRow(row),
     status,
     gen_style: "comum",
+    ...publicTokenFields(tokens),
+    tokens_estimated: Boolean(tokens.estimated),
   };
 }
 
@@ -97,6 +103,11 @@ async function summaryFor(code, fallbackStatus) {
     }
     if (fields.includes("profile_id")) {
       fields.splice(fields.indexOf("profile_id"), 1);
+      continue;
+    }
+    const missingToken = TOKEN_FIELDS.find((name) => fields.includes(name));
+    if (missingToken) {
+      fields.splice(fields.indexOf(missingToken), 1);
       continue;
     }
     return { error: publicError(result), status: result.status || 503 };
@@ -152,6 +163,11 @@ export async function loadSessionForUser(userId) {
       fields.splice(fields.indexOf("profile_id"), 1);
       continue;
     }
+    const missingToken = TOKEN_FIELDS.find((name) => fields.includes(name));
+    if (missingToken) {
+      fields.splice(fields.indexOf(missingToken), 1);
+      continue;
+    }
     return { error: publicError(result), status: result.status || 503 };
   }
   return { session: null };
@@ -204,7 +220,7 @@ export default async function handler(req, res) {
         return;
       }
       const session = await withHouseStyle(active.session);
-      res.status(200).json({ session });
+      res.status(200).json(session ? { session, ...publicTokenFields(session) } : { session });
       return;
     }
 
@@ -225,7 +241,7 @@ export default async function handler(req, res) {
       visit = summarizeVisit({});
     }
     const session = await withHouseStyle(found.data);
-    res.status(200).json({ session, visit });
+    res.status(200).json({ session, visit, ...publicTokenFields(session) });
   } catch {
     if (!res.headersSent) sendError(res, 503, "supabase_unreachable");
   }
