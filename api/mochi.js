@@ -5,6 +5,9 @@
 //
 // Variáveis de ambiente: MOCHI_TOKEN (obrigatória), GEMINI_API_KEY (e _2.._9 opcionais), GROQ_API_KEY.
 // Opcionais: MOCHI_TTS_MODEL, MOCHI_VOICE_NAME (ou GEN_VOICE_NAME), GEN_CHAT_PRIMARY=groq.
+//
+// O plano Hobby da Vercel aceita 12 functions por deploy e este repo já estava no teto.
+// api/config.js saiu: GET /api/config reescreve para cá (?config=1) e devolve o mesmo JSON.
 
 import crypto from "node:crypto";
 import { mochiSystemPrompt, parseReply, speechStyle } from "../lib/mochi/persona.js";
@@ -29,6 +32,35 @@ function header(req, name) {
   const h = req?.headers || {};
   if (typeof h.get === "function") return h.get(name) || "";
   return h[name.toLowerCase()] || h[name] || "";
+}
+
+function anonKey(env) {
+  return (
+    env.SUPABASE_ANON_KEY
+    || env.SUPABASE_PUBLISHABLE_KEY
+    || env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    || env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+    || null
+  );
+}
+
+function isPublicConfig(req) {
+  const url = String(req?.url || "");
+  const qIndex = url.indexOf("?");
+  const path = (qIndex >= 0 ? url.slice(0, qIndex) : url).replace(/\/+$/, "") || "/";
+  if (path === "/api/config" || path.endsWith("/api/config")) return true;
+  const params = new URLSearchParams(qIndex >= 0 ? url.slice(qIndex + 1) : "");
+  if (params.get("config") === "1") return true;
+  const query = req?.query;
+  return query?.config === "1" || query?.config === 1;
+}
+
+function sendPublicConfig(res, env) {
+  res.setHeader("Cache-Control", "no-store, max-age=0");
+  res.status(200).json({
+    supabaseUrl: env.SUPABASE_URL || null,
+    supabaseAnonKey: anonKey(env),
+  });
 }
 
 function tokenOk(given, expected) {
@@ -60,6 +92,11 @@ export function createMochiHandler(deps = {}) {
   const now = deps.now || (() => new Date());
 
   return async function handler(req, res) {
+    if (isPublicConfig(req)) {
+      sendPublicConfig(res, env);
+      return;
+    }
+
     const timer = createTimer();
     const deadline = performance.now() + DEADLINE_MS;
     const reply = (status, body) => {

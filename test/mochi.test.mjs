@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { createMochiHandler, MAX_AUDIO_BYTES } from "../api/mochi.js";
 import { EMOTIONS, mochiSystemPrompt, parseReply, speechStyle } from "../lib/mochi/persona.js";
 import { budget, geminiKeys, ttsModels, voiceName } from "../lib/mochi/providers.js";
@@ -98,15 +100,56 @@ function handler(extra = {}) {
   return createMochiHandler({ env: ENV, log() {}, fetchImpl: mockProviders(), ...extra });
 }
 
+function apiEntrypoints(dir) {
+  const found = [];
+  for (const name of fs.readdirSync(dir)) {
+    const full = path.join(dir, name);
+    if (fs.statSync(full).isDirectory()) found.push(...apiEntrypoints(full));
+    else if (name.endsWith(".js")) found.push(full);
+  }
+  return found;
+}
+
 test("vercel.json dá 30s ao mochi e mantém cron e rewrites", () => {
   const cfg = JSON.parse(fs.readFileSync(new URL("../vercel.json", import.meta.url), "utf8"));
   assert.equal(cfg.functions["api/mochi.js"].maxDuration, 30);
   assert.equal(Object.keys(cfg.functions).length, 1);
   assert.equal(cfg.crons[0].path, "/api/routines");
   assert.ok(cfg.rewrites.some((rule) => rule.source === "/gen" && rule.destination === "/gen.html"));
+  assert.ok(cfg.rewrites.some((rule) => rule.source === "/api/config" && rule.destination === "/api/mochi?config=1"));
   const src = fs.readFileSync(new URL("../api/mochi.js", import.meta.url), "utf8");
   assert.match(src, /bodyParser:\s*false/);
   assert.equal(MAX_AUDIO_BYTES, 1024 * 1024);
+  const apiDir = fileURLToPath(new URL("../api/", import.meta.url));
+  assert.equal(apiEntrypoints(apiDir).length, 12);
+  assert.equal(fs.existsSync(path.join(apiDir, "config.js")), false);
+});
+
+test("GET /api/config segue público, sem token e sem timing do Mochi", async () => {
+  let called = false;
+  const fn = handler({
+    env: { ...ENV, SUPABASE_URL: "https://example.supabase.co", SUPABASE_ANON_KEY: "anon-public" },
+    fetchImpl: async () => { called = true; throw new Error("config nao chama provedor"); },
+  });
+  const viaRewrite = mockRes();
+  await fn({ method: "GET", url: "/api/mochi?config=1", headers: {} }, viaRewrite);
+  assert.equal(viaRewrite.statusCode, 200);
+  assert.deepEqual(viaRewrite.body, {
+    supabaseUrl: "https://example.supabase.co",
+    supabaseAnonKey: "anon-public",
+  });
+  assert.equal(viaRewrite.headers["Cache-Control"], "no-store, max-age=0");
+  assert.equal(viaRewrite.body.timing_ms, undefined);
+  assert.equal(called, false);
+
+  const direct = mockRes();
+  await fn({ method: "GET", url: "/api/config", headers: {} }, direct);
+  assert.equal(direct.statusCode, 200);
+  assert.equal(direct.body.supabaseAnonKey, "anon-public");
+
+  const voice = mockRes();
+  await fn(post({ body: wavBytes() }), voice);
+  assert.equal(voice.statusCode, 401);
 });
 
 test("401 sem token e com token errado", async () => {

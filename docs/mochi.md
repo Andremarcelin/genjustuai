@@ -2,7 +2,9 @@
 
 Voz em turnos do **GenJutsu Mochi** (ESP32). O firmware manda um WAV, o servidor transcreve, o Corvo responde e a voz volta em WAV 16 kHz. Não usa a sessão do Quest nem `lib/gen`: a persona do bichinho é outra.
 
-O firmware desiste em 20 s. A rota mira **17 s** por dentro e o function fica com `maxDuration` 30 em `vercel.json` (`api/mochi.js` só; cron e rewrites dos outros caminhos não mudam).
+O firmware desiste em 20 s. A rota mira **17 s** por dentro e o function fica com `maxDuration` 30 em `vercel.json` (`api/mochi.js` só; cron e os rewrites de páginas não mudam).
+
+O plano Hobby aceita 12 Serverless Functions por deploy, e o projeto já tinha 12 arquivos em `api/`. `GET /api/config` deixou de ser um arquivo próprio: o rewrite manda para `/api/mochi?config=1`, que devolve o mesmo JSON público (`supabaseUrl`, `supabaseAnonKey`) e não passa pelo token do Mochi.
 
 ## Pedido
 

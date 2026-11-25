@@ -96,8 +96,7 @@ Documento mestre acadêmico (CDD): [docs/GenJutsu_AI_CDD_Completo.md](docs/GenJu
 - `js/guest-save.js` — `signInAnonymously()` quando não há sessão, depois dossiê + resumo
 - `js/personality.js` — nome, e-mail, avatar e texto do resumo (visitante não ganha frase de agenda)
 - `js/portal.js` — OAuth opcional e a gravação no Supabase
-- `api/config.js` — Vercel Function (`SUPABASE_URL`, `SUPABASE_ANON_KEY`)
-- `api/mochi.js` — voz do Mochi (ESP32): WAV 16 kHz → Corvo → WAV 16 kHz. `lib/mochi/` não usa `lib/gen`. Ver [docs/mochi.md](docs/mochi.md)
+- `api/mochi.js` — voz do Mochi (ESP32): WAV 16 kHz → Corvo → WAV 16 kHz. `lib/mochi/` não usa `lib/gen`. O mesmo arquivo responde `GET /api/config` (rewrite), porque o Hobby só aceita 12 functions. Ver [docs/mochi.md](docs/mochi.md)
 - `vercel.json` — rewrites `/privacy`, `/terms`, `/admin` e `/s/:code`; `api/mochi.js` com `maxDuration` 30
 - `sql/dossiers.sql` — tabela + RLS
 - `sql/sessions.sql` — session_code, interações, conversas, resumo NFC, `genjutsu_ensure_session`

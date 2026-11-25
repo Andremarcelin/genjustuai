@@ -19,6 +19,7 @@
     { "source": "/entrada", "destination": "/entrada.html" },
     { "source": "/codigo", "destination": "/codigo.html" },
     { "source": "/codigo/", "destination": "/codigo.html" },
-    { "source": "/s/:code", "destination": "/summary.html" }
+    { "source": "/s/:code", "destination": "/summary.html" },
+    { "source": "/api/config", "destination": "/api/mochi?config=1" }
   ]
 }
