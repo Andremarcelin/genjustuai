@@ -2,6 +2,11 @@
   "buildCommand": "node scripts/inject-gsc.js",
   "outputDirectory": ".",
   "trailingSlash": false,
+  "functions": {
+    "api/mochi.js": {
+      "maxDuration": 30
+    }
+  },
   "crons": [
     { "path": "/api/routines", "schedule": "0 10 * * *" }
   ],
@@ -14,6 +19,7 @@
     { "source": "/entrada", "destination": "/entrada.html" },
     { "source": "/codigo", "destination": "/codigo.html" },
     { "source": "/codigo/", "destination": "/codigo.html" },
-    { "source": "/s/:code", "destination": "/summary.html" }
+    { "source": "/s/:code", "destination": "/summary.html" },
+    { "source": "/api/config", "destination": "/api/mochi?config=1" }
   ]
 }
