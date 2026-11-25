@@ -2,6 +2,11 @@
   "buildCommand": "node scripts/inject-gsc.js",
   "outputDirectory": ".",
   "trailingSlash": false,
+  "functions": {
+    "api/mochi.js": {
+      "maxDuration": 30
+    }
+  },
   "crons": [
     { "path": "/api/routines", "schedule": "0 10 * * *" }
   ],

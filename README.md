@@ -79,6 +79,8 @@ Documento mestre acadêmico (CDD): [docs/GenJutsu_AI_CDD_Completo.md](docs/GenJu
    - `GEMINI_API_KEY` (Gemini Live, free tier, só no servidor). Opcionais `GEMINI_API_KEY_2` … `GEMINI_API_KEY_9` para rotação.
    - `GEN_VOICE_NAME` (opcional; voz masculina do Live, padrão `Charon`)
    - `GROQ_API_KEY` (Whisper turbo + `openai/gpt-oss-20b`, free tier, só no servidor)
+   - `MOCHI_TOKEN` (senha do ESP32 Mochi; `POST /api/mochi` responde 401 se `X-Mochi-Token` não for igual). O código também aceita `MOCHI_DEVICE_TOKEN`.
+   - Opcionais do Mochi: `MOCHI_TTS_MODEL` (padrão `gemini-3.8-flash-lite-tts`), `MOCHI_VOICE_NAME` (senão `GEN_VOICE_NAME`, senão `Charon`), `GEN_CHAT_PRIMARY=groq` (Groq na frente do Gemini no Mochi e no chat da Gen). Contrato: [docs/mochi.md](docs/mochi.md).
    - Maquete física (opcional): `MQTT_URL` (EMQX Cloud Serverless: `wss://<host>:8084/mqtt`; qualquer broker MQTT serve), `MQTT_USERNAME`, `MQTT_PASSWORD`, `MQTT_TOPIC` (padrão `genjutsu/maquete/estado`). Sem elas o site não publica. Ver `hardware/esp32-maquete/README.md`.
 
 `ADMIN_SECRET` não é lida neste MVP. `/admin` e `GET`/`POST /api/admin/session` abrem sem PIN. A variável pode sair da Vercel. Para travar de novo, volte a exigir o segredo em `api/admin/session.js` e recoloque o campo de PIN em `admin.html`.
@@ -95,7 +97,8 @@ Documento mestre acadêmico (CDD): [docs/GenJutsu_AI_CDD_Completo.md](docs/GenJu
 - `js/personality.js` — nome, e-mail, avatar e texto do resumo (visitante não ganha frase de agenda)
 - `js/portal.js` — OAuth opcional e a gravação no Supabase
 - `api/config.js` — Vercel Function (`SUPABASE_URL`, `SUPABASE_ANON_KEY`)
-- `vercel.json` — rewrites `/privacy`, `/terms`, `/admin` e `/s/:code`
+- `api/mochi.js` — voz do Mochi (ESP32): WAV 16 kHz → Corvo → WAV 16 kHz. `lib/mochi/` não usa `lib/gen`. Ver [docs/mochi.md](docs/mochi.md)
+- `vercel.json` — rewrites `/privacy`, `/terms`, `/admin` e `/s/:code`; `api/mochi.js` com `maxDuration` 30
 - `sql/dossiers.sql` — tabela + RLS
 - `sql/sessions.sql` — session_code, interações, conversas, resumo NFC, `genjutsu_ensure_session`
 - `sql/anonymous_auth.sql` — grants reafirmados para o papel `authenticated` (inclui anônimo)
@@ -115,7 +118,7 @@ O resumo do visitante descreve só clima e casa. A frase “N evento(s) de agend
 
 `node test/personality.test.js` confere o fallback `Visitante` + código, o nome escrito quando existe, o e-mail vazio e a ausência dessa frase.
 
-`node --test test/guest-save.test.js test/zcea-profile.test.js test/session-api.test.mjs test/gen.test.mjs` confere o save sem login (sessão anônima, `profile_id`, código de 6 caracteres), o JSON de `GET /api/session` e as ferramentas da Gen com provedores simulados.
+`node --test test/guest-save.test.js test/zcea-profile.test.js test/session-api.test.mjs test/gen.test.mjs test/mochi.test.mjs` confere o save sem login (sessão anônima, `profile_id`, código de 6 caracteres), o JSON de `GET /api/session`, as ferramentas da Gen com provedores simulados e o `POST /api/mochi` (200 com WAV, 401 sem token).
 
 ## Como verificar o visitante
 
