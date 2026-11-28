@@ -283,7 +283,7 @@ JSON `{ "error": "..." }`. Sem URL, chave ou corpo do provedor.
 
 | HTTP | error | Quando |
 |---|---|---|
-| 409 | `no_active_session` | `/api/gen/*` sem sessão ativa. `/api/house/state` não usa este código: devolve `{ "state": null }`. |
+| 409 | `no_active_session` | `/api/gen/*` sem sessão ativa. `/api/house/state` não usa este código: devolve `{ "state": null, "maquete_modo": "rastreio"|"exibicao" }`. |
 | 400 | `invalid_request` | corpo que não é `{ tool, args }` nem `{ text }`. |
 | 400 | `invalid_audio` | arquivo ausente ou tipo fora de wav, webm, mp4, m4a, mpeg, ogg. |
 | 413 | `audio_too_large` | acima de 8 MB. |

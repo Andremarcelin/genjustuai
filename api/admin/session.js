@@ -2,6 +2,11 @@ import { readSupabaseConfig, supabaseRest } from "../../lib/supabase-rest.cjs";
 import { sanitizeProfileId } from "../session.js";
 import { publicTokenFields } from "../../lib/gen/token-usage.js";
 import { tokensFromSummaryRow } from "../../lib/gen/session-tokens.js";
+import {
+  DEFAULT_MAQUETE_MODO,
+  isValidMaqueteModo,
+  normalizeMaqueteModo,
+} from "../../lib/gen/maquete-modo.js";
 
 const CODE_RE = /^[A-HJ-NP-Z2-9]{6}$/i;
 const SQL_HINT = "SQL ainda não rodou neste Supabase. No SQL Editor, nesta ordem: sql/dossiers.sql, sql/sessions.sql, sql/app_state.sql, sql/admin_read.sql, sql/anonymous_auth.sql, sql/profile_id.sql, sql/session_lifecycle.sql e sql/session_tokens.sql. Em Authentication → Providers, ative Anonymous sign-ins.";
@@ -18,6 +23,7 @@ function rest(path, options = {}) {
     method: options.method,
     body: options.body,
     allowServiceRole: true,
+    serviceRoleOnly: options.serviceRoleOnly === true,
     headers: {
       "Content-Type": "application/json",
       Prefer: "return=representation",
@@ -90,13 +96,20 @@ function toAdminRow(row, currentCode) {
 }
 
 async function currentCode() {
-  const current = await rest("app_state?id=eq.1&select=current_session_code");
+  let current = await rest("app_state?id=eq.1&select=current_session_code,maquete_modo");
+  if (isSchema(current)) {
+    current = await rest("app_state?id=eq.1&select=current_session_code");
+  }
   if (isHardFailure(current)) return { error: publicFailure(current) };
   const stateRows = current.ok && Array.isArray(current.json) ? current.json : [];
   const code = stateRows[0]?.current_session_code
     ? String(stateRows[0].current_session_code).toUpperCase()
     : null;
-  return { code, missingState: isSchema(current) };
+  return {
+    code,
+    missingState: isSchema(current),
+    maquete_modo: normalizeMaqueteModo(stateRows[0]?.maquete_modo),
+  };
 }
 
 async function profileFor(code) {
@@ -150,6 +163,7 @@ export default async function handler(req, res) {
         .map((row) => toAdminRow(row, current.code));
       res.status(200).json({
         current_session_code: current.code,
+        maquete_modo: current.maquete_modo || DEFAULT_MAQUETE_MODO,
         recent,
         hint: listed.missing || (!recent.length && current.missingState)
           ? SQL_HINT
@@ -162,6 +176,37 @@ export default async function handler(req, res) {
 
     if (req.method === "POST") {
       const action = String(req.body?.action || "start").trim().toLowerCase();
+      if (action === "maquete_modo") {
+        const value = String(req.body?.value || "").trim().toLowerCase();
+        if (!isValidMaqueteModo(value)) {
+          res.status(400).json({ error: "invalid_maquete_modo" });
+          return;
+        }
+        const patched = await rest("app_state?id=eq.1", {
+          method: "PATCH",
+          serviceRoleOnly: true,
+          body: JSON.stringify({
+            maquete_modo: value,
+            updated_at: new Date().toISOString(),
+          }),
+        });
+        if (patched.ok) {
+          const row = Array.isArray(patched.json) ? patched.json[0] : patched.json;
+          res.status(200).json({
+            maquete_modo: normalizeMaqueteModo(row?.maquete_modo || value),
+          });
+          return;
+        }
+        if (isSchema(patched)) {
+          res.status(502).json({
+            error: "need_sql",
+            hint: "Rode sql/maquete_modo.sql no SQL Editor do Supabase.",
+          });
+          return;
+        }
+        res.status(503).json({ error: publicFailure(patched) });
+        return;
+      }
       if (action === "end") {
         const requested = String(req.body?.code || "").trim().toUpperCase();
         if (requested && !CODE_RE.test(requested)) {

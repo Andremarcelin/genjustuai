@@ -15,7 +15,7 @@ Espelha a casa virtual no strip WS2812B. O site publica JSON retido em `genjutsu
 
 ## Mapeamento do payload
 
-O servidor monta o JSON a partir de `public.house_state` da **sessão ativa** (`app_state.current_session_code`):
+O modo da maquete (`app_state.maquete_modo`, `rastreio` ou `exibicao`) vem em `GET /api/house/state` e no admin (`POST /api/admin/session` com `{ "action": "maquete_modo", "value": "..." }`); em `exibicao` a placa inicia o tour com ZERO. O servidor monta o JSON a partir de `public.house_state` da **sessão ativa** (`app_state.current_session_code`):
 
 | Campo MQTT | Origem em `house_state` |
 |---|---|

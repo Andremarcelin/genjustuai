@@ -29,6 +29,11 @@
       <label><input type="radio" name="admin-gen-style" value="ironica"> Irônica</label>
       <label><input type="radio" name="admin-gen-style" value="zen"> Zen</label>
     </fieldset>
+    <fieldset class="admin-style" id="admin-maquete">
+      <legend>Modo da maquete</legend>
+      <label><input type="radio" name="admin-maquete-modo" value="rastreio" checked> Rastreio</label>
+      <label><input type="radio" name="admin-maquete-modo" value="exibicao"> Exibição</label>
+    </fieldset>
     <button class="secondary" id="end" type="button" hidden>Finalizar sessão</button>
   </div>
   <h2>Sessões</h2>
@@ -153,7 +158,18 @@
     else if (data.current_session_code && !endedCurrent) showPick("Sessão atual", data.current_session_code, "");
     else showPick("", "", "");
     markActive(cur ? data.current_session_code : "");
+    paintMaqueteModo(data.maquete_modo);
     loadStyle();
+  }
+  function paintMaqueteModo(modo) {
+    var value = modo === "exibicao" ? "exibicao" : "rastreio";
+    document.querySelectorAll("input[name='admin-maquete-modo']").forEach(function (el) {
+      el.checked = el.value === value;
+    });
+  }
+  function maqueteStatus(modo) {
+    if (modo === "exibicao") return "Maquete: exibição. Mande ZERO na placa para iniciar o tour";
+    return "Maquete: rastreio. Seguindo o Quest";
   }
   function paintAdminStyle(style) {
     var value = style === "ironica" || style === "zen" ? style : "comum";
@@ -237,6 +253,31 @@
       setStatus("Sessão " + endedCode + " encerrada. O Quest volta para a sala branca.", false);
     }).catch(function () {});
   };
+  document.querySelectorAll("input[name='admin-maquete-modo']").forEach(function (el) {
+    el.addEventListener("change", async function () {
+      if (!el.checked) return;
+      var res, data;
+      try {
+        res = await fetch("/api/admin/session", {
+          method: "POST",
+          headers: headers(),
+          credentials: "same-origin",
+          body: JSON.stringify({ action: "maquete_modo", value: el.value })
+        });
+        data = await res.json();
+      } catch (e) {
+        setStatus("Não deu pra gravar o modo da maquete.", true);
+        return;
+      }
+      if (!res.ok) {
+        setStatus(explain(data), true);
+        return;
+      }
+      var modo = data.maquete_modo === "exibicao" ? "exibicao" : "rastreio";
+      paintMaqueteModo(modo);
+      setStatus(maqueteStatus(modo), false);
+    });
+  });
   document.querySelectorAll("input[name='admin-gen-style']").forEach(function (el) {
     el.addEventListener("change", async function () {
       if (!el.checked) return;

@@ -3,6 +3,7 @@ import { defaultHouseState, toPublicState } from "../../lib/gen/defaults.js";
 import { listPublicDevices } from "../../lib/gen/devices.js";
 import { infraFromStore, initApi } from "../../lib/gen/http.js";
 import { createSupabaseHouseStore, readHouseState } from "../../lib/gen/house-store.js";
+import { DEFAULT_MAQUETE_MODO, readMaqueteModo } from "../../lib/gen/maquete-modo.js";
 import { createRoutineStore } from "../../lib/gen/routine-store.js";
 import { runDueRoutines } from "../../lib/gen/run-routines.js";
 
@@ -12,17 +13,26 @@ export function createHouseStateHandler(deps = {}) {
   const houseStore = deps.store || createSupabaseHouseStore();
   const routineStore = deps.routineStore || createRoutineStore();
   const now = deps.now || (() => Date.now());
+  const readModo = deps.readMaqueteModo || (() => readMaqueteModo({ env: deps.env, fetchImpl: deps.fetchImpl }));
+
+  async function maqueteModo() {
+    try {
+      return await readModo();
+    } catch {
+      return DEFAULT_MAQUETE_MODO;
+    }
+  }
 
   return async function handler(req, res) {
     if (initApi(req, res, ["GET"])) return;
     try {
       const found = await loadSession(req);
       if (found?.error) {
-        res.status(found.status || 503).json({ error: found.error });
+        res.status(found.status || 503).json({ error: found.error, maquete_modo: await maqueteModo() });
         return;
       }
       if (!found?.session) {
-        res.status(200).json({ state: null });
+        res.status(200).json({ state: null, maquete_modo: await maqueteModo() });
         return;
       }
       try {
@@ -39,12 +49,13 @@ export function createHouseStateHandler(deps = {}) {
       const row = await readState(found.session.id);
       if (row?.error) {
         const infra = infraFromStore(row);
-        res.status(infra.status).json(infra.body);
+        res.status(infra.status).json({ ...infra.body, maquete_modo: await maqueteModo() });
         return;
       }
       const state = row?.state ? toPublicState(row.state) : defaultHouseState(found.session.id);
       res.status(200).json({
         state,
+        maquete_modo: await maqueteModo(),
         devices: listPublicDevices(state),
         session: {
           id: found.session.id,
