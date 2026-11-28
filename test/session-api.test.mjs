@@ -508,6 +508,63 @@ test("ending without the lifecycle function asks for the sql file", async () => 
   });
 });
 
+test("maquete_modo sql is idempotent and lists the allowed values", () => {
+  const sql = fs.readFileSync(new URL("../sql/maquete_modo.sql", import.meta.url), "utf8");
+  assert.match(sql, /add column if not exists maquete_modo/);
+  assert.match(sql, /drop constraint if exists app_state_maquete_modo_check/);
+  assert.match(sql, /maquete_modo in \('rastreio', 'exibicao'\)/);
+});
+
+test("admin POST maquete_modo validates value and returns the new modo", async () => {
+  const patches = [];
+  global.fetch = async (url, options) => {
+    const target = String(url);
+    const method = String((options && options.method) || "GET").toUpperCase();
+    if (target.includes("app_state") && method === "PATCH") {
+      patches.push(options && options.body);
+      const body = JSON.parse(options.body);
+      return jsonResponse([{ maquete_modo: body.maquete_modo }]);
+    }
+    if (target.includes("session_summaries")) return jsonResponse([]);
+    if (target.includes("app_state")) {
+      return jsonResponse([{ current_session_code: null, maquete_modo: "rastreio" }]);
+    }
+    return jsonResponse([]);
+  };
+  await withEnv({
+    SUPABASE_URL: "https://example.supabase.co",
+    SUPABASE_ANON_KEY: ANON,
+    SUPABASE_SERVICE_ROLE: SERVICE,
+  }, async () => {
+    const bad = mockRes();
+    await adminHandler({
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: { action: "maquete_modo", value: "tour" },
+    }, bad);
+    assert.equal(bad.statusCode, 400);
+    assert.deepEqual(bad.body, { error: "invalid_maquete_modo" });
+    assert.equal(patches.length, 0);
+
+    const ok = mockRes();
+    await adminHandler({
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: { action: "maquete_modo", value: "exibicao" },
+    }, ok);
+    assert.equal(ok.statusCode, 200);
+    assert.deepEqual(ok.body, { maquete_modo: "exibicao" });
+    assert.equal(patches.length, 1);
+    assert.match(String(patches[0]), /exibicao/);
+
+    const list = mockRes();
+    await adminHandler({ method: "GET", headers: {} }, list);
+    assert.equal(list.statusCode, 200);
+    assert.equal(list.body.maquete_modo, "rastreio");
+    assert.equal(list.body.current_session_code, null);
+  });
+});
+
 test("session lifecycle sql keeps many rows per profile and records ended", () => {
   const sql = fs.readFileSync(new URL("../sql/session_lifecycle.sql", import.meta.url), "utf8");
   const sessions = fs.readFileSync(new URL("../sql/sessions.sql", import.meta.url), "utf8");
@@ -528,6 +585,9 @@ test("admin page loads the session UI without a PIN field", () => {
   assert.match(html, /Sessões/);
   assert.match(html, /Iniciar sessão no Quest com este código/);
   assert.match(html, /Finalizar sessão/);
+  assert.match(html, /Modo da maquete/);
+  assert.match(html, /action: "maquete_modo"/);
+  assert.match(html, /Mande ZERO na placa para iniciar o tour/);
   assert.match(html, /action: "end"/);
   assert.match(html, /id="pick-profile"/);
   assert.match(html, /Perfil do Quest/);

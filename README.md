@@ -42,6 +42,7 @@ Documento mestre acadêmico (CDD): [docs/GenJutsu_AI_CDD_Completo.md](docs/GenJu
    11. [`sql/house_devices.sql`](sql/house_devices.sql) — device ids (`sala_luz`, `quarto_luz`, `abajur`, `fita_led`, `tv`, `ambiente`) no mesmo `lights` jsonb. Mantém `main`/`lanterns` para o Quest. RLS: só o dono lê; a API escreve com service role. Inclui `GRANT EXECUTE` das funções de CHECK para `service_role`; sem o grant, a escrita responde `503 db_permission_denied`.
    12. [`sql/house_media.sql`](sql/house_media.sql) — coluna `media` (TV/ambiente), validator `media_valid` com `GRANT EXECUTE` para `service_role`, broadcast inclui `media`.
    13. [`sql/gen_history.sql`](sql/gen_history.sql) — falas, respostas e gestos da casa. A pessoa só lê as próprias linhas.
+   14. [`sql/maquete_modo.sql`](sql/maquete_modo.sql) — coluna `app_state.maquete_modo` (`rastreio` / `exibicao`). Cole no SQL Editor; este PR não aplica no banco.
 3. **Authentication → URL configuration**
    - Site URL: `https://SEU-PROJETO.vercel.app`
    - Redirect URLs: `https://SEU-PROJETO.vercel.app/**` e `https://SEU-REF.supabase.co/auth/v1/callback`

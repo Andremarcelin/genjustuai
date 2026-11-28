@@ -300,20 +300,25 @@ test("executor rate limit does not bump the version", async () => {
 });
 
 test("GET /api/house/state returns null without a session and the hub default with one", async () => {
-  const empty = createHouseStateHandler({ loadSession: noSession() });
+  const empty = createHouseStateHandler({
+    loadSession: noSession(),
+    readMaqueteModo: async () => "exibicao",
+  });
   const res = mockRes();
   await empty({ method: "GET", headers: {} }, res);
   assert.equal(res.statusCode, 200);
-  assert.deepEqual(res.body, { state: null });
+  assert.deepEqual(res.body, { state: null, maquete_modo: "exibicao" });
 
   const ready = createHouseStateHandler({
     loadSession: activeSession(),
     readState: async () => ({ state: null }),
+    readMaqueteModo: async () => "rastreio",
   });
   const res2 = mockRes();
   await ready({ method: "GET", headers: {} }, res2);
   assert.equal(res2.statusCode, 200);
   assert.deepEqual(res2.body.state, defaultHouseState("AB3K7Q"));
+  assert.equal(res2.body.maquete_modo, "rastreio");
 });
 
 test("POST /api/gen/commands validates and requires an active session", async () => {

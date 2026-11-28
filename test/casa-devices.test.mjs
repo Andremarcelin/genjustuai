@@ -121,6 +121,7 @@ test("GET /api/house/state still returns null without a session and includes dev
   await empty({ method: "GET", headers: {} }, res);
   assert.equal(res.statusCode, 200);
   assert.equal(res.body.state, null);
+  assert.equal(res.body.maquete_modo, "rastreio");
 
   const ready = createHouseStateHandler({
     loadSession: async () => ({ session: SESSION }),
